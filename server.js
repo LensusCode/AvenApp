@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -14,7 +15,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // --- CONFIGURACIÓN DE ENCRIPTACIÓN ---
-const ENCRYPTION_KEY = '12345678901234567890123456789012'; 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; 
 const IV_LENGTH = 16; 
 
 function encrypt(text) {
