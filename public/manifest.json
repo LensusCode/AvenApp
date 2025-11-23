@@ -1,6 +1,6 @@
 {
-  "name": "Mi Chat App",
-  "short_name": "Chat",
+  "name": "AvenApp",
+  "short_name": "AvenApp",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

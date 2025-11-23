@@ -1,5 +1,5 @@
-const CACHE_NAME = 'chat-app-v2'; // Cambiamos el nombre para forzar actualización
-const CACHE_DYNAMIC_NAME = 'chat-dynamic-v2'; // Para guardar datos de la API (historial)
+const CACHE_NAME = 'chat-app-v1'; // Cambiamos el nombre para forzar actualización
+const CACHE_DYNAMIC_NAME = 'chat-dynamic-v1'; // Para guardar datos de la API (historial)
 
 const urlsToCache = [
   '/',
