@@ -13,10 +13,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="preconnect" href="https://media.giphy.com">
+    <link rel="dns-prefetch" href="https://media.giphy.com">
+
+    <!-- 2. PRELOAD: Prioridad máxima para CSS y JS crítico -->
+    <link rel="preload" href="style.css" as="style">
+    <link rel="preload" href="script.js" as="script">
+    <link rel="preload" href="/profile.png" as="image">
 </head>
 <body>
-
-    <!-- Se eliminó el div id="authModal" -->
 
     <div class="chat-container">
         <!-- Sidebar -->
@@ -40,7 +45,12 @@
             <div class="profile-card">
                 <div class="profile-header-img">
                     <div class="profile-avatar-large" id="profilePreviewAvatar">
-                        <label for="avatarInput" class="upload-overlay"><span>📷</span></label>
+                        <label for="avatarInput" class="upload-overlay">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </label>
                     </div>
                     <input type="file" id="avatarInput" accept="image/*" hidden />
                 </div>
@@ -99,9 +109,36 @@
             </div>
         </div>
 
+        <div id="stickerOptionsModal" class="sticker-options-modal hidden">
+    <div class="sticker-options-content">
+        <!-- Línea decorativa superior -->
+        <div class="modal-drag-handle"></div>
+        
+        <!-- Vista previa del sticker -->
+        <div class="sticker-preview-container">
+            <img id="stickerModalPreview" src="" alt="Sticker Preview">
+        </div>
+
+        <!-- Lista de acciones -->
+        <div class="sticker-actions-list">
+            <button id="btnStickerFavAction" class="sticker-action-btn">
+                <span id="stickerFavIcon">☆</span>
+                <span id="stickerFavText">Añadir a favoritos</span>
+            </button>
+            <button id="btnStickerClose" class="sticker-action-btn secondary">
+                <span>✕</span>
+                <span>Cerrar</span>
+            </button>
+        </div>
+    </div>
+    <!-- Fondo oscuro para cerrar al tocar fuera -->
+    <div class="modal-backdrop" id="stickerModalBackdrop"></div>
+</div>
+
         <!-- Menú Contextual -->
         <div id="msgContextMenu" class="context-menu hidden">
             <div class="context-menu-content">
+                <button id="ctxReplyBtn" class="ctx-item">↩ Responder</button>
                 <button id="ctxDeleteBtn" class="ctx-item danger">Eliminar mensaje</button>
             </div>
         </div>
@@ -130,19 +167,81 @@
                 <ul id="messages" class="messages hidden"></ul>
             </main>
 
+            <!-- PANEL DE STICKERS (NUEVO) -->
+            <div id="stickerPanel" class="sticker-panel hidden">
+    <!-- Pestañas -->
+    <div class="sticker-tabs">
+        <button id="tabGiphy" class="sticker-tab active">Stickers</button>
+        <button id="tabFavs" class="sticker-tab">Favoritos ⭐</button>
+    </div>
+    
+    <div class="sticker-header" id="stickerHeaderSearch">
+        <input type="text" id="stickerSearch" placeholder="Buscar un sticker..." />
+    </div>
+    <div id="stickerResults" class="sticker-grid">
+        <div class="loading-stickers">Cargando...</div>
+    </div>
+</div>
+
             <form id="form" class="composer hidden">
                 <div class="composer-inner">
-                    <button type="button" id="btnImage" class="attach-btn">📎</button>
+                    <!-- Botón Stickers -->
+                    <button type="button" id="btnStickers" class="attach-btn" style="margin-right: 5px;">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+
+                    <!-- Botón Clip -->
+                    <button type="button" id="btnImage" class="attach-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                        </svg>
+                    </button>
                     <input type="file" id="chatImageInput" accept="image/*" hidden />
-                    <input id="input" autocomplete="off" placeholder="Escribe un mensaje..." />
-                    <button id="sendBtn" class="send-btn" type="submit">➤</button>
+
+                    <!-- STACK CENTRAL: Input Texto o UI Grabación -->
+                    <div id="inputStack" class="input-stack">
+                        <!-- Preview del Reply -->
+                        <div id="replyPreview" class="reply-preview hidden">
+                            <div class="reply-content-container">
+                                <div class="reply-bar-color"></div>
+                                <div class="reply-info">
+                                    <span id="replyToName" class="reply-to-name">Nombre</span>
+                                    <span id="replyToText" class="reply-to-text">Mensaje</span>
+                                </div>
+                                <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
+                            </div>
+                            <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
+                        </div>
+
+                        <!-- INPUT TEXTO -->
+                        <input id="input" autocomplete="off" placeholder="Escribe un mensaje..." />
+
+                        <!-- UI GRABACIÓN DE AUDIO (Oculto por defecto) -->
+                        <div id="recordingUI" class="recording-ui hidden">
+                            <div class="recording-indicator">
+                                <div class="red-dot"></div>
+                                <span id="recordingTimer">0:00</span>
+                            </div>
+                            <button type="button" id="cancelRecordingBtn" class="cancel-rec-btn">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- BOTÓN DE ACCIÓN PRINCIPAL (Enviar o Micrófono) -->
+                    <button type="button" id="mainActionBtn" class="send-btn" aria-label="Acción">
+                        <!-- El icono se insertará vía JS -->
+                    </button>
                 </div>
             </form>
         </section>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="script.js" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js'));

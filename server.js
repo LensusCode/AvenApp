@@ -19,6 +19,7 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16; 
 
 function encrypt(text) {
+    if (!text) return '';
     let iv = crypto.randomBytes(IV_LENGTH);
     let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
     let encrypted = cipher.update(text);
@@ -37,17 +38,17 @@ function decrypt(text) {
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         return decrypted.toString();
     } catch (error) {
-        return '[Error desencriptando]';
+        return '[Mensaje ilegible]';
     }
 }
 
 // --- CONFIGURACIÓN MULTER ---
 const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
         cb(null, true);
     } else {
-        cb(new Error('Solo se permiten archivos de imagen'), false);
+        cb(new Error('Solo se permiten archivos de imagen o audio'), false);
     }
 };
 const upload = multer({ storage: storage, fileFilter: fileFilter });
@@ -70,20 +71,22 @@ db.serialize(() => {
         avatar TEXT
     )`);
 
-    // MODIFICADO: Agregamos columna 'type'
     db.run(`CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         from_user_id INTEGER,
         to_user_id INTEGER,
         content TEXT,
         type TEXT DEFAULT 'text',
+        reply_to_id INTEGER,
         is_deleted INTEGER DEFAULT 0,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
         if (!err) {
-            // Migración simple por si la tabla ya existe
-            db.run(`ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0`, () => {});
-            db.run(`ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'`, () => {});
+            try {
+                db.run(`ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0`, () => {});
+                db.run(`ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'`, () => {});
+                db.run(`ALTER TABLE messages ADD COLUMN reply_to_id INTEGER`, () => {});
+            } catch(e) {}
         }
     });
 
@@ -93,16 +96,25 @@ db.serialize(() => {
         nickname TEXT,
         PRIMARY KEY (user_id, target_user_id)
     )`);
+
+    // --- NUEVA TABLA: STICKERS FAVORITOS ---
+    db.run(`CREATE TABLE IF NOT EXISTS favorite_stickers (
+        user_id INTEGER,
+        sticker_url TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, sticker_url)
+    )`);
 });
 
 // --- API RUTAS ---
-
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     if(!username || !password) return res.status(400).json({error: 'Faltan datos'});
-    const hash = bcrypt.hashSync(password, 10);
     
-    db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hash], function(err) {
+    const hash = bcrypt.hashSync(password, 10);
+    const defaultAvatar = '/profile.png';
+
+    db.run(`INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)`, [username, hash, defaultAvatar], function(err) {
         if (err) return res.status(400).json({ error: 'Usuario existente' });
         res.json({ id: this.lastID });
     });
@@ -113,83 +125,129 @@ app.post('/api/login', (req, res) => {
     db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, row) => {
         if (err || !row) return res.status(400).json({ error: 'Usuario no encontrado' });
         if (!bcrypt.compareSync(password, row.password)) return res.status(400).json({ error: 'Contraseña incorrecta' });
-        res.json({ user: { id: row.id, username: row.username, avatar: row.avatar } });
+        
+        const avatarToSend = row.avatar || '/profile.png';
+        res.json({ user: { id: row.id, username: row.username, avatar: avatarToSend } });
     });
 });
 
-// Subir Avatar
 app.post('/api/upload-avatar', upload.single('avatar'), async (req, res) => {
-    const userId = req.body.userId;
+    // IMPORTANTE: Parsear a entero para que coincida con los IDs en el cliente
+    const userId = parseInt(req.body.userId);
     if (!req.file || !userId) return res.status(400).json({ error: 'Faltan datos' });
-
     const dir = './public/uploads';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const filename = `avatar-${userId}-${Date.now()}.jpeg`;
     const filepath = path.join(dir, filename);
-
     try {
         await sharp(req.file.buffer)
             .resize(500, 500, { fit: 'cover', position: 'center' })
-            .toFormat('jpeg')
-            .jpeg({ quality: 80, mozjpeg: true })
-            .toFile(filepath);
-
+            .toFormat('jpeg').jpeg({ quality: 80, mozjpeg: true }).toFile(filepath);
+        
         const avatarUrl = `/uploads/${filename}`;
+        
         db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, userId], (err) => {
             if (err) return res.status(500).json({error: 'Error DB'});
+            
+            // --- NUEVO: BROADCAST GLOBAL INMEDIATO ---
+            // Esto avisa a TODOS los sockets conectados que un usuario actualizó su perfil
+            io.emit('user_updated_profile', { 
+                userId: userId, 
+                avatar: avatarUrl 
+            });
+
             res.json({ avatarUrl });
         });
-    } catch (error) {
-        res.status(500).json({ error: 'Error procesando imagen' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Error procesando imagen' }); }
 });
 
-// NUEVO: Subir Imagen Chat
 app.post('/api/upload-chat-image', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No hay imagen' });
-
     const dir = './public/uploads';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    // Generar nombre único
     const filename = `chat-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpeg`;
     const filepath = path.join(dir, filename);
-
     try {
-        // Compresión para chat (Max 1024px, borra metadatos)
         await sharp(req.file.buffer)
             .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-            .toFormat('jpeg')
-            .jpeg({ quality: 80, mozjpeg: true })
-            .toFile(filepath);
-
+            .toFormat('jpeg').jpeg({ quality: 80, mozjpeg: true }).toFile(filepath);
         res.json({ imageUrl: `/uploads/${filename}` });
+    } catch (error) { res.status(500).json({ error: 'Error procesando imagen' }); }
+});
 
-    } catch (error) {
-        console.error('Error imagen chat:', error);
-        res.status(500).json({ error: 'Error procesando imagen' });
-    }
+app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No hay audio' });
+    const dir = './public/uploads';
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    let ext = 'webm';
+    if(req.file.mimetype === 'audio/mpeg') ext = 'mp3';
+    else if(req.file.mimetype === 'audio/wav') ext = 'wav';
+    else if(req.file.mimetype === 'audio/ogg') ext = 'ogg';
+    const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1E9)}.${ext}`;
+    const filepath = path.join(dir, filename);
+    try {
+        fs.writeFileSync(filepath, req.file.buffer);
+        res.json({ audioUrl: `/uploads/${filename}` });
+    } catch (error) { res.status(500).json({ error: 'Error guardando audio' }); }
 });
 
 app.get('/api/messages/:myId/:otherId', (req, res) => {
     const { myId, otherId } = req.params;
     const sql = `
-        SELECT * FROM messages 
-        WHERE ((from_user_id = ? AND to_user_id = ?) 
-           OR (from_user_id = ? AND to_user_id = ?))
-           AND is_deleted = 0
-        ORDER BY timestamp ASC
+        SELECT m.*, 
+               r.content as reply_content, 
+               r.type as reply_type,
+               r.from_user_id as reply_from_id
+        FROM messages m
+        LEFT JOIN messages r ON m.reply_to_id = r.id
+        WHERE ((m.from_user_id = ? AND m.to_user_id = ?) 
+           OR (m.from_user_id = ? AND m.to_user_id = ?))
+           AND m.is_deleted = 0
+        ORDER BY m.timestamp ASC
     `;
     db.all(sql, [myId, otherId, otherId, myId], (err, rows) => {
         if (err) return res.status(500).json({ error: 'Error DB' });
-        const decryptedRows = rows.map(row => ({ ...row, content: decrypt(row.content) }));
+        const decryptedRows = rows.map(row => ({
+            ...row,
+            content: decrypt(row.content),
+            reply_content: row.reply_content ? decrypt(row.reply_content) : null
+        }));
         res.json(decryptedRows);
     });
+});
+
+// --- RUTAS DE STICKERS FAVORITOS ---
+app.post('/api/favorites/add', (req, res) => {
+    const { userId, url } = req.body;
+    if (!userId || !url) return res.status(400).json({ error: 'Faltan datos' });
+    db.run(`INSERT OR IGNORE INTO favorite_stickers (user_id, sticker_url) VALUES (?, ?)`, 
+        [userId, url], (err) => {
+            if (err) return res.status(500).json({ error: 'Error DB' });
+            res.json({ success: true });
+        });
+});
+
+app.post('/api/favorites/remove', (req, res) => {
+    const { userId, url } = req.body;
+    db.run(`DELETE FROM favorite_stickers WHERE user_id = ? AND sticker_url = ?`, 
+        [userId, url], (err) => {
+            if (err) return res.status(500).json({ error: 'Error DB' });
+            res.json({ success: true });
+        });
+});
+
+app.get('/api/favorites/:userId', (req, res) => {
+    const { userId } = req.params;
+    db.all(`SELECT sticker_url FROM favorite_stickers WHERE user_id = ? ORDER BY created_at DESC`, 
+        [userId], (err, rows) => {
+            if (err) return res.status(500).json({ error: 'Error DB' });
+            res.json(rows.map(r => r.sticker_url));
+        });
 });
 
 app.get('/ping', (req, res) => res.send('Pong'));
 
 // --- SOCKET.IO ---
-
 io.on('connection', (socket) => {
     const user = socket.handshake.auth;
     socket.data.userId = user.userId;
@@ -226,26 +284,41 @@ io.on('connection', (socket) => {
         }
     });
 
-    // MODIFICADO: Acepta 'type' (text o image)
-    socket.on('private message', ({ content, toUserId, type = 'text' }, callback) => {
+    socket.on('private message', ({ content, toUserId, type = 'text', replyToId = null }, callback) => {
         const fromUserId = socket.data.userId;
-        const encryptedContent = encrypt(content); // URL también se encripta
+        const encryptedContent = encrypt(content);
 
-        db.run(`INSERT INTO messages (from_user_id, to_user_id, content, type) VALUES (?, ?, ?, ?)`, 
-            [fromUserId, toUserId, encryptedContent, type], 
+        db.run(`INSERT INTO messages (from_user_id, to_user_id, content, type, reply_to_id) VALUES (?, ?, ?, ?, ?)`, 
+            [fromUserId, toUserId, encryptedContent, type, replyToId], 
             function(err) {
                 if (err) return console.error(err);
                 const newMessageId = this.lastID;
-                
-                socket.to(`user_${toUserId}`).emit('private message', {
-                    id: newMessageId, 
-                    content: content,
-                    type: type, // Enviamos el tipo al destinatario
-                    fromUserId: fromUserId,
-                    timestamp: new Date().toISOString()
-                });
-                
-                if (callback) callback({ id: newMessageId });
+                const emitMsg = (replyData) => {
+                    const payload = {
+                        id: newMessageId, 
+                        content: content,
+                        type: type,
+                        fromUserId: fromUserId,
+                        timestamp: new Date().toISOString(),
+                        replyToId: replyToId,
+                        reply_content: replyData ? replyData.content : null,
+                        reply_type: replyData ? replyData.type : null,
+                        reply_from_id: replyData ? replyData.from_user_id : null
+                    };
+                    socket.to(`user_${toUserId}`).emit('private message', payload);
+                    if (callback) callback(payload);
+                };
+                if(replyToId) {
+                    db.get(`SELECT content, type, from_user_id FROM messages WHERE id = ?`, [replyToId], (err, row) => {
+                        if(row) {
+                            emitMsg({ ...row, content: decrypt(row.content) });
+                        } else {
+                            emitMsg(null);
+                        }
+                    });
+                } else {
+                    emitMsg(null);
+                }
             }
         );
     });
@@ -279,7 +352,7 @@ io.on('connection', (socket) => {
             const users = rows.map(row => ({
                 userId: row.id,
                 username: row.username,
-                avatar: row.avatar,
+                avatar: row.avatar || '/profile.png',
                 online: onlineUserIds.has(row.id)
             }));
             io.emit('users', users);
