@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Iniciar Sesión - Chat App</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+</head>
+<body>
+
+    <!-- Ya no es un modal, es el contenido principal -->
+    <div class="login-container">
+        <div class="login-card">
+            <h2 style="text-align:center; margin-top:0;">Bienvenido</h2>
+            <div class="form-toggle">
+                <button id="tabLogin" class="active">Iniciar Sesión</button>
+                <button id="tabRegister">Registrarse</button>
+            </div>
+            <form id="loginForm">
+                <input type="text" id="loginUser" placeholder="Usuario" required autocomplete="username" />
+                <input type="password" id="loginPass" placeholder="Contraseña" required autocomplete="current-password" />
+                <button type="submit" class="primary">Entrar</button>
+            </form>
+            <form id="registerForm" class="hidden">
+                <input type="text" id="regUser" placeholder="Elige un usuario" required autocomplete="off"/>
+                <input type="password" id="regPass" placeholder="Crea una contraseña" required autocomplete="new-password" />
+                <button type="submit" class="primary">Crear Cuenta</button>
+            </form>
+            <p id="authError" style="color: #ff4f4f; font-size: 14px; margin-top: 10px; text-align: center;"></p>
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

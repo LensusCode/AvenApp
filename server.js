@@ -3,7 +3,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+// CAMBIO: Reemplazamos sqlite3 por pg (PostgreSQL)
+const { Pool } = require('pg'); 
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const fs = require('fs');
@@ -55,69 +56,89 @@ const upload = multer({ storage: storage, fileFilter: fileFilter });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- BASE DE DATOS ---
-const dbPath = path.join(__dirname, 'chat.db');
-const db = new sqlite3.Database(dbPath, (err) => { 
-    if (err) console.error(err.message);
-    else console.log('Conectado a la base de datos SQLite.');
+// --- BASE DE DATOS (POSTGRESQL) ---
+// CAMBIO: Configuración del Pool de conexiones para Render
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // Requerido por Render
 });
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
-        avatar TEXT
-    )`);
+// CAMBIO: Inicialización asíncrona de tablas con sintaxis Postgres
+const initDB = async () => {
+    try {
+        // Usuarios (SERIAL en vez de AUTOINCREMENT)
+        await pool.query(`CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            avatar TEXT
+        )`);
 
-    // MODIFICADO: Agregamos columna 'type'
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        from_user_id INTEGER,
-        to_user_id INTEGER,
-        content TEXT,
-        type TEXT DEFAULT 'text',
-        is_deleted INTEGER DEFAULT 0,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-        if (!err) {
-            // Migración simple por si la tabla ya existe
-            db.run(`ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0`, () => {});
-            db.run(`ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'`, () => {});
-        }
-    });
+        // Mensajes (TIMESTAMP en vez de DATETIME)
+        await pool.query(`CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            from_user_id INTEGER,
+            to_user_id INTEGER,
+            content TEXT,
+            type TEXT DEFAULT 'text',
+            is_deleted INTEGER DEFAULT 0,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS nicknames (
-        user_id INTEGER,
-        target_user_id INTEGER,
-        nickname TEXT,
-        PRIMARY KEY (user_id, target_user_id)
-    )`);
-});
+        // Nicknames
+        await pool.query(`CREATE TABLE IF NOT EXISTS nicknames (
+            user_id INTEGER,
+            target_user_id INTEGER,
+            nickname TEXT,
+            PRIMARY KEY (user_id, target_user_id)
+        )`);
+        
+        console.log('Base de datos PostgreSQL conectada y tablas verificadas.');
+    } catch (err) {
+        console.error('Error inicializando la BD:', err);
+    }
+};
+initDB();
 
 // --- API RUTAS ---
 
-app.post('/api/register', (req, res) => {
+// CAMBIO: Sintaxis $1, $2 y RETURNING id
+app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     if(!username || !password) return res.status(400).json({error: 'Faltan datos'});
     const hash = bcrypt.hashSync(password, 10);
     
-    db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hash], function(err) {
-        if (err) return res.status(400).json({ error: 'Usuario existente' });
-        res.json({ id: this.lastID });
-    });
+    try {
+        const result = await pool.query(
+            `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id`, 
+            [username, hash]
+        );
+        res.json({ id: result.rows[0].id });
+    } catch (err) {
+        // Error código 23505 es violación de unicidad en Postgres
+        if (err.code === '23505') return res.status(400).json({ error: 'Usuario existente' });
+        res.status(500).json({ error: 'Error interno' });
+    }
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, row) => {
-        if (err || !row) return res.status(400).json({ error: 'Usuario no encontrado' });
+    try {
+        const result = await pool.query(`SELECT * FROM users WHERE username = $1`, [username]);
+        const row = result.rows[0];
+
+        if (!row) return res.status(400).json({ error: 'Usuario no encontrado' });
         if (!bcrypt.compareSync(password, row.password)) return res.status(400).json({ error: 'Contraseña incorrecta' });
+        
         res.json({ user: { id: row.id, username: row.username, avatar: row.avatar } });
-    });
+    } catch (err) {
+        res.status(500).json({ error: 'Error de servidor' });
+    }
 });
 
 // Subir Avatar
+// NOTA: Las imágenes en disco ('./public/uploads') SE BORRARÁN al reiniciar Render.
+// La base de datos (usuarios/chats) SÍ persistirá con este código.
 app.post('/api/upload-avatar', upload.single('avatar'), async (req, res) => {
     const userId = req.body.userId;
     if (!req.file || !userId) return res.status(400).json({ error: 'Faltan datos' });
@@ -135,27 +156,26 @@ app.post('/api/upload-avatar', upload.single('avatar'), async (req, res) => {
             .toFile(filepath);
 
         const avatarUrl = `/uploads/${filename}`;
-        db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, userId], (err) => {
-            if (err) return res.status(500).json({error: 'Error DB'});
-            res.json({ avatarUrl });
-        });
+        
+        // CAMBIO: Update con sintaxis Postgres
+        await pool.query(`UPDATE users SET avatar = $1 WHERE id = $2`, [avatarUrl, userId]);
+        res.json({ avatarUrl });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Error procesando imagen' });
     }
 });
 
-// NUEVO: Subir Imagen Chat
+// Subir Imagen Chat
 app.post('/api/upload-chat-image', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No hay imagen' });
 
     const dir = './public/uploads';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    // Generar nombre único
     const filename = `chat-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpeg`;
     const filepath = path.join(dir, filename);
 
     try {
-        // Compresión para chat (Max 1024px, borra metadatos)
         await sharp(req.file.buffer)
             .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
             .toFormat('jpeg')
@@ -163,27 +183,35 @@ app.post('/api/upload-chat-image', upload.single('image'), async (req, res) => {
             .toFile(filepath);
 
         res.json({ imageUrl: `/uploads/${filename}` });
-
     } catch (error) {
         console.error('Error imagen chat:', error);
         res.status(500).json({ error: 'Error procesando imagen' });
     }
 });
 
-app.get('/api/messages/:myId/:otherId', (req, res) => {
+app.get('/api/messages/:myId/:otherId', async (req, res) => {
     const { myId, otherId } = req.params;
+    // CAMBIO: Sintaxis $1, $2...
     const sql = `
         SELECT * FROM messages 
-        WHERE ((from_user_id = ? AND to_user_id = ?) 
-           OR (from_user_id = ? AND to_user_id = ?))
+        WHERE ((from_user_id = $1 AND to_user_id = $2) 
+           OR (from_user_id = $3 AND to_user_id = $4))
            AND is_deleted = 0
         ORDER BY timestamp ASC
     `;
-    db.all(sql, [myId, otherId, otherId, myId], (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Error DB' });
-        const decryptedRows = rows.map(row => ({ ...row, content: decrypt(row.content) }));
+    try {
+        const result = await pool.query(sql, [myId, otherId, otherId, myId]);
+        const decryptedRows = result.rows.map(row => ({ ...row, content: decrypt(row.content) }));
         res.json(decryptedRows);
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error DB' });
+    }
+});
+
+// --- RUTA PING PARA EL BOT (EVITAR HIBERNACIÓN) ---
+app.get('/ping', (req, res) => {
+    res.send('Pong! App is awake.');
 });
 
 // --- SOCKET.IO ---
@@ -194,18 +222,20 @@ io.on('connection', (socket) => {
     socket.data.username = user.username;
     socket.join(`user_${user.userId}`);
 
-    db.get(`SELECT avatar FROM users WHERE id = ?`, [user.userId], (err, row) => {
-        if(row) socket.data.avatar = row.avatar;
-        emitUsers();
-    });
+    // Cargar Avatar
+    pool.query(`SELECT avatar FROM users WHERE id = $1`, [user.userId])
+        .then(res => {
+            if(res.rows[0]) socket.data.avatar = res.rows[0].avatar;
+            emitUsers();
+        });
 
-    db.all(`SELECT target_user_id, nickname FROM nicknames WHERE user_id = ?`, [user.userId], (err, rows) => {
-        if(!err && rows) {
+    // Cargar Nicknames
+    pool.query(`SELECT target_user_id, nickname FROM nicknames WHERE user_id = $1`, [user.userId])
+        .then(res => {
             const map = {};
-            rows.forEach(r => map[r.target_user_id] = r.nickname);
+            res.rows.forEach(r => map[r.target_user_id] = r.nickname);
             socket.emit('nicknames', map);
-        }
-    });
+        });
 
     console.log(`Conectado: ${user.username}`);
 
@@ -214,49 +244,57 @@ io.on('connection', (socket) => {
         emitUsers();
     });
 
-    socket.on('set nickname', ({ targetUserId, nickname }) => {
+    socket.on('set nickname', async ({ targetUserId, nickname }) => {
         const userId = socket.data.userId;
-        if(!nickname || nickname.trim() === "") {
-            db.run(`DELETE FROM nicknames WHERE user_id = ? AND target_user_id = ?`, [userId, targetUserId]);
-        } else {
-            db.run(`INSERT OR REPLACE INTO nicknames (user_id, target_user_id, nickname) VALUES (?, ?, ?)`, 
-                [userId, targetUserId, nickname.trim()]);
+        try {
+            if(!nickname || nickname.trim() === "") {
+                await pool.query(`DELETE FROM nicknames WHERE user_id = $1 AND target_user_id = $2`, [userId, targetUserId]);
+            } else {
+                // CAMBIO: "UPSERT" en Postgres (INSERT ... ON CONFLICT)
+                await pool.query(`
+                    INSERT INTO nicknames (user_id, target_user_id, nickname) VALUES ($1, $2, $3)
+                    ON CONFLICT (user_id, target_user_id) DO UPDATE SET nickname = $3
+                `, [userId, targetUserId, nickname.trim()]);
+            }
+        } catch(e) { console.error("Error setting nickname", e); }
+    });
+
+    socket.on('private message', async ({ content, toUserId, type = 'text' }, callback) => {
+        const fromUserId = socket.data.userId;
+        const encryptedContent = encrypt(content);
+
+        try {
+            // CAMBIO: Insertar y retornar ID en una sola consulta
+            const res = await pool.query(
+                `INSERT INTO messages (from_user_id, to_user_id, content, type) VALUES ($1, $2, $3, $4) RETURNING id`, 
+                [fromUserId, toUserId, encryptedContent, type]
+            );
+            
+            const newMessageId = res.rows[0].id;
+            
+            socket.to(`user_${toUserId}`).emit('private message', {
+                id: newMessageId, 
+                content: content,
+                type: type,
+                fromUserId: fromUserId,
+                timestamp: new Date().toISOString()
+            });
+            
+            if (callback) callback({ id: newMessageId });
+        } catch (err) {
+            console.error("Error enviando mensaje:", err);
         }
     });
 
-    // MODIFICADO: Acepta 'type' (text o image)
-    socket.on('private message', ({ content, toUserId, type = 'text' }, callback) => {
-        const fromUserId = socket.data.userId;
-        const encryptedContent = encrypt(content); // URL también se encripta
-
-        db.run(`INSERT INTO messages (from_user_id, to_user_id, content, type) VALUES (?, ?, ?, ?)`, 
-            [fromUserId, toUserId, encryptedContent, type], 
-            function(err) {
-                if (err) return console.error(err);
-                const newMessageId = this.lastID;
-                
-                socket.to(`user_${toUserId}`).emit('private message', {
-                    id: newMessageId, 
-                    content: content,
-                    type: type, // Enviamos el tipo al destinatario
-                    fromUserId: fromUserId,
-                    timestamp: new Date().toISOString()
-                });
-                
-                if (callback) callback({ id: newMessageId });
-            }
-        );
-    });
-
-    socket.on('delete message', ({ messageId, toUserId }) => {
+    socket.on('delete message', async ({ messageId, toUserId }) => {
         const userId = socket.data.userId;
-        const sql = `UPDATE messages SET is_deleted = 1 WHERE id = ? AND from_user_id = ?`;
-        db.run(sql, [messageId, userId], function(err) {
-            if (this.changes > 0) {
-                socket.to(`user_${toUserId}`).emit('message deleted', { messageId });
-                socket.emit('message deleted', { messageId });
-            }
-        });
+        // CAMBIO: Syntax Postgres
+        const sql = `UPDATE messages SET is_deleted = 1 WHERE id = $1 AND from_user_id = $2`;
+        try {
+            await pool.query(sql, [messageId, userId]);
+            socket.to(`user_${toUserId}`).emit('message deleted', { messageId });
+            socket.emit('message deleted', { messageId });
+        } catch(e) { console.error(e); }
     });
 
     socket.on('typing', ({ toUserId }) => {
@@ -268,20 +306,19 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { emitUsers(); });
 
     function emitUsers() {
-        db.all(`SELECT id, username, avatar FROM users`, (err, rows) => {
-            if (err) return;
+        pool.query(`SELECT id, username, avatar FROM users`).then(res => {
             const onlineUserIds = new Set();
             for (let [id, socket] of io.of("/").sockets) {
                 if (socket.data.userId) onlineUserIds.add(socket.data.userId);
             }
-            const users = rows.map(row => ({
+            const users = res.rows.map(row => ({
                 userId: row.id,
                 username: row.username,
                 avatar: row.avatar,
                 online: onlineUserIds.has(row.id)
             }));
             io.emit('users', users);
-        });
+        }).catch(err => console.error("Error fetching users", err));
     }
 });
 

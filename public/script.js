@@ -1,14 +1,22 @@
 const socket = io({ autoConnect: false });
 
-// --- UI References ---
-const loginForm = document.getElementById('loginForm');
-const registerForm = document.getElementById('registerForm');
-const tabLogin = document.getElementById('tabLogin');
-const tabRegister = document.getElementById('tabRegister');
-const authModal = document.getElementById('authModal');
-const authError = document.getElementById('authError');
+// --- REDIRECCIÓN DE SEGURIDAD ---
+// Si no hay usuario en localStorage, ir al login
+const saved = localStorage.getItem('chatUser');
+if(!saved) {
+    window.location.href = '/login.html';
+}
 
-// Profile Modal
+// --- Variables de Estado ---
+let myUser = null;
+let currentTargetUserId = null;
+let currentTargetUserObj = null; 
+let messageIdToDelete = null;
+let myNicknames = {}; 
+let allUsersCache = []; 
+
+// --- Elementos DOM ---
+// (Ya no buscamos los elementos del form login aquí porque están en login.html)
 const profileBtn = document.getElementById('profileBtn');
 const profileModal = document.getElementById('profileModal');
 const closeProfile = document.getElementById('closeProfile');
@@ -19,17 +27,6 @@ const avatarInput = document.getElementById('avatarInput');
 const profileLogout = document.getElementById('profileLogout');
 const confirmModal = document.getElementById('confirmModal');
 
-// Contact Info Modal
-const headerAvatarBtn = document.getElementById('headerAvatarBtn');
-const contactInfoModal = document.getElementById('contactInfoModal');
-const closeContactInfo = document.getElementById('closeContactInfo');
-const contactInfoAvatar = document.getElementById('contactInfoAvatar');
-const contactInfoName = document.getElementById('contactInfoName');
-const contactRealUsername = document.getElementById('contactRealUsername');
-const nicknameInput = document.getElementById('nicknameInput');
-const saveNicknameBtn = document.getElementById('saveNicknameBtn');
-
-// Chat Main
 const usersList = document.getElementById('usersList');
 const chatHeader = document.querySelector('.chat-header');
 const emptyState = document.getElementById('emptyState');
@@ -40,77 +37,50 @@ const chatTitle = document.getElementById('chatTitle');
 const currentChatAvatar = document.getElementById('currentChatAvatar');
 const typingIndicator = document.getElementById('typingIndicator');
 const typingText = document.getElementById('typingText');
-
-// Images
 const btnImage = document.getElementById('btnImage');
 const chatImageInput = document.getElementById('chatImageInput');
-
-// Extras
 const backBtn = document.getElementById('backBtn');
 const chatContainer = document.querySelector('.chat-container');
+
 const msgContextMenu = document.getElementById('msgContextMenu');
 const ctxDeleteBtn = document.getElementById('ctxDeleteBtn');
 const deleteConfirmModal = document.getElementById('deleteConfirmModal');
 const confirmDeleteBtn = document.getElementById('confirmDelete');
 const cancelDeleteBtn = document.getElementById('cancelDelete');
 
-// --- State Variables ---
-let myUser = null;
-let currentTargetUserId = null;
-let currentTargetUserObj = null; 
-let messageIdToDelete = null;
-let myNicknames = {}; 
-let allUsersCache = []; 
+const headerAvatarBtn = document.getElementById('headerAvatarBtn');
+const contactInfoModal = document.getElementById('contactInfoModal');
+const closeContactInfo = document.getElementById('closeContactInfo');
+const contactInfoAvatar = document.getElementById('contactInfoAvatar');
+const contactInfoName = document.getElementById('contactInfoName');
+const contactRealUsername = document.getElementById('contactRealUsername');
+const nicknameInput = document.getElementById('nicknameInput');
+const saveNicknameBtn = document.getElementById('saveNicknameBtn');
 
-// --- AUTH ---
 
-tabLogin.addEventListener('click', () => {
-    tabLogin.classList.add('active'); tabRegister.classList.remove('active');
-    loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
-});
-tabRegister.addEventListener('click', () => {
-    tabRegister.classList.add('active'); tabLogin.classList.remove('active');
-    registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
-});
-
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('loginUser').value;
-    const password = document.getElementById('loginPass').value;
-    
-    const res = await fetch('/api/login', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if(res.ok) loginSuccess(data.user);
-    else authError.textContent = data.error;
-});
-
-registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('regUser').value;
-    const password = document.getElementById('regPass').value;
-    const res = await fetch('/api/register', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ username, password })
-    });
-    if(res.ok) { alert('Registrado. Inicia sesión.'); tabLogin.click(); }
-    else authError.textContent = 'Error al registrar';
-});
+// --- INICIALIZACIÓN ---
+if(saved) {
+    loginSuccess(JSON.parse(saved));
+}
 
 function loginSuccess(user) {
     myUser = user;
-    localStorage.setItem('chatUser', JSON.stringify(myUser));
-    authModal.classList.add('hidden');
     profileBtn.classList.remove('hidden');
     updateMyAvatarUI(myUser.avatar);
-    
     socket.auth = { userId: myUser.id, username: myUser.username };
     socket.connect();
 }
 
-// --- SOCKET LISTENERS ---
+// --- LOGOUT (Redirección) ---
+profileLogout.addEventListener('click', () => { profileModal.classList.add('hidden'); confirmModal.classList.remove('hidden'); });
+document.getElementById('confirmYes').addEventListener('click', () => { 
+    localStorage.removeItem('chatUser'); 
+    window.location.href = '/login.html'; 
+});
+document.getElementById('confirmNo').addEventListener('click', () => { confirmModal.classList.add('hidden'); profileModal.classList.remove('hidden'); });
+
+
+// --- SOCKET LISTENERS & CHAT LOGIC (Igual que antes) ---
 
 socket.on('nicknames', (map) => {
     myNicknames = map;
@@ -120,8 +90,6 @@ socket.on('nicknames', (map) => {
         chatTitle.textContent = displayName;
     }
 });
-
-// --- PROFILE ---
 
 profileBtn.addEventListener('click', () => {
     profileUsername.textContent = myUser.username;
@@ -135,7 +103,6 @@ avatarInput.addEventListener('change', async (e) => {
     const formData = new FormData();
     formData.append('avatar', file);
     formData.append('userId', myUser.id);
-    
     const res = await fetch('/api/upload-avatar', { method: 'POST', body: formData });
     if(res.ok) {
         const data = await res.json();
@@ -152,13 +119,7 @@ function updateMyAvatarUI(url) {
     profilePreviewAvatar.style.backgroundImage = css;
 }
 
-profileLogout.addEventListener('click', () => { profileModal.classList.add('hidden'); confirmModal.classList.remove('hidden'); });
-document.getElementById('confirmYes').addEventListener('click', () => { localStorage.removeItem('chatUser'); location.reload(); });
-document.getElementById('confirmNo').addEventListener('click', () => { confirmModal.classList.add('hidden'); profileModal.classList.remove('hidden'); });
-
-
-// --- CONTACT INFO ---
-
+// Contact Info
 headerAvatarBtn.addEventListener('click', () => {
     if(!currentTargetUserObj) return;
     const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.username;
@@ -169,16 +130,13 @@ headerAvatarBtn.addEventListener('click', () => {
     contactInfoAvatar.style.backgroundImage = css;
     contactInfoModal.classList.remove('hidden');
 });
-
 closeContactInfo.addEventListener('click', () => contactInfoModal.classList.add('hidden'));
-
 saveNicknameBtn.addEventListener('click', () => {
     if(!currentTargetUserObj) return;
     const newNickname = nicknameInput.value.trim();
     socket.emit('set nickname', { targetUserId: currentTargetUserObj.userId, nickname: newNickname });
     if(newNickname) myNicknames[currentTargetUserObj.userId] = newNickname;
     else delete myNicknames[currentTargetUserObj.userId];
-    
     const displayName = newNickname || currentTargetUserObj.username;
     contactInfoName.textContent = displayName;
     chatTitle.textContent = displayName;
@@ -186,45 +144,22 @@ saveNicknameBtn.addEventListener('click', () => {
     contactInfoModal.classList.add('hidden');
 });
 
-
-// --- CHAT (TEXTO + IMÁGENES) ---
-
-// 1. Manejo del Botón de Adjuntar Imagen
-btnImage.addEventListener('click', () => {
-    chatImageInput.click();
-});
-
+// Chat Images
+btnImage.addEventListener('click', () => chatImageInput.click());
 chatImageInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('image', file);
-
     try {
-        // Subir imagen a la API
-        const res = await fetch('/api/upload-chat-image', {
-            method: 'POST',
-            body: formData
-        });
-
+        const res = await fetch('/api/upload-chat-image', { method: 'POST', body: formData });
         if (res.ok) {
             const data = await res.json();
-            // Enviar mensaje tipo 'image' con la URL
             sendMessage(data.imageUrl, 'image');
-        } else {
-            alert('Error subiendo imagen');
         }
-    } catch (error) {
-        console.error(error);
-        alert('Error al subir imagen');
-    }
+    } catch (error) { console.error(error); }
     chatImageInput.value = '';
 });
-
-
-const saved = localStorage.getItem('chatUser');
-if(saved) loginSuccess(JSON.parse(saved));
 
 socket.on('users', (users) => {
     allUsersCache = users;
@@ -234,7 +169,6 @@ socket.on('users', (users) => {
 function renderUserList(users) {
     usersList.innerHTML = '';
     users.sort((a, b) => (a.online === b.online) ? 0 : a.online ? -1 : 1);
-
     users.forEach(u => {
         if(u.userId === myUser.id) return;
         const li = document.createElement('li');
@@ -242,12 +176,10 @@ function renderUserList(users) {
         if (!u.online) li.classList.add('offline');
         li.dataset.uid = u.userId; 
         if(currentTargetUserId === u.userId) li.classList.add('active');
-        
         const avatarStyle = u.avatar ? `background-image: url('${u.avatar}')` : '';
         const statusText = u.online ? 'En línea' : 'Desconectado';
         const statusColor = u.online ? '#4ade80' : '#a1a1aa';
         const displayName = myNicknames[u.userId] || u.username;
-
         li.innerHTML = `
             <div class="u-avatar" style="${avatarStyle}">
                 <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${statusColor};border:2px solid #18181b;"></div>
@@ -265,50 +197,36 @@ function renderUserList(users) {
 async function selectUser(targetUser, elem) {
     currentTargetUserId = targetUser.userId;
     currentTargetUserObj = targetUser;
-
     const displayName = myNicknames[targetUser.userId] || targetUser.username;
     chatTitle.textContent = displayName;
     chatContainer.classList.add('mobile-chat-active');
-
     const css = targetUser.avatar ? `url('${targetUser.avatar}')` : '';
     currentChatAvatar.style.backgroundImage = css;
-    
     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
     if(elem) elem.classList.add('active');
     else {
         const found = document.querySelector(`.user-item[data-uid="${targetUser.userId}"]`);
         if(found) found.classList.add('active');
     }
-
     emptyState.classList.add('hidden');
     chatHeader.classList.remove('hidden');
     messagesList.classList.remove('hidden');
     chatForm.classList.remove('hidden');
-
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px">Cargando historial...</li>';
-    
     try {
         const res = await fetch(`/api/messages/${myUser.id}/${targetUser.userId}`);
         const history = await res.json();
-        
         messagesList.innerHTML = '';
         history.forEach(msg => {
             const type = (msg.from_user_id === myUser.id) ? 'me' : 'other';
-            // Pasamos msg.type para saber si es imagen o texto
             appendMessageUI(msg.content, type, msg.timestamp, msg.id, msg.type);
         });
         messagesList.scrollTop = messagesList.scrollHeight;
-    } catch (err) {
-        console.error(err);
-        messagesList.innerHTML = '<li style="text-align:center;color:red">Error cargando mensajes</li>';
-    }
+    } catch (err) { messagesList.innerHTML = '<li style="text-align:center;color:red">Error</li>'; }
 }
 
-backBtn.addEventListener('click', () => {
-    chatContainer.classList.remove('mobile-chat-active');
-});
+backBtn.addEventListener('click', () => chatContainer.classList.remove('mobile-chat-active'));
 
-// ENVÍO DE TEXTO
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const content = inputMsg.value.trim();
@@ -319,7 +237,6 @@ chatForm.addEventListener('submit', (e) => {
     }
 });
 
-// Función unificada para enviar (Texto o Imagen)
 function sendMessage(content, type) {
     if(!currentTargetUserId) return;
     socket.emit('private message', { content, toUserId: currentTargetUserId, type }, (response) => {
@@ -330,7 +247,6 @@ function sendMessage(content, type) {
     });
 }
 
-// RECIBIR MENSAJE
 socket.on('private message', ({ id, content, fromUserId, timestamp, type }) => {
     if (currentTargetUserId === fromUserId) {
         appendMessageUI(content, 'other', timestamp, id, type || 'text');
@@ -348,40 +264,23 @@ socket.on('message deleted', ({ messageId }) => {
     }
 });
 
-// Renderizado de Mensajes (Texto vs Imagen)
 function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text') {
     const li = document.createElement('li');
     li.className = `message ${ownerType}`;
     li.id = `msg-${msgId}`;
-    
     const date = new Date(dateStr);
     const time = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
-    if (ownerType === 'me') {
-        addLongPressEvent(li, msgId);
-    }
-
+    if (ownerType === 'me') addLongPressEvent(li, msgId);
     let bodyHtml = '';
     if (msgType === 'image') {
-        bodyHtml = `
-            <div class="chat-image-container">
-                <img src="${content}" class="chat-image" loading="lazy" onclick="viewFullImage(this.src)">
-            </div>
-        `;
+        bodyHtml = `<div class="chat-image-container"><img src="${content}" class="chat-image" loading="lazy" onclick="viewFullImage(this.src)"></div>`;
     } else {
         bodyHtml = `<span>${content}</span>`;
     }
-
-    li.innerHTML = `
-        ${bodyHtml}
-        <div class="meta-row">
-            <span class="meta">${time}</span>
-        </div>
-    `;
+    li.innerHTML = `${bodyHtml}<div class="meta-row"><span class="meta">${time}</span></div>`;
     messagesList.appendChild(li);
 }
 
-// Función para abrir imagen en grande
 window.viewFullImage = function(src) {
     const modal = document.createElement('div');
     modal.className = 'fullscreen-img-modal';
@@ -396,20 +295,15 @@ function addLongPressEvent(element, msgId) {
     element.addEventListener('mousedown', (e) => {
         if(e.button !== 0) return; 
         element.classList.add('pressing');
-        pressTimer = setTimeout(() => {
-            openContextMenu(e.clientX, e.clientY, msgId);
-        }, LONG_PRESS_DURATION);
+        pressTimer = setTimeout(() => openContextMenu(e.clientX, e.clientY, msgId), LONG_PRESS_DURATION);
     });
     const cancelMouse = () => { clearTimeout(pressTimer); element.classList.remove('pressing'); };
     element.addEventListener('mouseup', cancelMouse);
     element.addEventListener('mouseleave', cancelMouse);
-
     element.addEventListener('touchstart', (e) => {
         element.classList.add('pressing');
         const touch = e.touches[0];
-        pressTimer = setTimeout(() => {
-            openContextMenu(touch.clientX, touch.clientY, msgId);
-        }, LONG_PRESS_DURATION);
+        pressTimer = setTimeout(() => openContextMenu(touch.clientX, touch.clientY, msgId), LONG_PRESS_DURATION);
     }, { passive: true });
     const cancelTouch = () => { clearTimeout(pressTimer); element.classList.remove('pressing'); };
     element.addEventListener('touchend', cancelTouch);
@@ -420,7 +314,7 @@ function openContextMenu(x, y, msgId) {
     messageIdToDelete = msgId;
     const menuContent = msgContextMenu.querySelector('.context-menu-content');
     msgContextMenu.classList.remove('hidden');
-    let top = y; let left = x;
+    let top = y, left = x;
     if (window.innerWidth <= 768) {
         menuContent.style.position = 'fixed';
         menuContent.style.top = '50%'; menuContent.style.left = '50%';
