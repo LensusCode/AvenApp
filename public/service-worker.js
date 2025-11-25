@@ -1,5 +1,5 @@
-const CACHE_NAME = 'aven-app-v1.0.24'; // Cambiamos el nombre para forzar actualización
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.24'; // Para guardar datos de la API (historial)
+const CACHE_NAME = 'aven-app-v1.0.25'; // Cambiamos el nombre para forzar actualización
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.25'; // Para guardar datos de la API (historial)
 
 const urlsToCache = [
   '/',

@@ -468,15 +468,10 @@ body {
 
 /* ---------- COMPOSER (FORMULARIO) ---------- */
 .composer {
-    /* --- CORRECCIÓN 3: Asegurar que el form nunca se aplaste --- */
     padding: 10px 15px 15px;
     border-top: 1px solid var(--border);
-    flex-shrink: 0; /* IMPRESCINDIBLE: No permite encogerse */
-    background: var(--bg); /* Fondo sólido para tapar lo de atrás */
-    
-    /* Padding inferior seguro para móviles (gestures bar) */
+    flex-shrink: 0;
     padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
-    /* ---------------------------------------------------------- */
 }
 
 .composer-inner {
