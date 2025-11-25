@@ -11,11 +11,13 @@
 
 * {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
     height: 100%;
+    overscroll-behavior-y: none; /* Evita el rebote de la página completa */
 }
 
 body {
@@ -34,8 +36,6 @@ body {
     width: 100%;
     height: 100vh;
     display: flex;
-    gap: 20px;
-    padding: 20px;
     max-width: 1400px;
 }
 
@@ -44,7 +44,6 @@ body {
     width: 300px;
     flex-shrink: 0;
     background: var(--panel-bg);
-    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     backdrop-filter: blur(12px);
@@ -74,7 +73,8 @@ body {
     background-repeat: no-repeat;
     border-radius: 50%;
     border: 1px solid var(--border);
-    will-change: background-image, transform;
+    /* Optimización GPU */
+    transform: translateZ(0); 
     transition: background-image 0.3s ease-in-out, transform 0.2s;
 }
 
@@ -90,6 +90,7 @@ body {
     height: 42px;
     cursor: pointer;
     transition: transform .2s;
+    touch-action: manipulation;
 }
 
 .my-avatar:hover {
@@ -100,6 +101,7 @@ body {
     background: none;
     border: 0;
     padding: 0;
+    touch-action: manipulation;
 }
 
 .u-avatar {
@@ -107,6 +109,39 @@ body {
     height: 40px;
     position: relative;
 }
+/* Badge de Verificado */
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px; 
+    vertical-align: middle;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); 
+}
+
+.verified-badge svg {
+    width: 20px; 
+    height: 20px;
+}
+
+/* Estilos para mensajes borrados vistos por Admin */
+.message.deleted-msg {
+    opacity: 0.7;
+    border: 1px dashed #ef4444; 
+    position: relative;
+}
+
+.deleted-label {
+    display: block;
+    font-size: 10px;
+    color: #ef4444;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hidden { display: none !important; }
 
 /* Inputs */
 .search-wrap {
@@ -141,7 +176,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    /* Optimización Scroll Móvil */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
+
 
 .user-item {
     display: flex;
@@ -151,6 +190,7 @@ body {
     cursor: pointer;
     border-radius: 10px;
     transition: background .2s;
+    touch-action: pan-y;
 }
 
 .user-item:hover {
@@ -174,6 +214,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    /* GPU Layer */
+    transform: translateZ(0);
 }
 
 .profile-card,
@@ -182,10 +224,11 @@ body {
     width: 300px;
     border-radius: 20px;
     border: 1px solid var(--border);
-    padding: 30px;
+    padding: 10px;
     text-align: center;
     box-shadow: 0 20px 50px rgba(0, 0, 0, .5);
     position: relative;
+    transform: translateZ(0);
 }
 
 .contact-card {
@@ -203,6 +246,7 @@ body {
     color: var(--muted);
     font-size: 20px;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .close-icon-btn:hover {
@@ -232,6 +276,7 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .profile-header-img {
@@ -297,6 +342,7 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: transform .1s;
+    touch-action: manipulation;
 }
 
 .btn:active {
@@ -317,7 +363,6 @@ body {
 .main-column {
     flex: 1;
     background: var(--panel-bg);
-    border-radius: var(--radius);
     border: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -355,6 +400,9 @@ body {
     overflow-y: auto;
     padding: 20px;
     position: relative;
+    /* Optimización Scroll */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; 
 }
 
 .empty-state {
@@ -386,6 +434,8 @@ body {
     word-break: break-word;
     position: relative;
     user-select: none;
+    /* Evita repintados costosos */
+    transform: translateZ(0); 
 }
 
 .message.me {
@@ -439,6 +489,7 @@ body {
     cursor: pointer;
     transition: transform .2s, background .2s;
     color: var(--muted);
+    touch-action: manipulation;
 }
 
 .attach-btn:hover {
@@ -471,6 +522,7 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .sticker-tab.active {
@@ -491,9 +543,10 @@ body {
 .sticker-thumb {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* o contain, según prefieras */
+    object-fit: cover; 
     cursor: pointer;
     transition: transform 0.2s;
+    will-change: transform; /* Optimización animación */
 }
 
 .sticker-item-wrapper:hover .sticker-thumb {
@@ -516,19 +569,19 @@ body {
     justify-content: center;
     cursor: pointer;
     font-size: 14px;
-    opacity: 0; /* Oculto por defecto */
+    opacity: 0; 
     transition: opacity 0.2s, background 0.2s;
     z-index: 2;
+    touch-action: manipulation;
 }
 
-/* Mostrar estrella al pasar el mouse o si es táctil */
 .sticker-item-wrapper:hover .fav-action-btn {
     opacity: 1;
 }
 
 .fav-action-btn.is-fav {
     opacity: 1;
-    color: #fbbf24; /* Color amarillo */
+    color: #fbbf24;
     background: rgba(255,255,255,0.1);
 }
 
@@ -543,10 +596,11 @@ body {
     z-index: 2000;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Alineado al fondo (estilo móvil) */
+    justify-content: flex-end; 
     align-items: center;
     visibility: visible;
     transition: opacity 0.2s;
+    will-change: opacity;
 }
 
 .sticker-options-modal.hidden {
@@ -566,7 +620,7 @@ body {
 .sticker-options-content {
     background: #1f1f23;
     width: 100%;
-    max-width: 400px; /* Ancho máximo para desktop */
+    max-width: 400px;
     border-radius: 20px 20px 0 0;
     padding: 20px;
     position: relative;
@@ -575,12 +629,13 @@ body {
     border-top: 1px solid var(--border);
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     margin-bottom: 0;
+    will-change: transform;
 }
 
 @media (min-width: 769px) {
     .sticker-options-content {
         border-radius: 20px;
-        margin-bottom: auto; /* Centrado en desktop */
+        margin-bottom: auto;
         margin-top: auto;
     }
 }
@@ -634,6 +689,7 @@ body {
     transition: background 0.2s;
     text-align: left;
     width: 100%;
+    touch-action: manipulation;
 }
 
 .sticker-action-btn:hover {
@@ -647,7 +703,6 @@ body {
     color: var(--muted);
 }
 
-/* Estrella activa (color amarillo) */
 .sticker-action-btn.is-favorite span:first-child {
     color: #fbbf24; 
 }
@@ -680,8 +735,6 @@ body {
     transform: translate(0, 0) scale(1.1);
 }
 /* --- SKELETON LOADING ANIMATION --- */
-
-/* Animación de brillo que se mueve */
 @keyframes skeleton-loading {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
@@ -692,9 +745,8 @@ body {
     to { opacity: 1; transform: scale(1); }
 }
 
-/* Contenedor base del esqueleto */
 .skeleton-wrapper {
-    background: #27272a; /* Color base gris oscuro */
+    background: #27272a;
     background-image: linear-gradient(
         90deg, 
         #27272a 25%, 
@@ -709,23 +761,22 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+    /* Evita repintado */
+    will-change: background-position;
 }
 
-/* Dimensiones específicas para Stickers (cuadrados pequeños) */
 .sticker-skeleton {
     width: 150px;
     height: 150px;
     min-width: 150px;
 }
 
-/* Dimensiones específicas para Imágenes (más grandes/rectangulares) */
 .image-skeleton {
     width: 250px;
-    height: 250px; /* Altura inicial estimada */
+    height: 250px; 
     max-width: 100%;
 }
 
-/* La imagen real se oculta al principio */
 .hidden-media {
     opacity: 0;
     width: 0 !important;
@@ -733,16 +784,15 @@ body {
     position: absolute;
 }
 
-/* Cuando carga, la imagen se muestra con animación */
 .visible-media {
     animation: fade-in-media 0.3s ease-out forwards;
     width: auto !important;
     height: auto !important;
     position: relative !important;
     display: block;
+    will-change: opacity, transform;
 }
 
-/* Ajustes para cuando la imagen carga dentro del wrapper */
 .skeleton-wrapper.loaded {
     background: none !important;
     animation: none !important;
@@ -799,6 +849,7 @@ body {
     position: relative;
     transform-origin: bottom;
     animation: popUp .2s cubic-bezier(.175, .885, .32, 1.275);
+    will-change: transform, opacity;
 }
 
 @keyframes popUp {
@@ -852,9 +903,9 @@ body {
 }
 
 .reply-sticker-preview {
-    height: 40px;  /* Altura pequeña como en WhatsApp */
+    height: 40px; 
     width: auto;
-    display: block; /* Asegura que se comporte bien en el layout */
+    display: block; 
     margin-top: 2px;
     object-fit: contain;
 }
@@ -881,6 +932,7 @@ body {
     align-items: center;
     justify-content: center;
     margin-left: 10px;
+    touch-action: manipulation;
 }
 
 .close-reply:hover {
@@ -934,6 +986,7 @@ body {
     position: relative;
     transition: transform .2s cubic-bezier(.2, .8, .2, 1);
     will-change: transform;
+    touch-action: pan-y; /* Permite scroll vertical, JS captura horizontal */
 }
 
 .message-row.me {
@@ -1026,6 +1079,7 @@ body {
     z-index: 50;
     box-shadow: 0 5px 20px rgba(0, 0, 0, .5);
     transition: transform .2s, opacity .2s;
+    will-change: transform, opacity;
 }
 
 .sticker-panel.hidden {
@@ -1054,6 +1108,8 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .sticker-thumb {
@@ -1105,6 +1161,7 @@ body {
     align-items: center;
     cursor: zoom-out;
     animation: fadeIn .2s ease;
+    will-change: opacity;
 }
 
 .fullscreen-img {
@@ -1137,6 +1194,7 @@ body {
     font-size: 15px;
     font-weight: 500;
     transition: background .2s;
+    touch-action: manipulation;
 }
 
 .ctx-item:hover {
@@ -1159,6 +1217,7 @@ body {
     cursor: pointer;
     margin-right: 10px;
     padding: 5px;
+    touch-action: manipulation;
 }
 
 .typing-indicator {
@@ -1344,6 +1403,7 @@ body {
     transition: transform 0.1s;
     color: #999;
     margin-bottom: 12px;
+    touch-action: manipulation;
 }
 
 .audio-control-btn svg {
@@ -1387,14 +1447,13 @@ body {
 .waveform-bg {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    /* Truco para crear barras verticales */
     background: repeating-linear-gradient(90deg, 
         currentColor 0, 
         currentColor 2px, 
         transparent 2px, 
         transparent 4px
     );
-    opacity: 0.3; /* Transparencia para que parezca el fondo */
+    opacity: 0.3; 
     border-radius: 4px;
     pointer-events: none;
 }
@@ -1403,14 +1462,14 @@ body {
 .waveform-fill {
     position: absolute;
     top: 0; left: 0; bottom: 0;
-    width: 0%; /* JS cambiará esto */
+    width: 0%; 
     background: repeating-linear-gradient(90deg, 
         currentColor 0, 
         currentColor 2px, 
         transparent 2px, 
         transparent 4px
     );
-    opacity: 1; /* Totalmente visible */
+    opacity: 1; 
     border-radius: 4px;
     pointer-events: none;
     overflow: hidden;
@@ -1423,16 +1482,18 @@ body {
     top: -5px; bottom: -5px; left: -2px; right: -2px;
     width: 100%;
     height: 130%;
-    opacity: 0; /* Invisible pero interactuable */
+    opacity: 0; 
     cursor: pointer;
     margin: 0;
     z-index: 10;
+    /* Evita que al arrastrar la barra se mueva la pantalla */
+    touch-action: none; 
 }
 
 /* Colores de las ondas */
-.message.me .waveform-bg, .message.me .waveform-fill { color: #fff; } /* Blanco para mí */
-.message.other .waveform-bg { color: #8fa4b8; } /* Gris azulado para fondo otros */
-.message.other .waveform-fill { color: var(--accent); } /* Color acento para progreso otros */
+.message.me .waveform-bg, .message.me .waveform-fill { color: #fff; } 
+.message.other .waveform-bg { color: #8fa4b8; } 
+.message.other .waveform-fill { color: var(--accent); } 
 
 
 /* 5. METADATOS (Duración y Hora en la misma línea) */
@@ -1463,7 +1524,699 @@ body {
 
 .hidden-audio-element { display: none; }
 
+.verified-anim-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    animation: bounceIn 0.8s cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
+}
+
+.verified-anim-icon svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.5));
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+/* --- ESTILOS PARA EL TEXTAREA AUTO-EXPANDIBLE --- */
+
+/* Ajustamos el contenedor para que los botones se queden abajo */
+.composer-inner {
+    align-items: flex-end; 
+}
+
+/* Estilo base del textarea */
+#input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 24px; 
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: #fff;
+    
+    resize: none; 
+    overflow-y: hidden; 
+    min-height: 45px;  
+    max-height: 120px; 
+    line-height: 1.4;   
+    font-family: inherit; 
+    font-size: 15px;
+    
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Cuando aparezca el scroll (controlado por JS o max-height) */
+#input.scroll-active {
+    overflow-y: auto !important;
+}
+
+#input:focus {
+    outline: 0;
+    border-color: var(--accent);
+}
+
+/* --- SCROLLBAR PERSONALIZADO PARA EL INPUT --- */
+#input::-webkit-scrollbar {
+    width: 6px;
+}
+
+#input::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 10px 0; 
+}
+
+#input::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+#input::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Ajuste cuando el stack está activo (Reply) */
+.input-stack.active #input {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+
+/* --- EDITOR DE IMAGEN (Estilo AvenApp) --- */
+.image-editor-modal {
+    position: fixed;
+    inset: 0;
+    background-color: #0a0a0a; 
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.2s ease-out;
+    transform: translateZ(0); /* GPU */
+}
+
+/* Cabecera minimalista */
+.editor-header {
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: #ececec;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 10px;
+    touch-action: manipulation;
+}
+.btn-text:hover { color: #fff; }
+
+/* Contenedor del Canvas */
+.editor-canvas-container {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Importante para cropper */
+    touch-action: none; 
+}
+
+#imageToEdit {
+    display: block;
+    max-width: 100%;
+}
+
+/* --- PERSONALIZACIÓN DE CROPPER.JS (LA CUADRÍCULA) --- */
+.cropper-modal {
+    background-color: #000;
+    opacity: 0.8;
+}
+
+.cropper-view-box {
+    outline: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 0;
+}
+
+.cropper-dashed {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cropper-point {
+    background-color: #fff;
+    width: 8px;
+    height: 8px;
+    opacity: 1;
+}
+.cropper-point.point-ne { top: -4px; right: -4px; }
+.cropper-point.point-nw { top: -4px; left: -4px; }
+.cropper-point.point-sw { bottom: -4px; left: -4px; }
+.cropper-point.point-se { bottom: -4px; right: -4px; }
+
+.cropper-point.point-n, .cropper-point.point-e, 
+.cropper-point.point-s, .cropper-point.point-w {
+    background-color: transparent; 
+}
+
+.cropper-center {
+    display: none; 
+}
+
+/* --- BARRA DE HERRAMIENTAS (ROTAR) --- */
+.editor-toolbar {
+    height: 60px;
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editor-tool-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    touch-action: manipulation;
+}
+.editor-tool-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.editor-tool-btn:active { transform: rotate(-45deg); } 
+
+/* --- FOOTER (INPUT Y ENVIAR) --- */
+.editor-footer {
+    padding: 15px 20px 20px; 
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.caption-input-container {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 24px;
+    padding: 2px 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#imageCaptionInput {
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 10px 15px;
+    font-size: 15px;
+    width: 100%;
+}
+#imageCaptionInput:focus { outline: none; }
+
+.editor-send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #6366f1; 
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: transform 0.2s;
+    touch-action: manipulation;
+}
+.editor-send-btn:hover { transform: scale(1.05); background: #4f46e5; }
+.editor-send-btn:active { transform: scale(0.95); }
+
+/* Aplicamos transición a la transformación (rotación/escala) */
+.cropper-canvas > img,
+.cropper-view-box > img {
+    /* 0.3s de duración, con efecto suave de entrada y salida */
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    will-change: transform; 
+}
+
+/* Opcional: Animar también el recuadro de recorte si cambia de tamaño */
+.cropper-crop-box {
+    transition: top 0.3s, left 0.3s, width 0.3s, height 0.3s;
+}
+
+/* Estilo para cuando el botón está desactivado durante la animación */
+.editor-tool-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important; 
+}
+
+.message-content-wrapper.msg-image-wrapper {
+    width: min-content; 
+    
+    /* Evita que se haga demasiado estrecho si la imagen es muy pequeña */
+    min-width: 140px; 
+}
+
+/* Aseguramos que la imagen dicte el ancho */
+.msg-image-wrapper .chat-image-container {
+    width: 100%;
+}
+
+.msg-image-wrapper .chat-image {
+    display: block;
+    /* max-width controlado por JS/HTML, pero aseguramos display block */
+}
+
+/* 1. MODO PANTALLA COMPLETA */
+.profile-card.modern-profile {
+    width: 100vw !important;      /* Ancho total del viewport */
+    height: 100vh !important;     /* Alto total del viewport */
+    max-width: none !important;   /* Quitar restricciones de ancho */
+    max-height: none !important;
+    border-radius: 0 !important;  /* Quitar esquinas redondeadas */
+    border: none !important;      /* Quitar borde exterior */
+    margin: 0 !important;
+    
+    position: fixed;              /* Fijar a la pantalla */
+    top: 0;
+    left: 0;
+    
+    background: #0a0a0a; 
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;             /* Permitir scroll si la pantalla es pequeña */
+    text-align: left;
+}
+
+/* 2. HEADER CON LÍNEA DIVISORA */
+.profile-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    height: 60px;
+    background: #0a0a0a;
+    position: relative;
+    /* Agregamos la línea separadora debajo del título */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); 
+    flex-shrink: 0;
+}
+
+.nav-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    position: absolute;
+    left: 60px; 
+}
+
+.nav-icon-btn {
+    background: none;
+    border: none;
+    color: #ececec;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 3. AVATAR (Sin cambios mayores, solo asegurar espaciado) */
+.profile-avatar-section {
+    display: flex;
+    justify-content: center;
+    padding: 40px 0 20px 0; /* Un poco más de aire arriba */
+    background: transparent;
+    flex-shrink: 0;
+}
+
+.profile-avatar-large {
+    width: 120px;
+    height: 120px;
+    border: none;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    /* Aseguramos que se mantenga redondo */
+    border-radius: 50%; 
+}
+
+/* 4. LISTA Y LÍNEAS DIVISORAS */
+.profile-details-list {
+    padding: 0 25px; /* Quitamos padding vertical del contenedor */
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Quitamos gap para usar padding en los items */
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* Padding generoso arriba y abajo para separar los items */
+    padding: 20px 0; 
+    /* LA LÍNEA DIVISORA */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); 
+}
+
+/* Opcional: Si quieres quitar la línea del último elemento (Biografía) */
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: #4c5fd5; /* Color acento */
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.detail-value.big-text {
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+}
+
+.detail-value.link-text {
+    font-size: 16px;
+    color: #a1a1aa;
+}
+
+.detail-value.bio-text {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #e4e4e7;
+    white-space: pre-wrap; /* Mantiene saltos de línea en la bio */
+}
+
+/* Menú opciones se mantiene igual */
+.profile-options-menu {
+    position: absolute;
+    top: 50px;
+    right: 15px;
+    background: #1f1f23;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    z-index: 100;
+}
+.profile-options-menu button {
+    background: none;
+    border: none;
+    color: #ef4444;
+    padding: 10px 20px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-weight: 600;
+}
+.profile-options-menu button:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* --- LOGIN FULLSCREEN --- */
+.login-body {
+    margin: 0;
+    padding: 0;
+    background: #0a0a0a;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.login-fullscreen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top right, #1e1b4b 0%, transparent 40%), 
+                radial-gradient(circle at bottom left, #312e81 0%, transparent 40%);
+}
+
+.login-content {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.logo-area {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.logo-area h1 { margin: 10px 0 0; font-size: 28px; letter-spacing: 1px; }
+
+/* Inputs y Grupos */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.input-group {
+    position: relative;
+    width: 100%;
+}
+
+.row-inputs {
+    display: flex;
+    gap: 10px;
+}
+
+input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+input:focus {
+    border-color: #6366f1;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* --- VALIDACIONES VISUALES --- */
+input.valid {
+    border-color: #4ade80 !important; /* Verde */
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
+}
+
+input.invalid {
+    border-color: #ef4444 !important; /* Rojo */
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    animation: shake 0.3s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.hint-text {
+    font-size: 12px;
+    color: #a1a1aa;
+    margin: -10px 0 0 5px;
+}
+
+/* Botones */
+.primary-btn {
+    padding: 14px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    margin-top: 10px;
+}
+
+.primary-btn:hover { background: #4f46e5; }
+.primary-btn:active { transform: scale(0.98); }
+.primary-btn:disabled { background: #3f3f46; cursor: not-allowed; opacity: 0.7; }
+
+.secondary-btn {
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Tabs */
+.form-toggle {
+    display: flex;
+    background: rgba(255,255,255,0.05);
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.form-toggle button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #a1a1aa;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.form-toggle button.active {
+    background: #1f1f23;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.hidden { display: none; }
+
+/* --- NOTIFICACIONES TOAST --- */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background: #1f1f23;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border-left: 4px solid #6366f1; /* Default blue */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    min-width: 250px;
+    opacity: 0;
+    transform: translateX(50px);
+    animation: slideIn 0.3s forwards;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.toast.success { border-left-color: #4ade80; }
+.toast.error { border-left-color: #ef4444; }
+
+@keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideOut {
+    to { opacity: 0; transform: translateX(50px); }
+}
+.app-logo {
+    width: 80px;  
+    height: auto;      
+    margin-bottom: 10px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); 
+}
+
+/* --- EDICIÓN DE PERFIL EN LÍNEA --- */
+
+/* Clase para campos editables */
+.editable-field {
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin: -2px -5px; /* Compensa el padding para no mover el diseño */
+    border: 1px dashed transparent; /* Borde invisible para evitar saltos */
+}
+
+.editable-field:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Icono de lápiz al pasar el mouse */
+.editable-field::after {
+    content: '✎';
+    font-size: 14px;
+    color: #6366f1; /* Color acento */
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+
+.editable-field:hover::after {
+    opacity: 1;
+}
+
+/* El input cuando se está escribiendo */
+.editing-input {
+    background: #18181b;
+    border: 1px solid #6366f1;
+    color: #fff;
+    padding: 6px 10px;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: inherit;
+    border-radius: 6px;
+    width: 100%;
+    outline: none;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+    display: block;
+}
+
 @media (max-width: 768px) {
+    
     body {
         align-items: flex-start;
     }

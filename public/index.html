@@ -20,6 +20,8 @@
     <link rel="preload" href="style.css" as="style">
     <link rel="preload" href="script.js" as="script">
     <link rel="preload" href="/profile.png" as="image">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 </head>
 <body>
 
@@ -27,7 +29,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="header-left"><h3>Chats</h3></div>
+                <div class="header-left"><h3>AvenApp</h3></div>
                 <div class="header-right">
                     <button id="profileBtn" class="profile-btn hidden" title="Perfil">
                         <div id="myAvatar" class="my-avatar"></div>
@@ -41,50 +43,143 @@
         </aside>
 
         <!-- MI PERFIL MODAL -->
-        <div id="profileModal" class="profile-modal hidden" aria-hidden="true">
-            <div class="profile-card">
-                <div class="profile-header-img">
-                    <div class="profile-avatar-large" id="profilePreviewAvatar">
-                        <label for="avatarInput" class="upload-overlay">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                <circle cx="12" cy="13" r="4"></circle>
-                            </svg>
-                        </label>
-                    </div>
-                    <input type="file" id="avatarInput" accept="image/*" hidden />
-                </div>
-                <div class="profile-info"> 
-                    <h3 id="profileUsername">Usuario</h3>
-                    <p class="profile-status">En línea</p>
-                </div>
-                <div class="profile-actions">
-                    <button id="closeProfile" class="btn">Cerrar</button>
-                    <button id="profileLogout" class="btn danger">Cerrar sesión</button>
-                </div>
+        <!-- MI PERFIL MODAL (DISEÑO MEJORADO) -->
+<div id="profileModal" class="profile-modal hidden" aria-hidden="true">
+    <div class="profile-card modern-profile">
+        
+        <!-- Barra superior: Flecha atrás y Título -->
+        <div class="profile-nav-header">
+            <button id="closeProfile" class="nav-icon-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <span class="nav-title">Perfil</span>
+            <button id="profileOptionsBtn" class="nav-icon-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+            </button>
+            <!-- Menú desplegable opciones (Logout) -->
+            <div id="profileOptionsMenu" class="profile-options-menu hidden">
+                <button id="profileLogout">Cerrar sesión</button>
             </div>
         </div>
 
-        <!-- INFO CONTACTO MODAL -->
-        <div id="contactInfoModal" class="profile-modal hidden">
-            <div class="profile-card contact-card">
-                <button id="closeContactInfo" class="close-icon-btn">✕</button>
-                <div class="profile-header-img">
-                    <div class="profile-avatar-large" id="contactInfoAvatar"></div>
-                </div>
-                <div class="profile-info">
-                    <h2 id="contactInfoName">Nombre</h2>
-                    <p id="contactRealUsername" style="color:var(--muted); font-size:14px;">@usuario</p>
-                </div>
-                <div class="settings-section">
-                    <label>Apodo</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="nicknameInput" placeholder="Añadir apodo" class="simple-input">
-                        <button id="saveNicknameBtn" class="btn-icon">💾</button>
-                    </div>
+        <!-- Avatar Central -->
+        <div class="profile-avatar-section">
+            <div class="profile-avatar-large" id="profilePreviewAvatar">
+                <label for="avatarInput" class="upload-overlay">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </label>
+            </div>
+            <input type="file" id="avatarInput" accept="image/*" hidden />
+        </div>
+
+        <!-- Lista de Datos -->
+        <div class="profile-details-list">
+            
+            <div class="detail-item">
+                <label class="detail-label">Nombre</label>
+                <div class="detail-value big-text" id="profileRealName">Cargando...</div>
+            </div>
+
+            <div class="detail-item">
+                <label class="detail-label">Usuario</label>
+                <div class="detail-value link-text" id="profileHandle">@usuario</div>
+            </div>
+
+            <div class="detail-item">
+                <label class="detail-label">Biografía</label>
+                <div class="detail-value bio-text" id="profileBio">
+                    La unión hace la fuerza, pero la inteligencia gana batallas. 🚀
                 </div>
             </div>
+
         </div>
+    </div>
+</div>
+
+        <div id="imageEditorModal" class="image-editor-modal hidden">
+    <!-- 1. Cabecera: Solo Cancelar y Resetear -->
+    <div class="editor-header">
+        <button id="closeEditorBtn" class="btn-text">Cancelar</button>
+        <button id="resetCropBtn" class="btn-text">Restaurar</button>
+    </div>
+
+    <!-- 2. Canvas: La imagen y la cuadrícula -->
+    <div class="editor-canvas-container">
+        <img id="imageToEdit" src="" alt="Edit Preview">
+    </div>
+
+    <!-- 3. Barra de Herramientas: Rotar en el centro -->
+    <div class="editor-toolbar">
+        <button id="rotateBtn" class="editor-tool-btn" title="Rotar 90°">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z"></path></svg>
+        </button>
+    </div>
+
+    <!-- 4. Footer: Comentario y Enviar -->
+    <div class="editor-footer">
+        <div class="caption-input-container">
+            <input type="text" id="imageCaptionInput" placeholder="Añade un comentario..." autocomplete="off">
+        </div>
+        <button id="sendImageBtn" class="editor-send-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+    </div>
+</div>
+
+        <!-- INFO CONTACTO MODAL -->
+        <div id="contactInfoModal" class="profile-modal hidden">
+    <div class="profile-card modern-profile">
+        
+        <!-- Header -->
+        <div class="profile-nav-header">
+            <button id="closeContactInfo" class="nav-icon-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <span class="nav-title">Info. del contacto</span>
+            <div style="width: 40px;"></div> <!-- Espaciador para centrar título -->
+        </div>
+
+        <!-- Avatar -->
+        <div class="profile-avatar-section">
+            <div class="profile-avatar-large" id="contactInfoAvatar" style="border: none;"></div>
+        </div>
+
+        <!-- Lista de Detalles -->
+        <div class="profile-details-list">
+            
+            <!-- Nombre (Al hacer click aquí se editará el Apodo) -->
+            <div class="detail-item">
+                <label class="detail-label">Nombre</label>
+                <div id="contactInfoName" class="detail-value big-text">Cargando...</div>
+                <p style="font-size: 11px; color: #666; margin-top: 5px;">Toca para asignar un apodo personal.</p>
+            </div>
+
+            <div class="detail-item">
+                <label class="detail-label">Usuario</label>
+                <div id="contactRealUsername" class="detail-value link-text">@usuario</div>
+            </div>
+
+            <div class="detail-item">
+                <label class="detail-label">Biografía</label>
+                <div id="contactInfoBio" class="detail-value bio-text">
+                    Sin biografía.
+                </div>
+            </div>
+
+            <!-- Zona Admin -->
+            <div id="adminActionsSection" class="detail-item hidden" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 20px;">
+                <label style="color:#ef4444; font-weight:bold;">Zona Admin</label>
+                <button id="toggleVerifyBtn" class="btn" style="width:100%; margin-top:10px; background:#3b82f6; color:white; padding:12px;">
+                    Verificar Usuario
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
 
         <!-- Confirmación Logout -->
         <div id="confirmModal" class="confirm-modal hidden">
@@ -108,6 +203,19 @@
                 </div>
             </div>
         </div>
+        <div id="verificationSuccessModal" class="profile-modal hidden">
+    <div class="profile-card" style="text-align: center; max-width: 320px;">
+        <div class="verified-anim-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6" />
+                <path fill="#fff" d="M10.5 15.5L7.5 12.5L8.5 11.5L10.5 13.5L15.5 8.5L16.5 9.5L10.5 15.5Z"/>
+            </svg>
+        </div>
+        <h2 style="margin-top: 15px; color: #fff;">¡Felicidades!</h2>
+        <p style="color: #a1a1aa; margin-bottom: 25px;">Tu cuenta ha sido verificada correctamente. Ahora tienes la insignia oficial.</p>
+        <button id="acceptVerifiedBtn" class="btn" style="background: #3b82f6; width: 100%; color: white; padding: 12px;">Aceptar</button>
+    </div>
+</div>
 
         <div id="stickerOptionsModal" class="sticker-options-modal hidden">
     <div class="sticker-options-content">
@@ -219,7 +327,7 @@
                         </div>
 
                         <!-- INPUT TEXTO -->
-                        <input id="input" autocomplete="off" placeholder="Escribe un mensaje..." />
+                        <textarea id="input" placeholder="Escribe un mensaje..." rows="1"></textarea>
 
                         <!-- UI GRABACIÓN DE AUDIO (Oculto por defecto) -->
                         <div id="recordingUI" class="recording-ui hidden">
@@ -242,6 +350,7 @@
 
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="script.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js'));

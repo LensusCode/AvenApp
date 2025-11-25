@@ -1,1127 +1,1260 @@
-const socket = io({ autoConnect: false });
+// --- ELEMENTOS DOM (Helpers) ---
+const getEl = (id) => document.getElementById(id);
 
-// --- REDIRECCIÓN DE SEGURIDAD ---
-const saved = localStorage.getItem('chatUser');
-if(!saved) {
-    window.location.href = '/login.html';
-}
-
-// --- GIPHY API KEY ---
-const GIPHY_API_KEY = 'dZrv40Fha5nImhg5hbNuiO3ZJtWqecwM'; 
-
-// --- Variables de Estado ---
+// --- ESTADO DE LA APLICACIÓN ---
 let myUser = null;
 let currentTargetUserId = null;
-let currentTargetUserObj = null; 
+let currentTargetUserObj = null;
+let currentReplyId = null;
 let messageIdToDelete = null;
-let myNicknames = {}; 
-let allUsersCache = []; 
 
-// Variable para Reply
-let currentReplyId = null; 
-
-// --- Elementos DOM ---
-const profileBtn = document.getElementById('profileBtn');
-const profileModal = document.getElementById('profileModal');
-const closeProfile = document.getElementById('closeProfile');
-const myAvatar = document.getElementById('myAvatar');
-const profilePreviewAvatar = document.getElementById('profilePreviewAvatar');
-const profileUsername = document.getElementById('profileUsername');
-const avatarInput = document.getElementById('avatarInput');
-const profileLogout = document.getElementById('profileLogout');
-const confirmModal = document.getElementById('confirmModal');
-
-const usersList = document.getElementById('usersList');
-const chatHeader = document.querySelector('.chat-header');
-const emptyState = document.getElementById('emptyState');
-const messagesList = document.getElementById('messages');
-const chatForm = document.getElementById('form');
-const inputMsg = document.getElementById('input');
-const chatTitle = document.getElementById('chatTitle');
-const currentChatAvatar = document.getElementById('currentChatAvatar');
-const typingIndicator = document.getElementById('typingIndicator');
-const typingText = document.getElementById('typingText');
-const btnImage = document.getElementById('btnImage');
-const chatImageInput = document.getElementById('chatImageInput');
-const backBtn = document.getElementById('backBtn');
-const chatContainer = document.querySelector('.chat-container');
-
-const msgContextMenu = document.getElementById('msgContextMenu');
-const ctxDeleteBtn = document.getElementById('ctxDeleteBtn');
-const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-const confirmDeleteBtn = document.getElementById('confirmDelete');
-const cancelDeleteBtn = document.getElementById('cancelDelete');
-
-const headerAvatarBtn = document.getElementById('headerAvatarBtn');
-const contactInfoModal = document.getElementById('contactInfoModal');
-const closeContactInfo = document.getElementById('closeContactInfo');
-const contactInfoAvatar = document.getElementById('contactInfoAvatar');
-const contactInfoName = document.getElementById('contactInfoName');
-const contactRealUsername = document.getElementById('contactRealUsername');
-const nicknameInput = document.getElementById('nicknameInput');
-const saveNicknameBtn = document.getElementById('saveNicknameBtn');
-
-// Elementos Reply
-const inputStack = document.getElementById('inputStack');
-const replyPreview = document.getElementById('replyPreview');
-const replyToName = document.getElementById('replyToName');
-const replyToText = document.getElementById('replyToText');
-const replyToImagePreview = document.getElementById('replyToImagePreview');
-const closeReplyBtn = document.getElementById('closeReplyBtn');
-
-// Elementos Stickers
-const btnStickers = document.getElementById('btnStickers');
-const stickerPanel = document.getElementById('stickerPanel');
-const stickerSearch = document.getElementById('stickerSearch');
-const stickerResults = document.getElementById('stickerResults');
-// Referencias DOM adicionales para Pestañas de Favoritos
-const tabGiphy = document.getElementById('tabGiphy');
-const tabFavs = document.getElementById('tabFavs');
-const stickerHeaderSearch = document.getElementById('stickerHeaderSearch');
-
-// --- NUEVO: Elementos Modal Opciones Sticker (Menu al tocar) ---
-const stickerOptionsModal = document.getElementById('stickerOptionsModal');
-const stickerModalBackdrop = document.getElementById('stickerModalBackdrop');
-const stickerModalPreview = document.getElementById('stickerModalPreview');
-const btnStickerFavAction = document.getElementById('btnStickerFavAction');
-const stickerFavIcon = document.getElementById('stickerFavIcon');
-const stickerFavText = document.getElementById('stickerFavText');
-const btnStickerClose = document.getElementById('btnStickerClose');
-let currentStickerUrlInModal = null; // Para saber qué sticker estamos viendo
-
-// --- ELEMENTOS DE AUDIO ---
-const mainActionBtn = document.getElementById('mainActionBtn');
-const recordingUI = document.getElementById('recordingUI');
-const recordingTimer = document.getElementById('recordingTimer');
-const cancelRecordingBtn = document.getElementById('cancelRecordingBtn');
-
-const SEND_ICON = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
-const MIC_ICON = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
-
-let mediaRecorder = null;
+// Cachés y Colecciones
+let myNicknames = {};
+let allUsersCache = [];
+let myFavorites = new Set();
 let audioChunks = [];
-let recordingInterval = null;
+
+// Variables de Control
 let isRecording = false;
 let shouldSendAudio = true;
+let recordingInterval = null;
+let mediaRecorder = null;
+let searchTimeout = null;
+let currentStickerTab = 'giphy';
+let currentStickerUrlInModal = null;
+let cropper = null;
 
-// Estado Stickers
-let currentStickerTab = 'giphy'; // 'giphy' | 'favorites'
-let myFavorites = new Set(); // Cache local de favoritos
+// --- CONFIGURACIÓN SOCKET ---
+const socket = io({
+    autoConnect: false,
+    transports: ['websocket', 'polling']
+});
 
-// --- INICIALIZACIÓN ---
-if(saved) {
-    loginSuccess(JSON.parse(saved));
+// --- ICONOS SVG (Centralizados) ---
+const ICONS = {
+    blueBadge: `<span class="verified-badge" title="Verificado" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
+    purpleBadge: `<span class="verified-badge" title="Administrador" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#7c3aed"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
+    send: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
+    mic: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
+    play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+    pause: `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`,
+    replyImage: `<svg viewBox="0 0 24 24" height="20" width="18" fill="none"><path d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21H5ZM5 19H19V5H5V19ZM7 17H17C17.2 17 17.35 16.9083 17.45 16.725C17.55 16.5417 17.5333 16.3667 17.4 16.2L14.65 12.525C14.55 12.3917 14.4167 12.325 14.25 12.325C14.0833 12.325 13.95 12.3917 13.85 12.525L11.25 16L9.4 13.525C9.3 13.3917 9.16667 13.325 9 13.325C8.83333 13.325 8.7 13.3917 8.6 13.525L6.6 16.2C6.46667 16.3667 6.45 16.5417 6.55 16.725C6.65 16.9083 6.8 17 7 17Z" fill="currentColor"></path></svg> Foto`,
+    replyAudio: `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`
+};
+
+/**
+ * ==========================================
+ * UTILIDADES Y HELPERS
+ * ==========================================
+ */
+
+// Sanitizar HTML para prevenir XSS
+const escapeHtml = (text) => {
+    if (!text) return text;
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
+
+// Validar URLs
+const isValidUrl = (string) => {
+    if (!string) return false;
+    if (string.startsWith('/') || string.startsWith('./')) return true;
+    try {
+        const url = new URL(string);
+        return ['http:', 'https:'].includes(url.protocol);
+    } catch (_) {
+        return false;
+    }
+};
+
+// Obtener Badge HTML
+const getBadgeHtml = (u) => {
+    if (!u) return '';
+    if (u.is_admin) return ICONS.purpleBadge;
+    if (u.is_verified) return ICONS.blueBadge;
+    return '';
+};
+
+// Formatear hora
+const formatTime = (dateStr) => {
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+// API Helper
+async function apiRequest(url, method = 'GET', body = null) {
+    try {
+        const headers = {};
+        const opts = { method, headers };
+
+        if (body) {
+            if (!(body instanceof FormData)) {
+                headers['Content-Type'] = 'application/json';
+                opts.body = JSON.stringify(body);
+            } else {
+                opts.body = body;
+            }
+        }
+
+        const res = await fetch(url, opts);
+
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('chatUser');
+            window.location.href = '/login.html';
+            return null;
+        }
+
+        return res.ok ? await res.json() : null;
+    } catch (e) {
+        console.error("API Error:", e);
+        return null;
+    }
+}
+
+/**
+ * ==========================================
+ * INICIALIZACIÓN Y SESIÓN
+ * ==========================================
+ */
+
+async function checkSession() {
+    if (window.location.pathname === '/login.html') return;
+    
+    const userData = await apiRequest('/api/me');
+    if (userData) {
+        loginSuccess(userData);
+    } else {
+        window.location.href = '/login.html';
+    }
 }
 
 function loginSuccess(user) {
     myUser = user;
-    profileBtn.classList.remove('hidden');
-    updateMyAvatarUI(myUser.avatar);
-    socket.auth = { userId: myUser.id, username: myUser.username };
-    socket.connect();
-    // Inicializar estado botón
-    updateButtonState();
+    localStorage.setItem('chatUser', JSON.stringify(user));
     
-    // Cargar favoritos al inicio para tener la cache lista
+    // UI Updates
+    getEl('profileBtn').classList.remove('hidden');
+    if (myUser.is_admin) document.body.classList.add('is-admin');
+    updateMyAvatarUI(myUser.avatar);
+    
+    // Connect Logic
+    socket.connect();
+    updateButtonState();
     refreshFavoritesCache();
 }
 
-// --- LOGOUT ---
-profileLogout.addEventListener('click', () => { profileModal.classList.add('hidden'); confirmModal.classList.remove('hidden'); });
-document.getElementById('confirmYes').addEventListener('click', () => { 
-    localStorage.removeItem('chatUser'); 
-    window.location.href = '/login.html'; 
-});
-document.getElementById('confirmNo').addEventListener('click', () => { confirmModal.classList.add('hidden'); profileModal.classList.remove('hidden'); });
+// Iniciar
+checkSession();
 
-// --- SOCKET LISTENERS ---
-socket.on('nicknames', (map) => {
-    myNicknames = map;
-    if(allUsersCache.length > 0) renderUserList(allUsersCache);
-    if(currentTargetUserObj) {
-        const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.username;
-        chatTitle.textContent = displayName;
-    }
-});
-
-profileBtn.addEventListener('click', () => {
-    profileUsername.textContent = myUser.username;
-    profileModal.classList.remove('hidden');
-});
-closeProfile.addEventListener('click', () => profileModal.classList.add('hidden'));
-
-avatarInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const formData = new FormData();
-    formData.append('avatar', file);
-    formData.append('userId', myUser.id);
-    const res = await fetch('/api/upload-avatar', { method: 'POST', body: formData });
-    if(res.ok) {
-        // La actualización ahora vendrá por el socket 'user_updated_profile' también para mí
-        const data = await res.json();
-    }
-});
+/**
+ * ==========================================
+ * GESTIÓN DE PERFIL Y UI
+ * ==========================================
+ */
 
 function updateMyAvatarUI(url) {
-    const css = url ? `url('${url}')` : '';
-    myAvatar.style.backgroundImage = css;
-    profilePreviewAvatar.style.backgroundImage = css;
+    const finalUrl = (url && isValidUrl(url)) ? url : '/profile.png';
+    const css = `url('${escapeHtml(finalUrl)}')`;
+    getEl('myAvatar').style.backgroundImage = css;
+    getEl('profilePreviewAvatar').style.backgroundImage = css;
 }
 
-// Contact Info
-headerAvatarBtn.addEventListener('click', () => {
-    if(!currentTargetUserObj) return;
-    const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.username;
-    contactInfoName.textContent = displayName;
-    contactRealUsername.textContent = `@${currentTargetUserObj.username}`;
-    nicknameInput.value = myNicknames[currentTargetUserObj.userId] || "";
-    const css = currentTargetUserObj.avatar ? `url('${currentTargetUserObj.avatar}')` : '';
-    contactInfoAvatar.style.backgroundImage = css;
-    contactInfoModal.classList.remove('hidden');
-});
-closeContactInfo.addEventListener('click', () => contactInfoModal.classList.add('hidden'));
-saveNicknameBtn.addEventListener('click', () => {
-    if(!currentTargetUserObj) return;
-    const newNickname = nicknameInput.value.trim();
-    socket.emit('set nickname', { targetUserId: currentTargetUserObj.userId, nickname: newNickname });
-    if(newNickname) myNicknames[currentTargetUserObj.userId] = newNickname;
-    else delete myNicknames[currentTargetUserObj.userId];
-    const displayName = newNickname || currentTargetUserObj.username;
-    contactInfoName.textContent = displayName;
-    chatTitle.textContent = displayName;
-    renderUserList(allUsersCache);
-    contactInfoModal.classList.add('hidden');
+// Carga de Avatar
+getEl('avatarInput').addEventListener('change', async (e) => {
+    if (!e.target.files[0]) return;
+    const fd = new FormData();
+    fd.append('avatar', e.target.files[0]);
+    await apiRequest('/api/upload-avatar', 'POST', fd);
 });
 
-// --- STICKERS PANEL LOGIC ---
-if(tabGiphy && tabFavs) {
-    tabGiphy.addEventListener('click', () => switchStickerTab('giphy'));
-    tabFavs.addEventListener('click', () => switchStickerTab('favorites'));
-}
+// Editar campos "inline" (DB)
+function enableInlineEdit(elementId, dbField, prefix = '') {
+    const el = getEl(elementId);
+    if (!el) return;
 
-function switchStickerTab(tab) {
-    currentStickerTab = tab;
-    
-    // UI Update
-    if (tab === 'giphy') {
-        tabGiphy.classList.add('active');
-        tabFavs.classList.remove('active');
-        if(stickerHeaderSearch) stickerHeaderSearch.classList.remove('hidden');
-        loadStickers(stickerSearch.value); 
-    } else {
-        tabGiphy.classList.remove('active');
-        tabFavs.classList.add('active');
-        if(stickerHeaderSearch) stickerHeaderSearch.classList.add('hidden');
-        loadFavoritesFromServer(); 
-    }
-}
+    el.classList.add('editable-field');
+    const newEl = el.cloneNode(true);
+    el.parentNode.replaceChild(newEl, el);
 
-btnStickers.addEventListener('click', () => {
-    stickerPanel.classList.toggle('hidden');
-    if(!stickerPanel.classList.contains('hidden')) {
-        // Al abrir, refrescar caché de favoritos
-        refreshFavoritesCache().then(() => {
-            if (currentStickerTab === 'giphy') {
-                loadStickers();
-                stickerSearch.focus();
-            } else {
-                loadFavoritesFromServer();
+    newEl.addEventListener('click', () => {
+        let currentText = newEl.innerText.replace(prefix, '').replace('✎', '').trim();
+        const originalContent = newEl.innerHTML;
+
+        const input = document.createElement('input');
+        Object.assign(input, {
+            type: 'text',
+            value: currentText,
+            className: 'editing-input',
+            placeholder: dbField === 'bio' ? "Escribe algo sobre ti..." : ""
+        });
+
+        newEl.innerHTML = '';
+        newEl.appendChild(input);
+        newEl.classList.remove('editable-field');
+        input.focus();
+
+        const save = async () => {
+            const newValue = input.value.trim();
+            if (newValue === currentText) return renderValue(newValue);
+            if (dbField === 'username' && newValue.length < 3) {
+                alert("Mínimo 3 caracteres");
+                return renderValue(currentText);
             }
-        });
-    }
-});
 
-document.addEventListener('click', (e) => {
-    if (!stickerPanel.contains(e.target) && !btnStickers.contains(e.target)) {
-        stickerPanel.classList.add('hidden');
-    }
-});
-
-let searchTimeout;
-stickerSearch.addEventListener('input', (e) => {
-    if (currentStickerTab !== 'giphy') return;
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        const query = e.target.value;
-        if(query.length > 0) loadStickers(query);
-        else loadStickers(); 
-    }, 500);
-});
-
-async function refreshFavoritesCache() {
-    try {
-        const res = await fetch(`/api/favorites/${myUser.id}`);
-        if(res.ok) {
-            const list = await res.json();
-            myFavorites = new Set(list);
-        }
-    } catch (e) { console.error("Error cargando favs cache", e); }
-}
-
-async function loadStickers(query = '') {
-    stickerResults.innerHTML = '<div class="loading-stickers">Cargando...</div>';
-    if(GIPHY_API_KEY === 'TU_API_KEY_AQUI') {
-        stickerResults.innerHTML = '<div class="loading-stickers">Falta API Key de Giphy</div>';
-        return;
-    }
-    let url;
-    if (query) {
-        url = `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_API_KEY}&q=${query}&limit=24&rating=g`;
-    } else {
-        url = `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
-    }
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const items = data.data.map(item => ({
-            url: item.images.fixed_height.url,
-            thumb: item.images.fixed_height_small.url
-        }));
-        renderStickersGrid(items);
-    } catch (err) {
-        console.error("Error Giphy:", err);
-        stickerResults.innerHTML = '<div class="loading-stickers">Error al cargar</div>';
-    }
-}
-
-async function loadFavoritesFromServer() {
-    stickerResults.innerHTML = '<div class="loading-stickers">Cargando favoritos...</div>';
-    await refreshFavoritesCache(); 
-
-    if (myFavorites.size === 0) {
-        stickerResults.innerHTML = '<div class="loading-stickers">Aún no tienes stickers favoritos.</div>';
-        return;
-    }
-
-    const items = Array.from(myFavorites).map(url => ({
-        url: url,
-        thumb: url 
-    }));
-    renderStickersGrid(items);
-}
-
-function renderStickersGrid(items) {
-    stickerResults.innerHTML = '';
-    if(!items || items.length === 0) {
-        stickerResults.innerHTML = '<div class="loading-stickers">No se encontraron resultados</div>';
-        return;
-    }
-
-    items.forEach(item => {
-        // Wrapper para posicionar la estrella
-        const wrapper = document.createElement('div');
-        wrapper.className = 'sticker-item-wrapper';
-        
-        // Imagen
-        const img = document.createElement('img');
-        img.src = item.thumb; 
-        img.className = 'sticker-thumb';
-        img.loading = "lazy";
-        
-        // Acción click en imagen: Enviar sticker al chat
-        img.addEventListener('click', () => {
-            sendSticker(item.url);
-            stickerPanel.classList.add('hidden');
-        });
-
-        // Botón Estrella (en el panel)
-        const starBtn = document.createElement('button');
-        starBtn.className = 'fav-action-btn';
-        starBtn.innerHTML = '★'; 
-        
-        if (myFavorites.has(item.url)) starBtn.classList.add('is-fav');
-
-        // Acción click en estrella: Toggle Fav
-        starBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleFavoriteSticker(item.url, starBtn, wrapper);
-        });
-
-        wrapper.appendChild(img);
-        wrapper.appendChild(starBtn);
-        stickerResults.appendChild(wrapper);
-    });
-}
-
-// Función compartida para agregar/quitar
-async function toggleFavoriteSticker(url, btnElement = null, wrapperElement = null) {
-    const isFav = myFavorites.has(url);
-    if (isFav) {
-        // Eliminar
-        try {
-            const res = await fetch('/api/favorites/remove', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: myUser.id, url: url })
-            });
-            if (res.ok) {
-                myFavorites.delete(url);
-                if(btnElement) btnElement.classList.remove('is-fav');
-                // Si estamos en la pestaña favoritos del panel, quitar elemento
-                if (currentStickerTab === 'favorites' && wrapperElement) {
-                    wrapperElement.remove();
-                    if (myFavorites.size === 0) {
-                        stickerResults.innerHTML = '<div class="loading-stickers">Aún no tienes stickers favoritos.</div>';
-                    }
+            try {
+                input.disabled = true;
+                const res = await apiRequest('/api/profile/update', 'PUT', { field: dbField, value: newValue });
+                
+                if (res?.success) {
+                    myUser[dbField] = res.value;
+                    localStorage.setItem('chatUser', JSON.stringify(myUser));
+                    renderValue(res.value);
+                } else {
+                    alert(res?.error || "Error al actualizar");
+                    restoreOriginal();
                 }
+            } catch (e) {
+                restoreOriginal();
             }
-        } catch (e) { console.error(e); }
-    } else {
-        // Agregar
-        try {
-            const res = await fetch('/api/favorites/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: myUser.id, url: url })
-            });
-            if (res.ok) {
-                myFavorites.add(url);
-                if(btnElement) btnElement.classList.add('is-fav');
+        };
+
+        const renderValue = (val) => {
+            newEl.innerHTML = '';
+            if (dbField === 'bio' && !val) {
+                newEl.textContent = "Añadir una biografía...";
+                newEl.style.color = "#666";
+            } else {
+                newEl.textContent = prefix + val;
+                newEl.style.color = "";
             }
-        } catch (e) { console.error(e); }
-    }
-}
+            if (dbField === 'display_name') newEl.insertAdjacentHTML('beforeend', getBadgeHtml(myUser));
+            newEl.classList.add('editable-field');
+        };
 
-function sendSticker(url) {
-    sendMessage(url, 'sticker', currentReplyId);
-    clearReply();
-}
+        const restoreOriginal = () => {
+            newEl.innerHTML = originalContent;
+            newEl.classList.add('editable-field');
+        };
 
-// --- LOGICA MODAL OPCIONES STICKER (Menu al tocar en chat) ---
-
-function openStickerOptions(url) {
-    currentStickerUrlInModal = url;
-    stickerModalPreview.src = url;
-
-    // Verificar si ya es favorito para cambiar el texto del botón
-    const isFav = myFavorites.has(url);
-    updateFavButtonUI(isFav);
-
-    stickerOptionsModal.classList.remove('hidden');
-}
-
-function closeStickerOptions() {
-    stickerOptionsModal.classList.add('hidden');
-    currentStickerUrlInModal = null;
-}
-
-function updateFavButtonUI(isFav) {
-    if (isFav) {
-        stickerFavIcon.textContent = '★';
-        stickerFavText.textContent = 'Eliminar de favoritos';
-        btnStickerFavAction.classList.add('is-favorite');
-    } else {
-        stickerFavIcon.textContent = '☆';
-        stickerFavText.textContent = 'Añadir a favoritos';
-        btnStickerFavAction.classList.remove('is-favorite');
-    }
-}
-
-// Event Listeners del Modal
-if(stickerModalBackdrop) stickerModalBackdrop.addEventListener('click', closeStickerOptions);
-if(btnStickerClose) btnStickerClose.addEventListener('click', closeStickerOptions);
-
-// Acción Botón Favorito en el Modal
-if(btnStickerFavAction) {
-    btnStickerFavAction.addEventListener('click', async () => {
-        if (!currentStickerUrlInModal) return;
-        
-        // Llamamos a la lógica toggle (sin elementos de UI del panel, null null)
-        await toggleFavoriteSticker(currentStickerUrlInModal, null, null);
-        
-        // Actualizamos UI del botón del modal
-        const isFavNow = myFavorites.has(currentStickerUrlInModal);
-        updateFavButtonUI(isFavNow);
-        
-        // Cerramos tras breve delay
-        setTimeout(closeStickerOptions, 200);
+        input.addEventListener('blur', save);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') restoreOriginal();
+        });
     });
 }
 
-// --- REPLY ---
-function setReply(msgId, content, type, ownerId) {
-    currentReplyId = msgId;
-    
-    let name = "Usuario";
-    if(ownerId == myUser.id) name = "Tú";
-    else if(myNicknames[ownerId]) name = myNicknames[ownerId];
-    else {
-        const u = allUsersCache.find(u => u.userId == ownerId);
-        if(u) name = u.username;
-    }
+// Editar Nicknames (Local + Socket)
+function enableNicknameEdit(elementId, targetUserId) {
+    const el = getEl(elementId);
+    if (!el) return;
 
-    replyToName.textContent = name;
-    
-    if(type === 'image') {
-        replyToText.innerHTML = `<svg viewBox="0 0 24 24" height="20" width="18" preserveAspectRatio="xMidYMid meet" class="" fill="none"><title>image-refreshed</title><path d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21H5ZM5 19H19V5H5V19ZM7 17H17C17.2 17 17.35 16.9083 17.45 16.725C17.55 16.5417 17.5333 16.3667 17.4 16.2L14.65 12.525C14.55 12.3917 14.4167 12.325 14.25 12.325C14.0833 12.325 13.95 12.3917 13.85 12.525L11.25 16L9.4 13.525C9.3 13.3917 9.16667 13.325 9 13.325C8.83333 13.325 8.7 13.3917 8.6 13.525L6.6 16.2C6.46667 16.3667 6.45 16.5417 6.55 16.725C6.65 16.9083 6.8 17 7 17Z" fill="currentColor"></path></svg> Foto`;
-        replyToImagePreview.style.backgroundImage = `url('${content}')`;
-        replyToImagePreview.classList.remove('hidden');
-    } else if (type === 'sticker') {
-       replyToImagePreview.classList.add('hidden');
-       replyToImagePreview.style.backgroundImage = 'none';
-       replyToText.innerHTML = `<img src="${content}" class="reply-sticker-preview">`;
-    } else if (type === 'audio') {
-       replyToText.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`;
-       replyToImagePreview.classList.add('hidden');
-    } else {
-        replyToText.textContent = content;
-        replyToImagePreview.classList.add('hidden');
-    }
+    el.classList.add('editable-field');
+    const newEl = el.cloneNode(true);
+    el.parentNode.replaceChild(newEl, el);
 
-    replyPreview.classList.remove('hidden');
-    if(inputStack) inputStack.classList.add('active'); 
-    inputMsg.focus();
+    newEl.addEventListener('click', () => {
+        const currentText = newEl.innerText.replace('✎', '').trim();
+        const originalContent = newEl.innerHTML;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentText;
+        input.placeholder = "Escribe un apodo";
+        input.className = 'editing-input';
+
+        newEl.innerHTML = '';
+        newEl.appendChild(input);
+        newEl.classList.remove('editable-field');
+        input.focus();
+
+        const save = () => {
+            const newValue = input.value.trim();
+            socket.emit('set nickname', { targetUserId, nickname: newValue });
+
+            if (newValue) myNicknames[targetUserId] = newValue;
+            else delete myNicknames[targetUserId];
+
+            newEl.innerHTML = '';
+            newEl.textContent = newValue || currentTargetUserObj.display_name || currentTargetUserObj.username;
+            newEl.insertAdjacentHTML('beforeend', getBadgeHtml(currentTargetUserObj));
+            newEl.classList.add('editable-field');
+
+            updateChatHeaderInfo(currentTargetUserObj);
+            applyUserFilter();
+        };
+
+        input.addEventListener('blur', save);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') {
+                newEl.innerHTML = originalContent;
+                newEl.classList.add('editable-field');
+            }
+        });
+    });
 }
 
-function clearReply() {
-    currentReplyId = null;
-    replyPreview.classList.add('hidden');
-    if(inputStack) inputStack.classList.remove('active');
+/**
+ * ==========================================
+ * LISTA DE USUARIOS Y CHAT
+ * ==========================================
+ */
+
+// Filtrado de usuarios
+getEl('searchUsers').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyUserFilter, 300);
+});
+
+function applyUserFilter() {
+    const term = getEl('searchUsers').value.toLowerCase().trim();
+    if (!term) return renderUserList(allUsersCache);
+
+    const filtered = allUsersCache.filter(u =>
+        u.userId !== myUser.id &&
+        (u.username.toLowerCase().includes(term) || (myNicknames[u.userId] || '').toLowerCase().includes(term))
+    );
+    renderUserList(filtered);
 }
-closeReplyBtn.addEventListener('click', clearReply);
 
-// --- IMAGES ---
-btnImage.addEventListener('click', () => chatImageInput.click());
-chatImageInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('image', file);
-    try {
-        const res = await fetch('/api/upload-chat-image', { method: 'POST', body: formData });
-        if (res.ok) {
-            const data = await res.json();
-            sendMessage(data.imageUrl, 'image', currentReplyId);
-            clearReply();
-        }
-    } catch (error) { console.error(error); }
-    chatImageInput.value = '';
-});
-
-// --- USER LIST ---
-socket.on('users', (users) => {
-    allUsersCache = users;
-    renderUserList(users);
-});
 function renderUserList(users) {
+    const usersList = getEl('usersList');
     usersList.innerHTML = '';
-    users.sort((a, b) => (a.online === b.online) ? 0 : a.online ? -1 : 1);
-    users.forEach(u => {
-        if(u.userId === myUser.id) return;
+    
+    // Ordenar: Online primero
+    users.sort((a, b) => b.online - a.online).forEach(u => {
+        if (u.userId === myUser.id) return;
+
         const li = document.createElement('li');
-        li.className = 'user-item';
-        if (!u.online) li.classList.add('offline');
-        li.dataset.uid = u.userId; 
-        if(currentTargetUserId === u.userId) li.classList.add('active');
-        const avatarStyle = u.avatar ? `background-image: url('${u.avatar}')` : '';
-        const statusText = u.online ? 'En línea' : 'Desconectado';
+        li.className = `user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
+        li.dataset.uid = u.userId;
+
+        const name = escapeHtml(myNicknames[u.userId] || u.username);
+        const avatarUrl = isValidUrl(u.avatar) ? escapeHtml(u.avatar) : '/profile.png';
         const statusColor = u.online ? '#4ade80' : '#a1a1aa';
-        const displayName = myNicknames[u.userId] || u.username;
+
         li.innerHTML = `
-            <div class="u-avatar" style="${avatarStyle}">
+            <div class="u-avatar" style="background-image: url('${avatarUrl}')">
                 <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${statusColor};border:2px solid #18181b;"></div>
             </div>
             <div style="overflow:hidden;">
-                <div style="font-weight:600; color: ${u.online ? '#fff' : '#bbb'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayName}</div>
-                <div style="font-size:12px; color:${statusColor}">${statusText}</div>
-            </div>
-        `;
-        li.addEventListener('click', () => selectUser(u, li));
+                <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${name}${getBadgeHtml(u)}
+                </div>
+                <div style="font-size:12px;color:${statusColor}">
+                    ${u.online ? 'En línea' : 'Desconectado'}
+                </div>
+            </div>`;
+        
+        li.onclick = () => selectUser(u, li);
         usersList.appendChild(li);
     });
 }
 
-// --- ACTUALIZACIÓN DE PERFIL EN TIEMPO REAL ---
-socket.on('user_updated_profile', ({ userId, avatar }) => {
-    // 1. Actualizar caché local de usuarios para futuras renderizaciones
-    const cachedUser = allUsersCache.find(u => u.userId == userId);
-    if (cachedUser) {
-        cachedUser.avatar = avatar;
-    }
-
-    // 2. Si soy yo el que se actualizó
-    if (myUser && myUser.id == userId) {
-        myUser.avatar = avatar;
-        localStorage.setItem('chatUser', JSON.stringify(myUser)); // Persistir
-        updateMyAvatarUI(avatar);
-    }
-
-    // 3. Actualizar la lista lateral (Sidebar) QUIRÚRGICAMENTE
-    // Buscamos el elemento específico por su data-uid
-    const sidebarAvatarItem = document.querySelector(`.user-item[data-uid="${userId}"] .u-avatar`);
-    if (sidebarAvatarItem) {
-        sidebarAvatarItem.style.backgroundImage = `url('${avatar}')`;
-    }
-
-    // 4. Actualizar la cabecera del chat (si estoy hablando con esa persona)
-    if (currentTargetUserObj && currentTargetUserObj.userId == userId) {
-        currentTargetUserObj.avatar = avatar; // Actualizar obj actual
-        const currentHeaderAvatar = document.getElementById('currentChatAvatar');
-        if (currentHeaderAvatar) {
-            currentHeaderAvatar.style.backgroundImage = `url('${avatar}')`;
-        }
-    }
-
-    // 5. Actualizar avatares en el historial de mensajes (Mensajes de Audio)
-    if (myUser.id == userId) {
-        // Actualizar mis avatares en mensajes de audio
-        document.querySelectorAll('.message.me .audio-avatar-img').forEach(img => {
-            img.src = avatar;
-        });
-    } else if (currentTargetUserId == userId) {
-        // Actualizar sus avatares en mensajes de audio
-        document.querySelectorAll('.message.other .audio-avatar-img').forEach(img => {
-            img.src = avatar;
-        });
-    }
-});
-
-async function selectUser(targetUser, elem) {
-    currentTargetUserId = targetUser.userId;
-    currentTargetUserObj = targetUser;
-    clearReply(); 
+async function selectUser(target, elem) {
+    currentTargetUserId = target.userId;
+    currentTargetUserObj = target;
+    clearReply();
+    updateChatHeaderInfo(target);
     
-    const displayName = myNicknames[targetUser.userId] || targetUser.username;
-    chatTitle.textContent = displayName;
-    chatContainer.classList.add('mobile-chat-active');
-    const css = targetUser.avatar ? `url('${targetUser.avatar}')` : '';
-    currentChatAvatar.style.backgroundImage = css;
+    // UI Transitions
+    document.querySelector('.chat-container').classList.add('mobile-chat-active');
     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
-    if(elem) elem.classList.add('active');
-    else {
-        const found = document.querySelector(`.user-item[data-uid="${targetUser.userId}"]`);
-        if(found) found.classList.add('active');
-    }
-    emptyState.classList.add('hidden');
-    chatHeader.classList.remove('hidden');
+    (elem || document.querySelector(`.user-item[data-uid="${target.userId}"]`))?.classList.add('active');
+    
+    const avatarUrl = isValidUrl(target.avatar) ? target.avatar : '/profile.png';
+    getEl('currentChatAvatar').style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+    
+    getEl('emptyState').classList.add('hidden');
+    document.querySelector('.chat-header').classList.remove('hidden');
+    const messagesList = getEl('messages');
     messagesList.classList.remove('hidden');
-    chatForm.classList.remove('hidden');
+    getEl('form').classList.remove('hidden');
+
+    // Cargar Mensajes
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px">Cargando historial...</li>';
-    try {
-        const res = await fetch(`/api/messages/${myUser.id}/${targetUser.userId}`);
-        const history = await res.json();
-        messagesList.innerHTML = '';
+    const history = await apiRequest(`/api/messages/${myUser.id}/${target.userId}`);
+    
+    messagesList.innerHTML = '';
+    if (history) {
         history.forEach(msg => {
-            const type = (msg.from_user_id === myUser.id) ? 'me' : 'other';
-            
-            let replyData = null;
-            if(msg.reply_to_id) {
-                let rName = "Usuario";
-                if (msg.reply_from_id === myUser.id) rName = "Tú";
-                else if (msg.reply_from_id === currentTargetUserId) rName = displayName;
-                else if (myNicknames[msg.reply_from_id]) rName = myNicknames[msg.reply_from_id];
-
-                let rContent = msg.reply_content;
-                if(msg.reply_type === 'image') rContent = `<svg viewBox="0 0 24 24" height="20" width="18" preserveAspectRatio="xMidYMid meet" class="" fill="none"><title>image-refreshed</title><path d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21H5ZM5 19H19V5H5V19ZM7 17H17C17.2 17 17.35 16.9083 17.45 16.725C17.55 16.5417 17.5333 16.3667 17.4 16.2L14.65 12.525C14.55 12.3917 14.4167 12.325 14.25 12.325C14.0833 12.325 13.95 12.3917 13.85 12.525L11.25 16L9.4 13.525C9.3 13.3917 9.16667 13.325 9 13.325C8.83333 13.325 8.7 13.3917 8.6 13.525L6.6 16.2C6.46667 16.3667 6.45 16.5417 6.55 16.725C6.65 16.9083 6.8 17 7 17Z" fill="currentColor"></path></svg> Foto`;
-                else if(msg.reply_type === 'audio') rContent = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`;
-
-                replyData = { username: rName, content: rContent };
+            let rd = null;
+            if (msg.reply_to_id) {
+                rd = resolveReplyData(msg);
             }
-            appendMessageUI(msg.content, type, msg.timestamp, msg.id, msg.type, replyData);
+            appendMessageUI(msg.content, msg.from_user_id === myUser.id ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption);
         });
         messagesList.scrollTop = messagesList.scrollHeight;
-    } catch (err) { 
-        console.error(err);
-        messagesList.innerHTML = '<li style="text-align:center;color:red">Error cargando mensajes</li>'; 
-    }
-}
-backBtn.addEventListener('click', () => chatContainer.classList.remove('mobile-chat-active'));
-
-// --- AUDIO LOGIC & BUTTON CONTROL ---
-
-// 1. Estado del botón
-function updateButtonState() {
-    if (isRecording) {
-        mainActionBtn.innerHTML = SEND_ICON;
     } else {
-        const hasText = inputMsg.value.trim().length > 0;
-        mainActionBtn.innerHTML = hasText ? SEND_ICON : MIC_ICON;
+        messagesList.innerHTML = '<li style="text-align:center;color:red">Error cargando mensajes</li>';
     }
 }
 
-// 2. Event Listener Input
-inputMsg.addEventListener('input', () => {
-    updateButtonState();
-    if(currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId });
+function updateChatHeaderInfo(u) {
+    getEl('chatTitle').innerHTML = escapeHtml(myNicknames[u.userId] || u.username) + getBadgeHtml(u);
+}
+
+function resolveReplyData(msg) {
+    let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
+    let rContent = msg.reply_content;
+    
+    if (msg.reply_type === 'image') rContent = ICONS.replyImage;
+    else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
+    
+    return { username: rName, content: rContent, type: msg.reply_type };
+}
+
+/**
+ * ==========================================
+ * EDITOR DE IMÁGENES
+ * ==========================================
+ */
+const chatImageInput = getEl('chatImageInput');
+const imageEditorModal = getEl('imageEditorModal');
+const imageToEdit = getEl('imageToEdit');
+
+chatImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        if (cropper) { cropper.destroy(); cropper = null; }
+        
+        imageToEdit.src = evt.target.result;
+        imageEditorModal.classList.remove('hidden');
+        getEl('imageCaptionInput').value = '';
+        getEl('imageCaptionInput').focus();
+
+        imageToEdit.onload = () => {
+            cropper = new Cropper(imageToEdit, {
+                viewMode: 1, dragMode: 'move', autoCropArea: 0.9, restore: false, guides: true,
+                center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true,
+                toggleDragModeOnDblclick: false, background: false, modal: true, 
+                minContainerWidth: 300, minContainerHeight: 300
+            });
+        };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset input
 });
 
-// 3. Event Listener Botón Principal
+getEl('sendImageBtn').addEventListener('click', () => {
+    if (!cropper) return;
+    
+    const btn = getEl('sendImageBtn');
+    btn.innerHTML = '...';
+
+    cropper.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('image', blob, 'edited-image.jpg');
+
+        const data = await apiRequest('/api/upload-chat-image', 'POST', formData);
+        
+        if (data) {
+            socket.emit('private message', {
+                content: data.imageUrl,
+                toUserId: currentTargetUserId,
+                type: 'image',
+                replyToId: currentReplyId,
+                caption: getEl('imageCaptionInput').value.trim()
+            }, (res) => {
+                appendMessageUI(res.content, 'me', res.timestamp, res.id, 'image', null, false, res.caption);
+            });
+            clearReply();
+            imageEditorModal.classList.add('hidden');
+        } else {
+            alert("Error al enviar imagen");
+        }
+
+        btn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
+        if(cropper) { cropper.destroy(); cropper = null; }
+    }, 'image/jpeg', 0.8);
+});
+
+getEl('closeEditorBtn').addEventListener('click', () => {
+    imageEditorModal.classList.add('hidden');
+    if (cropper) cropper.destroy();
+});
+getEl('rotateBtn').addEventListener('click', () => cropper?.rotate(90));
+getEl('resetCropBtn').addEventListener('click', () => cropper?.reset());
+
+/**
+ * ==========================================
+ * AUDIO (GRABACIÓN Y REPRODUCCIÓN)
+ * ==========================================
+ */
+const inputMsg = getEl('input');
+const mainActionBtn = getEl('mainActionBtn');
+
+function updateButtonState() {
+    const hasText = inputMsg.value.trim().length > 0;
+    mainActionBtn.innerHTML = isRecording ? ICONS.send : (hasText ? ICONS.send : ICONS.mic);
+}
+
 mainActionBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-
-    if (isRecording) {
-        stopRecording();
-        return;
-    }
-
+    if (isRecording) return stopRecording();
+    
     const text = inputMsg.value.trim();
     if (text.length > 0) {
         sendMessage(text, 'text', currentReplyId);
         inputMsg.value = '';
+        inputMsg.style.height = 'auto';
+        inputMsg.focus();
         clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
-        updateButtonState(); 
-        return;
+        updateButtonState();
+    } else {
+        startRecording();
     }
-
-    // Input vacío -> Grabar
-    startRecording();
 });
 
-// 4. Funciones de Grabación
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
-
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
-
+        
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
             if (shouldSendAudio) {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                await uploadAudio(audioBlob);
+                const fd = new FormData();
+                fd.append('audio', new Blob(audioChunks, { type: 'audio/webm' }), 'recording.webm');
+                const data = await apiRequest('/api/upload-audio', 'POST', fd);
+                if (data) {
+                    sendMessage(data.audioUrl, 'audio', currentReplyId);
+                    clearReply();
+                }
             }
-            stream.getTracks().forEach(track => track.stop());
         };
 
-        // UI
         isRecording = true;
         shouldSendAudio = true;
-        inputStack.classList.add('recording');
-        recordingUI.classList.remove('hidden');
-        updateButtonState();
         
-        // Timer
-        let seconds = 0;
-        recordingTimer.innerText = "0:00";
+        getEl('inputStack').classList.add('recording');
+        getEl('recordingUI').classList.remove('hidden');
+        updateButtonState();
+
+        let s = 0;
+        getEl('recordingTimer').innerText = "0:00";
         recordingInterval = setInterval(() => {
-            seconds++;
-            const m = Math.floor(seconds / 60);
-            const s = seconds % 60;
-            recordingTimer.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+            s++;
+            getEl('recordingTimer').innerText = `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
         }, 1000);
 
         mediaRecorder.start();
-
-    } catch (err) {
-        console.error("Error al acceder al micrófono:", err);
-        alert("No se pudo acceder al micrófono.");
+    } catch (e) {
+        alert("Sin acceso al micrófono");
     }
 }
 
 function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    if (mediaRecorder?.state !== 'inactive') {
         mediaRecorder.stop();
         resetRecordingUI();
     }
 }
 
-cancelRecordingBtn.addEventListener('click', () => {
+function resetRecordingUI() {
+    isRecording = false;
+    clearInterval(recordingInterval);
+    getEl('inputStack').classList.remove('recording');
+    getEl('recordingUI').classList.add('hidden');
+    updateButtonState();
+}
+
+getEl('cancelRecordingBtn').addEventListener('click', () => {
     shouldSendAudio = false;
     stopRecording();
 });
 
-function resetRecordingUI() {
-    isRecording = false;
-    clearInterval(recordingInterval);
-    inputStack.classList.remove('recording');
-    recordingUI.classList.add('hidden');
-    updateButtonState();
+/**
+ * ==========================================
+ * STICKERS
+ * ==========================================
+ */
+const stickerPanel = getEl('stickerPanel');
+
+const switchStickerTab = (tab) => {
+    currentStickerTab = tab;
+    getEl('tabGiphy').classList.toggle('active', tab === 'giphy');
+    getEl('tabFavs').classList.toggle('active', tab === 'favorites');
+    getEl('stickerHeaderSearch').classList.toggle('hidden', tab !== 'giphy');
+    
+    if (tab === 'giphy') loadStickers(getEl('stickerSearch').value);
+    else loadFavoritesFromServer();
+};
+
+if (getEl('tabGiphy')) {
+    getEl('tabGiphy').addEventListener('click', () => switchStickerTab('giphy'));
+    getEl('tabFavs').addEventListener('click', () => switchStickerTab('favorites'));
 }
 
-async function uploadAudio(blob) {
-    const formData = new FormData();
-    formData.append('audio', blob, 'recording.webm'); 
-    try {
-        const res = await fetch('/api/upload-audio', {
-            method: 'POST',
-            body: formData
+getEl('btnStickers').addEventListener('click', () => {
+    stickerPanel.classList.toggle('hidden');
+    if (!stickerPanel.classList.contains('hidden')) {
+        refreshFavoritesCache().then(() => {
+            currentStickerTab === 'giphy' ? loadStickers() : loadFavoritesFromServer();
         });
-        if (res.ok) {
-            const data = await res.json();
-            sendMessage(data.audioUrl, 'audio', currentReplyId);
-            clearReply();
-        } 
-    } catch (err) { console.error(err); }
+    }
+});
+
+getEl('stickerSearch').addEventListener('input', (e) => {
+    if (currentStickerTab !== 'giphy') return;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadStickers(e.target.value), 500);
+});
+
+async function refreshFavoritesCache() {
+    const list = await apiRequest(`/api/favorites/${myUser.id}`);
+    if (list) myFavorites = new Set(list);
 }
 
-// --- SEND & RECEIVE ---
+async function loadStickers(query = '') {
+    const results = getEl('stickerResults');
+    results.innerHTML = '<div class="loading-stickers">Cargando...</div>';
+    
+    const data = await apiRequest(`/api/stickers-proxy?q=${encodeURIComponent(query)}`);
+    if (data?.data) {
+        renderStickersGrid(data.data.map(i => ({
+            url: i.images.fixed_height.url,
+            thumb: i.images.fixed_height_small.url
+        })));
+    } else {
+        results.innerHTML = '<div class="loading-stickers">Error al cargar</div>';
+    }
+}
+
+async function loadFavoritesFromServer() {
+    const results = getEl('stickerResults');
+    results.innerHTML = '<div class="loading-stickers">Cargando favoritos...</div>';
+    await refreshFavoritesCache();
+    
+    if (!myFavorites.size) {
+        results.innerHTML = '<div class="loading-stickers">Aún no tienes stickers favoritos.</div>';
+    } else {
+        renderStickersGrid(Array.from(myFavorites).map(url => ({ url, thumb: url })));
+    }
+}
+
+function renderStickersGrid(items) {
+    const results = getEl('stickerResults');
+    results.innerHTML = '';
+    
+    if (!items.length) {
+        results.innerHTML = '<div class="loading-stickers">No se encontraron resultados</div>';
+        return;
+    }
+
+    items.forEach(item => {
+        if (!isValidUrl(item.thumb) || !isValidUrl(item.url)) return;
+        
+        const wrap = document.createElement('div');
+        wrap.className = 'sticker-item-wrapper';
+        
+        const img = document.createElement('img');
+        img.src = escapeHtml(item.thumb);
+        img.className = 'sticker-thumb';
+        img.loading = "lazy";
+        img.onclick = () => {
+            sendSticker(item.url);
+            stickerPanel.classList.add('hidden');
+        };
+
+        const btn = document.createElement('button');
+        btn.className = `fav-action-btn ${myFavorites.has(item.url) ? 'is-fav' : ''}`;
+        btn.innerHTML = '★';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            toggleFavoriteSticker(item.url, btn, wrap);
+        };
+
+        wrap.append(img, btn);
+        results.appendChild(wrap);
+    });
+}
+
+async function toggleFavoriteSticker(url, btn, wrap) {
+    if (!isValidUrl(url)) return;
+    
+    const isFav = myFavorites.has(url);
+    const endpoint = isFav ? '/api/favorites/remove' : '/api/favorites/add';
+    const res = await apiRequest(endpoint, 'POST', { url });
+
+    if (res) {
+        if (isFav) myFavorites.delete(url);
+        else myFavorites.add(url);
+        
+        if (btn) btn.classList.toggle('is-fav', !isFav);
+        if (isFav && currentStickerTab === 'favorites' && wrap) wrap.remove();
+    }
+}
+
+const sendSticker = (url) => {
+    if (isValidUrl(url)) {
+        sendMessage(url, 'sticker', currentReplyId);
+        clearReply();
+    }
+};
+
+// --- Modal Opciones Sticker ---
+function openStickerOptions(url) {
+    toggleStickerModal(true, url);
+}
+
+const toggleStickerModal = (show, url = null) => {
+    const modal = getEl('stickerOptionsModal');
+    modal.classList.toggle('hidden', !show);
+    
+    if (show && url && isValidUrl(url)) {
+        currentStickerUrlInModal = url;
+        getEl('stickerModalPreview').src = escapeHtml(url);
+        
+        const isFav = myFavorites.has(url);
+        getEl('stickerFavIcon').textContent = isFav ? '★' : '☆';
+        getEl('stickerFavText').textContent = isFav ? 'Eliminar de favoritos' : 'Añadir a favoritos';
+        getEl('btnStickerFavAction').classList.toggle('is-favorite', isFav);
+    } else {
+        currentStickerUrlInModal = null;
+    }
+};
+
+getEl('stickerModalBackdrop')?.addEventListener('click', () => toggleStickerModal(false));
+getEl('btnStickerClose')?.addEventListener('click', () => toggleStickerModal(false));
+getEl('btnStickerFavAction')?.addEventListener('click', async () => {
+    if (currentStickerUrlInModal) {
+        await toggleFavoriteSticker(currentStickerUrlInModal, null, null);
+        // Refresh visual
+        toggleStickerModal(true, currentStickerUrlInModal);
+        setTimeout(() => toggleStickerModal(false), 200);
+    }
+});
+
+/**
+ * ==========================================
+ * ENVÍO DE MENSAJES Y SOCKETS
+ * ==========================================
+ */
 
 function sendMessage(content, type, replyId = null) {
-    if(!currentTargetUserId) return;
-    socket.emit('private message', { content, toUserId: currentTargetUserId, type, replyToId: replyId }, (response) => {
-        if (response && response.id) {
-            let replyData = null;
-            if(replyId) {
-                replyData = { 
-                    username: replyToName.textContent, 
-                    content: replyToText.textContent 
+    if (!currentTargetUserId) return;
+    if ((type === 'image' || type === 'sticker') && !isValidUrl(content)) return alert("Error de seguridad");
+
+    socket.emit('private message', { content, toUserId: currentTargetUserId, type, replyToId: replyId }, (res) => {
+        if (res?.id) {
+            let rd = null;
+            if (replyId) {
+                rd = {
+                    username: getEl('replyToName').textContent,
+                    content: getEl('replyToText').innerHTML,
+                    type: type
                 };
             }
-            appendMessageUI(content, 'me', new Date(), response.id, type, replyData);
-            messagesList.scrollTop = messagesList.scrollHeight;
+            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption);
+            getEl('messages').scrollTop = getEl('messages').scrollHeight;
         }
     });
 }
 
-socket.on('private message', ({ id, content, fromUserId, timestamp, type, replyToId, reply_content, reply_type, reply_from_id }) => {
-    if (currentTargetUserId === fromUserId) {
-        let replyData = null;
-        if(replyToId) {
-            let rName = "Usuario";
-            if (reply_from_id === myUser.id) rName = "Tú";
-            else if (myNicknames[reply_from_id]) rName = myNicknames[reply_from_id];
-            else if (allUsersCache.find(u => u.userId == reply_from_id)) rName = allUsersCache.find(u => u.userId == reply_from_id).username;
-
-            let rText = reply_content;
-            if (reply_type === 'image') rText = "📷 Foto";
-            else if (reply_type === 'sticker') rText = "✨ Sticker";
-            else if(msg.reply_type === 'audio') rContent = `<svg viewBox="0 0 15 15" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`;
-
-            replyData = { username: rName, content: rText };
-        }
-        appendMessageUI(content, 'other', timestamp, id, type || 'text', replyData);
-        messagesList.scrollTop = messagesList.scrollHeight;
-    } 
-});
-
-socket.on('message deleted', ({ messageId }) => {
-    const el = document.getElementById(`msg-${messageId}`);
-    if (el) {
-        const row = el.closest('.message-row');
-        if(row) {
-            row.style.transition = "opacity 0.3s, transform 0.3s";
-            row.style.opacity = "0";
-            setTimeout(() => row.remove(), 300);
-        }
-    }
-});
-
-// --- RENDER MESSAGE UI (UPDATED FOR AUDIO & CLICKABLE STICKERS + SKELETON LOADING) ---
-function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null) {
+function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null) {
     const li = document.createElement('li');
     li.className = `message-row ${ownerType}`;
-    
-    if(msgType === 'sticker') li.classList.add('sticker-wrapper');
-
+    if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
-    const ownerId = (ownerType === 'me') ? myUser.id : currentTargetUserId;
-    
-    // HTML del Reply
+
+    // Construcción de la cita (Reply)
     let quoteHtml = '';
-    if(replyData) {
-        quoteHtml = `
-            <div class="quoted-message">
-                <div class="quoted-name">${replyData.username}</div>
-                <div class="quoted-text">${replyData.content}</div>
-            </div>`;
+    if (replyData) {
+        const safeReplyName = escapeHtml(replyData.username);
+        const safeReplyText = (replyData.type === 'text' || !replyData.type) ? escapeHtml(replyData.content) : replyData.content;
+        quoteHtml = `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>`;
     }
 
+    // Construcción del cuerpo del mensaje
     let bodyHtml = '';
-
-    // --- LÓGICA DE AUDIO PERSONALIZADO ---
-     if (msgType === 'audio') {
-        // CAMBIO: Usamos profile.png en lugar del SVG base64
-        const defaultAvatar = '/profile.png';
-        
-        const avatarUrl = (ownerType === 'me') 
-            ? (myUser.avatar || defaultAvatar) 
-            : (currentTargetUserObj.avatar || defaultAvatar);
-
-        const uniqueAudioId = `audio-${msgId}-${Date.now()}`;
-        
-        const msgDateObj = new Date(dateStr);
-        const msgTimeStr = msgDateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-        bodyHtml = `
-            <div class="custom-audio-player">
-                <img src="${avatarUrl}" class="audio-avatar-img" alt="Avatar" onerror="this.style.display='none'">
-                <audio id="${uniqueAudioId}" src="${content}" preload="metadata" class="hidden-audio-element"></audio>
-                <button class="audio-control-btn" id="btn-${uniqueAudioId}">
-                    <svg viewBox="0 0 34 34" height="34" width="34" preserveAspectRatio="xMidYMid meet" class="" version="1.1" x="0px" y="0px" enable-background="new 0 0 34 34"><title>audio-play</title><path fill="currentColor" d="M8.5,8.7c0-1.7,1.2-2.4,2.6-1.5l14.4,8.3c1.4,0.8,1.4,2.2,0,3l-14.4,8.3 c-1.4,0.8-2.6,0.2-2.6-1.5V8.7z"></path></svg>
-                </button>
-                <div class="audio-right-col">
-                    <div class="audio-slider-container">
-                        <div class="waveform-bg"></div>
-                        <div class="waveform-fill" id="fill-${uniqueAudioId}"></div>
-                        <input type="range" class="audio-slider" id="slider-${uniqueAudioId}" value="0" min="0" step="0.1">
+    const safeContent = isValidUrl(content) ? escapeHtml(content) : '';
+    
+    switch (msgType) {
+        case 'audio':
+            if (safeContent) {
+                const uid = `audio-${msgId}-${Date.now()}`;
+                let avatarUrl = ownerType === 'me' ? (myUser.avatar || '/profile.png') : (currentTargetUserObj.avatar || '/profile.png');
+                if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
+                
+                bodyHtml = `
+                <div class="custom-audio-player">
+                    <img src="${escapeHtml(avatarUrl)}" class="audio-avatar-img">
+                    <audio id="${uid}" src="${safeContent}" preload="metadata"></audio>
+                    <button class="audio-control-btn" id="btn-${uid}">${ICONS.play}</button>
+                    <div class="audio-right-col">
+                        <div class="audio-slider-container">
+                            <div class="waveform-bg"></div>
+                            <div class="waveform-fill" id="fill-${uid}"></div>
+                            <input type="range" class="audio-slider" id="slider-${uid}" value="0" step="0.1">
+                        </div>
+                        <div class="audio-meta-row">
+                            <span class="audio-duration" id="time-${uid}">0:00</span>
+                            <span class="audio-msg-time">${formatTime(dateStr)}</span>
+                        </div>
                     </div>
-                    <div class="audio-meta-row">
-                        <span class="audio-duration" id="time-${uniqueAudioId}">0:00</span>
-                        <span class="audio-msg-time">${msgTimeStr}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        setTimeout(() => initAudioPlayer(uniqueAudioId), 0);
-    } 
-    // --- LÓGICA DE IMAGEN CON SKELETON LOADING ---
-    else if (msgType === 'image') {
-        bodyHtml = `
-            <div class="chat-image-container skeleton-wrapper image-skeleton">
-                <img src="${content}" 
-                     class="chat-image hidden-media" 
-                     loading="lazy" 
-                     onclick="viewFullImage(this.src)"
-                     onload="this.classList.remove('hidden-media'); this.classList.add('visible-media'); this.parentElement.classList.add('loaded'); this.parentElement.classList.remove('image-skeleton', 'skeleton-wrapper');">
-            </div>`;
-    } 
-    // --- LÓGICA DE STICKER CON SKELETON LOADING ---
-    else if (msgType === 'sticker') {
-        bodyHtml = `
-            <div class="skeleton-wrapper sticker-skeleton">
-                <img src="${content}" 
-                     class="sticker-img hidden-media" 
-                     data-url="${content}" 
-                     alt="sticker"
-                     onload="this.classList.remove('hidden-media'); this.classList.add('visible-media'); this.parentElement.classList.add('loaded'); this.parentElement.classList.remove('sticker-skeleton', 'skeleton-wrapper');">
-            </div>`;
-    }
-    else {
-        bodyHtml = `<span>${content}</span>`;
+                </div>`;
+                // Se asume que initAudioPlayer existe o está definido en el código original global
+                setTimeout(() => typeof initAudioPlayer === 'function' && initAudioPlayer(uid), 0);
+            }
+            break;
+            
+        case 'image':
+            if (safeContent) {
+                const safeCaption = caption ? escapeHtml(caption) : '';
+                const captionHtml = caption ? `<div class="msg-caption">${safeCaption}</div>` : '';
+                bodyHtml = `<div class="chat-image-container skeleton-wrapper image-skeleton">
+                                <img src="${safeContent}" class="chat-image hidden-media" loading="lazy" 
+                                onclick="viewFullImage(this.src)" 
+                                onload="this.classList.remove('hidden-media');this.classList.add('visible-media');this.parentElement.classList.remove('image-skeleton','skeleton-wrapper');">
+                            </div>${captionHtml}`;
+            } else {
+                bodyHtml = `<div class="msg-error">[Imagen inválida]</div>`;
+            }
+            break;
+            
+        case 'sticker':
+            if (safeContent) {
+                bodyHtml = `<div class="skeleton-wrapper sticker-skeleton">
+                                <img src="${safeContent}" class="sticker-img hidden-media" data-url="${safeContent}"
+                                onload="this.classList.remove('hidden-media');this.classList.add('visible-media');this.parentElement.classList.remove('sticker-skeleton','skeleton-wrapper');">
+                            </div>`;
+            } else {
+                bodyHtml = `<div class="msg-error">[Sticker inválido]</div>`;
+            }
+            break;
+            
+        default:
+            bodyHtml = `<span>${escapeHtml(content)}</span>`;
+            break;
     }
 
-    const date = new Date(dateStr);
-    const time = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-    const metaStyle = (msgType === 'audio') ? 'display: none !important;' : '';
+    const deletedLabel = isDeleted ? `<div class="deleted-label">🚫 ELIMINADO</div>` : '';
+    const meta = msgType !== 'audio' ? `<div class="meta-row"><span class="meta">${formatTime(dateStr)}</span></div>` : '';
+    const wrapperStyle = isDeleted ? 'style="border:1px dashed #ef4444;opacity:0.7"' : '';
 
     li.innerHTML = `
-        <div class="swipe-reply-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 14 4 9 9 4"></polyline>
-                <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
-            </svg>
-        </div>
-        <div class="message-content-wrapper message ${ownerType}" id="msg-${msgId}">
-            ${quoteHtml}
-            ${bodyHtml}
-            <div class="meta-row" style="${metaStyle}"><span class="meta">${time}</span></div>
-        </div>
-    `;
+        <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
+        <div class="message-content-wrapper message ${ownerType} ${isDeleted ? 'deleted-msg' : ''} ${msgType === 'image' ? 'msg-image-wrapper' : ''}" id="msg-${msgId}" ${wrapperStyle}>
+            ${deletedLabel}${quoteHtml}${bodyHtml}${meta}
+        </div>`;
 
-    messagesList.appendChild(li);
+    getEl('messages').appendChild(li);
 
-    // --- AGREGAR LISTENER DE CLICK AL STICKER RENDERIZADO ---
-    if (msgType === 'sticker') {
-        const renderedImg = li.querySelector('.sticker-img');
-        if (renderedImg) {
-            renderedImg.addEventListener('click', (e) => {
-                e.stopPropagation(); // Evitar propagación a eventos del contenedor
-                // Si la cache está vacía, la llenamos antes de abrir el modal para que el estado de favorito sea correcto
-                if (myFavorites.size === 0) {
-                    refreshFavoritesCache().then(() => openStickerOptions(content));
-                } else {
-                    openStickerOptions(content);
-                }
-            });
-        }
+    // Eventos extra para stickers e imágenes
+    if (msgType === 'sticker' && isValidUrl(content)) {
+        li.querySelector('.sticker-img').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (myFavorites.size) openStickerOptions(content);
+            else refreshFavoritesCache().then(() => openStickerOptions(content));
+        });
     }
 
     const wrapper = li.querySelector('.message-content-wrapper');
     if (ownerType === 'me') addLongPressEvent(wrapper, msgId);
-    addSwipeEvent(li, wrapper, msgId, content, msgType, ownerId);
+    addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
 }
 
-window.viewFullImage = function(src) {
-    const modal = document.createElement('div');
-    modal.className = 'fullscreen-img-modal';
-    modal.innerHTML = `<img src="${src}" class="fullscreen-img">`;
-    modal.addEventListener('click', () => modal.remove());
-    document.body.appendChild(modal);
+// Fullscreen Image
+window.viewFullImage = (src) => {
+    if (!isValidUrl(src)) return;
+    const m = document.createElement('div');
+    m.className = 'fullscreen-img-modal';
+    m.innerHTML = `<img src="${escapeHtml(src)}" class="fullscreen-img">`;
+    m.onclick = () => m.remove();
+    document.body.appendChild(m);
+};
+
+// --- REPLY Y INPUTS ---
+function setReply(msgId, content, type, ownerId) {
+    currentReplyId = msgId;
+    let name = ownerId === myUser.id ? "Tú" : (myNicknames[ownerId] || allUsersCache.find(u => u.userId == ownerId)?.username || "Usuario");
+    
+    getEl('replyToName').textContent = escapeHtml(name);
+    getEl('replyToImagePreview').classList.add('hidden');
+    getEl('replyToImagePreview').style.backgroundImage = 'none';
+
+    if (type === 'image') {
+        getEl('replyToText').innerHTML = ICONS.replyImage;
+        if (isValidUrl(content)) {
+            getEl('replyToImagePreview').style.backgroundImage = `url('${escapeHtml(content)}')`;
+            getEl('replyToImagePreview').classList.remove('hidden');
+        }
+    } else if (type === 'sticker') {
+        if (isValidUrl(content)) getEl('replyToText').innerHTML = `<img src="${escapeHtml(content)}" class="reply-sticker-preview">`;
+        else getEl('replyToText').innerHTML = "Sticker";
+    } else if (type === 'audio') {
+        getEl('replyToText').innerHTML = ICONS.replyAudio;
+    } else {
+        getEl('replyToText').textContent = content;
+    }
+
+    getEl('replyPreview').classList.remove('hidden');
+    getEl('inputStack')?.classList.add('active');
+    inputMsg.focus();
 }
 
-// --- GESTOS ---
-function addSwipeEvent(row, wrapper, msgId, content, type, ownerId) {
+function clearReply() {
+    currentReplyId = null;
+    getEl('replyPreview').classList.add('hidden');
+    getEl('inputStack')?.classList.remove('active');
+}
+getEl('closeReplyBtn').addEventListener('click', clearReply);
+getEl('btnImage').addEventListener('click', () => chatImageInput.click());
+
+// --- SOCKET LISTENERS ---
+
+socket.on('users', (users) => {
+    allUsersCache = users;
+    
+    if (currentTargetUserId) {
+        const updated = users.find(u => u.userId === currentTargetUserId);
+        if (updated) {
+            currentTargetUserObj = updated;
+            updateChatHeaderInfo(updated);
+            if (myUser.is_admin) {
+                const btn = getEl('toggleVerifyBtn');
+                if (btn) btn.textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+            }
+        }
+    }
+
+    const me = users.find(u => u.userId === myUser.id);
+    if (me) {
+        if (!myUser.is_verified && me.is_verified) getEl('verificationSuccessModal').classList.remove('hidden');
+        myUser.is_verified = me.is_verified;
+        myUser.is_admin = me.is_admin;
+        localStorage.setItem('chatUser', JSON.stringify(myUser));
+    }
+    applyUserFilter();
+});
+
+socket.on('private message', (msg) => {
+    if (currentTargetUserId === msg.fromUserId) {
+        let rd = null;
+        if (msg.replyToId) {
+            rd = {
+                username: msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario"),
+                content: msg.reply_type === 'image' ? ICONS.replyImage : (msg.reply_type === 'sticker' ? "✨ Sticker" : (msg.reply_type === 'audio' ? "Mensaje de voz" : msg.reply_content)),
+                type: msg.reply_type
+            };
+        }
+        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption);
+        getEl('messages').scrollTop = getEl('messages').scrollHeight;
+    }
+});
+
+socket.on('message deleted', ({ messageId }) => {
+    const el = getEl(`msg-${messageId}`);
+    if (!el) return;
+    const row = el.closest('.message-row');
+    
+    if (myUser?.is_admin) {
+        const wrap = row.querySelector('.message-content-wrapper');
+        if (wrap && !wrap.classList.contains('deleted-msg')) {
+            wrap.classList.add('deleted-msg');
+            wrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
+            wrap.insertAdjacentHTML('afterbegin', `<div class="deleted-label">🚫 ELIMINADO</div>`);
+        }
+    } else {
+        row.style.cssText = "opacity:0; transition: opacity 0.3s";
+        setTimeout(() => row.remove(), 300);
+    }
+});
+
+socket.on('user_updated_profile', ({ userId, avatar }) => {
+    const u = allUsersCache.find(x => x.userId == userId);
+    let safeAvatar = (avatar && isValidUrl(avatar)) ? avatar : '/profile.png';
+    
+    if (u) u.avatar = avatar;
+    
+    if (myUser.id == userId) {
+        myUser.avatar = avatar;
+        localStorage.setItem('chatUser', JSON.stringify(myUser));
+        updateMyAvatarUI(avatar);
+    }
+    
+    const sbItem = document.querySelector(`.user-item[data-uid="${userId}"] .u-avatar`);
+    if (sbItem) sbItem.style.backgroundImage = `url('${escapeHtml(safeAvatar)}')`;
+    
+    if (currentTargetUserId == userId) {
+        currentTargetUserObj.avatar = avatar;
+        getEl('currentChatAvatar').style.backgroundImage = `url('${escapeHtml(safeAvatar)}')`;
+    }
+    
+    // Actualizar avatares en mensajes de audio
+    document.querySelectorAll(`.message.${myUser.id == userId ? 'me' : 'other'} .audio-avatar-img`).forEach(img => img.src = safeAvatar);
+});
+
+socket.on('nicknames', (map) => {
+    myNicknames = map;
+    if (allUsersCache.length) renderUserList(allUsersCache);
+    if (currentTargetUserObj) updateChatHeaderInfo(currentTargetUserObj);
+});
+
+socket.on('typing', ({ fromUserId, username }) => {
+    if (fromUserId === currentTargetUserId) {
+        getEl('typingText').textContent = `${escapeHtml(myNicknames[fromUserId] || username)} está escribiendo...`;
+        getEl('typingIndicator').classList.remove('hidden');
+    }
+});
+
+socket.on('stop typing', ({ fromUserId }) => {
+    if (fromUserId === currentTargetUserId) getEl('typingIndicator').classList.add('hidden');
+});
+
+// --- GESTOS Y EVENTOS EXTRA ---
+function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
     const icon = row.querySelector('.swipe-reply-icon');
-    let startX = 0;
-    let currentX = 0;
-    let isSwiping = false;
-    const THRESHOLD = 70;
-
-    wrapper.addEventListener('touchstart', (e) => {
+    let startX = 0, currentX = 0, isSwiping = false;
+    
+    wrap.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         isSwiping = true;
-        wrapper.style.transition = 'none';
-        icon.style.transition = 'none';
+        wrap.style.transition = 'none';
     }, { passive: true });
-
-    wrapper.addEventListener('touchmove', (e) => {
+    
+    wrap.addEventListener('touchmove', (e) => {
         if (!isSwiping) return;
         const diff = e.touches[0].clientX - startX;
-        
-        if (diff > 0 && diff < 200) { 
+        if (diff > 0 && diff < 200) {
             currentX = diff;
-            wrapper.style.transform = `translateX(${currentX}px)`;
-            const progress = Math.min(currentX / THRESHOLD, 1);
-            icon.style.opacity = progress;
-            icon.style.transform = `translateY(-50%) scale(${0.5 + (progress * 0.5)})`;
+            wrap.style.transform = `translateX(${diff}px)`;
+            const p = Math.min(diff / 70, 1);
+            icon.style.opacity = p;
+            icon.style.transform = `translateY(-50%) scale(${0.5 + p * 0.5})`;
             icon.style.left = '10px';
         }
     }, { passive: true });
-
-    const endSwipe = () => {
+    
+    const end = () => {
         if (!isSwiping) return;
         isSwiping = false;
-        
-        wrapper.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        wrap.style.transition = 'transform 0.2s ease';
         icon.style.transition = 'all 0.2s';
-
-        if (currentX >= THRESHOLD) {
-            if(navigator.vibrate) navigator.vibrate(30);
+        if (currentX >= 70) {
+            if (navigator.vibrate) navigator.vibrate(30);
             setReply(msgId, content, type, ownerId);
         }
-
-        wrapper.style.transform = 'translateX(0)';
+        wrap.style.transform = 'translateX(0)';
         icon.style.opacity = '0';
-        icon.style.transform = 'translateY(-50%) scale(0.5)';
-        currentX = 0;
     };
-    wrapper.addEventListener('touchend', endSwipe);
-    wrapper.addEventListener('touchcancel', endSwipe);
+    
+    wrap.addEventListener('touchend', end);
+    wrap.addEventListener('touchcancel', end);
 }
 
-function addLongPressEvent(element, msgId) {
-    let pressTimer;
-    const LONG_PRESS_DURATION = 600; 
-    const startPress = (e) => {
-        if (element.style.transform && element.style.transform !== 'translateX(0px)') return;
-        element.classList.add('pressing');
-        let cx = e.clientX || (e.touches && e.touches[0].clientX);
-        let cy = e.clientY || (e.touches && e.touches[0].clientY);
-        pressTimer = setTimeout(() => openContextMenu(cx, cy, msgId), LONG_PRESS_DURATION);
+function addLongPressEvent(el, msgId) {
+    let timer;
+    const start = (e) => {
+        if (el.style.transform && el.style.transform !== 'translateX(0px)') return;
+        el.classList.add('pressing');
+        const cx = e.clientX || e.touches[0].clientX;
+        const cy = e.clientY || e.touches[0].clientY;
+        timer = setTimeout(() => openContextMenu(cx, cy, msgId), 600);
     };
-    const cancelPress = () => { clearTimeout(pressTimer); element.classList.remove('pressing'); };
-    element.addEventListener('mousedown', (e) => { if(e.button === 0) startPress(e); });
-    element.addEventListener('mouseup', cancelPress);
-    element.addEventListener('mouseleave', cancelPress);
-    element.addEventListener('touchstart', startPress, { passive: true });
-    element.addEventListener('touchend', cancelPress);
-    element.addEventListener('touchmove', cancelPress);
+    const cancel = () => {
+        clearTimeout(timer);
+        el.classList.remove('pressing');
+    };
+    
+    el.addEventListener('mousedown', (e) => { if (e.button === 0) start(e); });
+    ['mouseup', 'mouseleave', 'touchend', 'touchmove'].forEach(ev => el.addEventListener(ev, cancel));
+    el.addEventListener('touchstart', start, { passive: true });
 }
 
 function openContextMenu(x, y, msgId) {
     messageIdToDelete = msgId;
-    const menuContent = msgContextMenu.querySelector('.context-menu-content');
-    msgContextMenu.classList.remove('hidden');
-    let top = y, left = x;
+    const menuContent = getEl('msgContextMenu').querySelector('.context-menu-content');
+    getEl('msgContextMenu').classList.remove('hidden');
+    
     if (window.innerWidth <= 768) {
-        menuContent.style.position = 'fixed';
-        menuContent.style.top = '50%'; menuContent.style.left = '50%';
-        menuContent.style.transform = 'translate(-50%, -50%)';
+        menuContent.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)';
     } else {
-        menuContent.style.position = 'absolute';
-        menuContent.style.transform = 'none';
-        if (x + 200 > window.innerWidth) left = x - 200;
-        if (y + 100 > window.innerHeight) top = y - 100;
-        menuContent.style.top = `${top}px`; menuContent.style.left = `${left}px`;
+        const top = Math.min(y, window.innerHeight - 100);
+        const left = Math.min(x, window.innerWidth - 200);
+        menuContent.style.cssText = `position:absolute;top:${top}px;left:${left}px`;
     }
 }
+
+// Eventos Context Menu
+const msgContextMenu = getEl('msgContextMenu');
 msgContextMenu.addEventListener('click', (e) => {
-    if (e.target === msgContextMenu) { msgContextMenu.classList.add('hidden'); messageIdToDelete = null; }
+    if (e.target === msgContextMenu) {
+        msgContextMenu.classList.add('hidden');
+        messageIdToDelete = null;
+    }
 });
-ctxDeleteBtn.addEventListener('click', () => {
-    msgContextMenu.classList.add('hidden'); deleteConfirmModal.classList.remove('hidden');
+getEl('ctxDeleteBtn').addEventListener('click', () => {
+    msgContextMenu.classList.add('hidden');
+    getEl('deleteConfirmModal').classList.remove('hidden');
 });
-cancelDeleteBtn.addEventListener('click', () => {
-    deleteConfirmModal.classList.add('hidden'); messageIdToDelete = null;
+getEl('cancelDelete').addEventListener('click', () => {
+    getEl('deleteConfirmModal').classList.add('hidden');
+    messageIdToDelete = null;
 });
-confirmDeleteBtn.addEventListener('click', () => {
+getEl('confirmDelete').addEventListener('click', () => {
     if (messageIdToDelete && currentTargetUserId) {
         socket.emit('delete message', { messageId: messageIdToDelete, toUserId: currentTargetUserId });
     }
-    deleteConfirmModal.classList.add('hidden'); messageIdToDelete = null;
+    getEl('deleteConfirmModal').classList.add('hidden');
+    messageIdToDelete = null;
 });
 
-socket.on('typing', ({ fromUserId, username }) => {
-    if(fromUserId === currentTargetUserId) {
-        const name = myNicknames[fromUserId] || username;
-        typingText.textContent = `${name} está escribiendo...`;
-        typingIndicator.classList.remove('hidden');
-    }
-});
-socket.on('stop typing', ({ fromUserId }) => {
-    if(fromUserId === currentTargetUserId) typingIndicator.classList.add('hidden');
-});
-// --- LÓGICA DEL REPRODUCTOR DE AUDIO ---
-function initAudioPlayer(audioId) {
-    const audio = document.getElementById(audioId);
-    const btn = document.getElementById(`btn-${audioId}`);
-    const slider = document.getElementById(`slider-${audioId}`);
-    const fillBar = document.getElementById(`fill-${audioId}`); // El div de las ondas coloreadas
-    const timeDisplay = document.getElementById(`time-${audioId}`);
+// UI Event Helpers
+getEl('backBtn').addEventListener('click', () => document.querySelector('.chat-container').classList.remove('mobile-chat-active'));
+
+inputMsg.addEventListener('input', () => {
+    inputMsg.style.height = 'auto';
+    inputMsg.style.height = inputMsg.scrollHeight + 'px';
+    const isScroll = inputMsg.scrollHeight >= 120;
+    inputMsg.classList.toggle('scroll-active', isScroll);
+    inputMsg.style.overflowY = isScroll ? 'auto' : 'hidden';
     
-    if(!audio || !btn || !slider || !fillBar) return;
+    updateButtonState();
+    if (currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId });
+});
 
-    const PLAY_ICON = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-    const PAUSE_ICON = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+inputMsg.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (inputMsg.value.trim().length) mainActionBtn.click();
+    }
+});
 
-    const formatTime = (secs) => {
-        if(isNaN(secs)) return "0:00";
-        const m = Math.floor(secs / 60);
-        const s = Math.floor(secs % 60);
-        return `${m}:${s < 10 ? '0' : ''}${s}`;
-    };
+/**
+ * ==========================================
+ * MODALES DE PERFIL Y ADMIN
+ * ==========================================
+ */
 
-    // Función para actualizar visualmente las ondas
-    const updateWaveform = () => {
-        const val = slider.value;
-        const max = slider.max || 100;
-        const percentage = (val / max) * 100;
-        fillBar.style.width = `${percentage}%`;
-    };
+// Perfil Propio
+getEl('profileBtn').addEventListener('click', () => {
+    const nameEl = getEl('profileRealName');
+    const displayName = myUser.display_name || myUser.username;
+    
+    nameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(myUser);
+    getEl('profileHandle').textContent = `@${myUser.username}`;
+    
+    const bioEl = getEl('profileBio');
+    bioEl.textContent = myUser.bio || "Añade una biografía...";
+    bioEl.style.color = !myUser.bio ? "#666" : "#e4e4e7";
 
-    audio.addEventListener('loadedmetadata', () => {
-        slider.max = audio.duration;
-        timeDisplay.innerText = formatTime(audio.duration);
-    });
+    getEl('profileModal').classList.remove('hidden');
+    getEl('profileOptionsMenu')?.classList.add('hidden');
 
-    if (audio.readyState >= 1) {
-        slider.max = audio.duration;
-        timeDisplay.innerText = formatTime(audio.duration);
+    enableInlineEdit('profileRealName', 'display_name');
+    enableInlineEdit('profileHandle', 'username', '@');
+    enableInlineEdit('profileBio', 'bio');
+});
+
+// Info Contacto
+getEl('headerAvatarBtn').addEventListener('click', () => {
+    if (!currentTargetUserObj) return;
+
+    const modal = getEl('contactInfoModal');
+    const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
+
+    getEl('contactInfoName').innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
+    getEl('contactRealUsername').textContent = `@${currentTargetUserObj.username}`;
+    
+    const bioEl = getEl('contactInfoBio');
+    bioEl.textContent = currentTargetUserObj.bio || "Sin biografía.";
+    bioEl.style.color = currentTargetUserObj.bio ? "#e4e4e7" : "#666";
+
+    let avatarUrl = isValidUrl(currentTargetUserObj.avatar) ? currentTargetUserObj.avatar : '/profile.png';
+    getEl('contactInfoAvatar').style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+
+    const adminSec = getEl('adminActionsSection');
+    if (myUser?.is_admin) {
+        adminSec.classList.remove('hidden');
+        getEl('toggleVerifyBtn').textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+    } else {
+        adminSec.classList.add('hidden');
     }
 
-    btn.addEventListener('click', () => {
-        // Pausar otros
-        document.querySelectorAll('audio').forEach(a => {
-            if(a !== audio) {
-                a.pause();
-                const otherId = a.id.replace('audio-', ''); 
-                const otherBtn = document.getElementById(`btn-${a.id}`);
-                if(otherBtn) otherBtn.innerHTML = PLAY_ICON;
-            }
-        });
+    modal.classList.remove('hidden');
+    enableNicknameEdit('contactInfoName', currentTargetUserObj.userId);
+});
 
-        if (audio.paused) {
-            audio.play();
-            btn.innerHTML = PAUSE_ICON;
-        } else {
-            audio.pause();
-            btn.innerHTML = PLAY_ICON;
+getEl('closeContactInfo').addEventListener('click', () => getEl('contactInfoModal').classList.add('hidden'));
+getEl('closeProfile').addEventListener('click', () => getEl('profileModal').classList.add('hidden'));
+getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSuccessModal').classList.add('hidden'));
+
+// Menú de opciones de perfil
+const profileOptionsBtn = getEl('profileOptionsBtn');
+if (profileOptionsBtn) {
+    profileOptionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        getEl('profileOptionsMenu').classList.toggle('hidden');
+    });
+    
+    document.addEventListener('click', (e) => {
+        const menu = getEl('profileOptionsMenu');
+        if (menu && !menu.contains(e.target) && !profileOptionsBtn.contains(e.target)) {
+            menu.classList.add('hidden');
         }
     });
+}
 
-    audio.addEventListener('timeupdate', () => {
-        slider.value = audio.currentTime;
-        timeDisplay.innerText = formatTime(audio.currentTime); 
-        updateWaveform();
+// Logout & Confirmación
+const logoutBtn = getEl('profileLogout');
+if (logoutBtn) {
+    logoutBtn.replaceWith(logoutBtn.cloneNode(true)); // Limpiar eventos anteriores
+    getEl('profileLogout').addEventListener('click', () => {
+        getEl('profileModal').classList.add('hidden');
+        getEl('confirmModal').classList.remove('hidden');
     });
+}
 
-    slider.addEventListener('input', () => {
-        audio.currentTime = slider.value;
-        timeDisplay.innerText = formatTime(slider.value);
-        updateWaveform();
-    });
+getEl('confirmYes').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    localStorage.removeItem('chatUser');
+    window.location.href = '/login.html';
+});
+getEl('confirmNo').addEventListener('click', () => {
+    getEl('confirmModal').classList.add('hidden');
+    getEl('profileModal').classList.remove('hidden');
+});
 
-    audio.addEventListener('ended', () => {
-        btn.innerHTML = PLAY_ICON;
-        slider.value = 0;
-        audio.currentTime = 0;
-        timeDisplay.innerText = formatTime(audio.duration);
-        updateWaveform();
+// Admin: Verificar Usuario (Optimista + Rollback)
+const toggleVerifyBtn = getEl('toggleVerifyBtn');
+if (toggleVerifyBtn) {
+    toggleVerifyBtn.addEventListener('click', async () => {
+        if (!currentTargetUserObj || !currentTargetUserId) return;
+
+        const previousState = currentTargetUserObj.is_verified;
+        
+        // UI Update Optimista
+        currentTargetUserObj.is_verified = !currentTargetUserObj.is_verified;
+        toggleVerifyBtn.textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+        
+        // Actualizar modales y header
+        const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
+        const modalNameEl = getEl('contactInfoName');
+        if (modalNameEl) modalNameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
+        updateChatHeaderInfo(currentTargetUserObj);
+
+        // API Call
+        try {
+            const res = await apiRequest('/api/admin/toggle-verify', 'POST', { targetUserId: currentTargetUserObj.userId });
+            if (!res || !res.success) throw new Error("Server Error");
+        } catch (error) {
+            // Rollback si falla
+            currentTargetUserObj.is_verified = previousState;
+            updateChatHeaderInfo(currentTargetUserObj);
+            toggleVerifyBtn.textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+            alert("No se pudo actualizar la verificación.");
+        }
     });
 }

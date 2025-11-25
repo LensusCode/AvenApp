@@ -4,36 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0a0a">
-    <title>Iniciar Sesión - Chat App</title>
+    <title>AvenApp - Acceso</title>
     <link rel="stylesheet" href="style.css">
-    <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="icon" type="image/png" href="/icons/icon-192.png">
 </head>
-<body>
+<body class="login-body">
 
-    <!-- Ya no es un modal, es el contenido principal -->
-    <div class="login-container">
-        <div class="login-card">
-            <h2 style="text-align:center; margin-top:0;">Bienvenido</h2>
+    <!-- Contenedor de Notificaciones (Toasts) -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div class="login-fullscreen">
+        <div class="login-content">
+            <div class="logo-area">
+                <!-- Icono opcional -->
+                <img src="/logo.png" alt="Logo AvenApp" class="app-logo">
+                <h1>AvenApp</h1>
+            </div>
+
             <div class="form-toggle">
                 <button id="tabLogin" class="active">Iniciar Sesión</button>
                 <button id="tabRegister">Registrarse</button>
             </div>
-            <form id="loginForm">
-                <input type="text" id="loginUser" placeholder="Usuario" required autocomplete="username" />
-                <input type="password" id="loginPass" placeholder="Contraseña" required autocomplete="current-password" />
-                <button type="submit" class="primary">Entrar</button>
+
+            <!-- LOGIN -->
+            <form id="loginForm" class="auth-form">
+                <div class="input-group">
+                    <input type="text" id="loginUser" placeholder="Usuario" required autocomplete="username" />
+                </div>
+                <div class="input-group">
+                    <input type="password" id="loginPass" placeholder="Contraseña" required autocomplete="current-password" />
+                </div>
+                <button type="submit" class="primary-btn">Entrar</button>
             </form>
-            <form id="registerForm" class="hidden">
-                <input type="text" id="regUser" placeholder="Elige un usuario" required autocomplete="off"/>
-                <input type="password" id="regPass" placeholder="Crea una contraseña" required autocomplete="new-password" />
-                <button type="submit" class="primary">Crear Cuenta</button>
+
+            <!-- REGISTRO -->
+            <form id="registerForm" class="auth-form hidden">
+                <div class="row-inputs">
+                    <div class="input-group">
+                        <input type="text" id="regName" placeholder="Nombre" required />
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="regSurname" placeholder="Apellido" required />
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="regUser" placeholder="Usuario" required autocomplete="off"/>
+                    <!-- Iconos de estado -->
+                    <span class="status-icon" id="userStatusIcon"></span>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="regPass" placeholder="Contraseña" required autocomplete="new-password" />
+                    <span class="status-icon" id="passStatusIcon"></span>
+                </div>
+                
+                <p class="hint-text">Mínimo 8 caracteres</p>
+
+                <button type="submit" class="primary-btn" id="btnRegister">Crear Cuenta</button>
             </form>
-            <p id="authError" style="color: #ff4f4f; font-size: 14px; margin-top: 10px; text-align: center;"></p>
-        <button id="installBtn" class="primary hidden" style="margin-top: 15px; background: #2563eb;">Instalar App</button>
+
+            <button id="installBtn" class="secondary-btn hidden">📲 Instalar App</button>
         </div>
     </div>
 
