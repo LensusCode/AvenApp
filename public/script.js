@@ -903,3 +903,88 @@ if (toggleVerifyBtn) {
         }
     });
 }
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function initAudioPlayer(uid) {
+    const audio = document.getElementById(uid);
+    const btn = document.getElementById(`btn-${uid}`);
+    const slider = document.getElementById(`slider-${uid}`);
+    const fill = document.getElementById(`fill-${uid}`);
+    const timeDisplay = document.getElementById(`time-${uid}`);
+
+    if (!audio || !btn || !slider) return;
+
+    // 1. Cargar metadatos (Duración inicial)
+    audio.addEventListener('loadedmetadata', () => {
+        slider.max = audio.duration;
+        timeDisplay.textContent = formatTime(audio.duration);
+    });
+
+    // Si los metadatos ya cargaron (cache)
+    if (audio.readyState >= 1) {
+        slider.max = audio.duration;
+        timeDisplay.textContent = formatTime(audio.duration);
+    }
+
+    // 2. Botón Play/Pause
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Evitar abrir menús o cerrar cosas
+        if (audio.paused) {
+            // Pausar otros audios sonando
+            document.querySelectorAll('audio').forEach(a => {
+                if (a !== audio && !a.paused) {
+                    a.pause();
+                    // Resetear icono del otro botón
+                    const otherBtn = document.getElementById(`btn-${a.id}`);
+                    if(otherBtn) otherBtn.innerHTML = ICONS.play;
+                }
+            });
+            audio.play();
+            btn.innerHTML = ICONS.pause;
+        } else {
+            audio.pause();
+            btn.innerHTML = ICONS.play;
+        }
+    });
+
+    // 3. Actualizar barra y tiempo mientras reproduce
+    audio.addEventListener('timeupdate', () => {
+        slider.value = audio.currentTime;
+        const percent = (audio.currentTime / audio.duration) * 100;
+        fill.style.width = `${percent}%`;
+        
+        // Muestra tiempo restante o actual. Aquí ponemos duración - actual (estilo WhatsApp)
+        // O si prefieres tiempo actual: formatTime(audio.currentTime)
+        const remaining = audio.duration - audio.currentTime;
+        timeDisplay.textContent = formatTime(remaining); 
+    });
+
+    // 4. Mover la barra manualmente (Seeking)
+    slider.addEventListener('input', () => {
+        audio.currentTime = slider.value;
+        const percent = (slider.value / audio.duration) * 100;
+        fill.style.width = `${percent}%`;
+    });
+
+    // 5. Cuando termina el audio
+    audio.addEventListener('ended', () => {
+        btn.innerHTML = ICONS.play;
+        fill.style.width = '0%';
+        slider.value = 0;
+        timeDisplay.textContent = formatTime(audio.duration);
+    });
+    
+    // Seguridad por si se pausa externamente
+    audio.addEventListener('pause', () => {
+        btn.innerHTML = ICONS.play;
+    });
+    
+    audio.addEventListener('play', () => {
+        btn.innerHTML = ICONS.pause;
+    });
+}
