@@ -1559,12 +1559,13 @@ body {
     background: var(--input-bg);
     color: #fff;
     
-    resize: none; 
-    overflow-y: hidden; 
-    min-height: 45px;  
-    max-height: 120px; 
-    line-height: 1.4;   
-    font-family: inherit; 
+    resize: none;
+    overflow-y: hidden;
+    height: 45px;
+    min-height: 45px;
+    max-height: 120px;
+    line-height: 1.4;
+    font-family: inherit;
     font-size: 15px;
     
     display: block;

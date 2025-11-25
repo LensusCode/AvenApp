@@ -636,6 +636,12 @@ async function selectUser(target, elem) {
     chatHeader.classList.remove('hidden');
     messagesList.classList.remove('hidden');
     chatForm.classList.remove('hidden');
+    chatForm.classList.remove('hidden');
+    inputMsg.style.height = '45px';
+    inputMsg.value = '';
+    setTimeout(() => {
+        inputMsg.style.height = '45px';
+    }, 50);
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px">Cargando historial...</li>';
 
     const history = await apiRequest(`/api/messages/${myUser.id}/${target.userId}`);
