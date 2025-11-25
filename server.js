@@ -28,11 +28,12 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], 
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],          
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"], 
+            scriptSrcAttr: ["'unsafe-inline'"], 
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com"],
-            mediaSrc: ["'self'", "blob:"],
-            connectSrc: ["'self'", "https://*.giphy.com"], 
+            mediaSrc: ["'self'", "blob:", "data:"], // Necesario para audios
+            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:"], // WebSockets
             upgradeInsecureRequests: null,
         },
     },
