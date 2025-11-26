@@ -1558,64 +1558,118 @@ body {
 .composer-inner {
     align-items: flex-end; 
 }
-
-/* Estilo base del textarea */
-#input {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: 24px; 
-    border: 1px solid var(--border);
+/* Estilos para el textarea y la "píldora" del input */
+/* 1. El contenedor visual (La "Píldora") */
+.chat-input-wrapper {
+    display: flex;
+    align-items: flex-end; /* Alinea los iconos abajo si el texto crece */
     background: var(--input-bg);
-    color: #fff;
-    
-    resize: none; 
-    overflow-y: hidden; 
-    min-height: 45px;  
-    max-height: 120px; 
-    line-height: 1.4;   
-    font-family: inherit; 
-    font-size: 15px;
-    
-    display: block;
-    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2px 4px; /* Espacio para los botones */
+    width: 100%;
+    transition: border-radius 0.2s, border-color 0.2s;
 }
 
-/* Cuando aparezca el scroll (controlado por JS o max-height) */
-#input.scroll-active {
-    overflow-y: auto !important;
-}
-
-#input:focus {
-    outline: 0;
+/* Efecto focus visual en el wrapper cuando escribes */
+.chat-input-wrapper:focus-within {
     border-color: var(--accent);
 }
 
-/* --- SCROLLBAR PERSONALIZADO PARA EL INPUT --- */
-#input::-webkit-scrollbar {
-    width: 6px;
-}
-
-#input::-webkit-scrollbar-track {
+/* 2. El Textarea (Ahora transparente y sin bordes) */
+#input {
+    flex: 1; /* Ocupa el espacio central */
     background: transparent;
-    margin: 10px 0; 
+    border: none;
+    padding: 12px 5px; /* Ajusta padding lateral */
+    color: #fff;
+    resize: none;
+    overflow-y: hidden;
+    height: 45px; /* Altura base igual a los botones */
+    min-height: 45px;
+    max-height: 120px;
+    line-height: 1.4;
+    font-family: inherit;
+    font-size: 15px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-#input::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+#input:focus {
+    outline: none; /* Quitamos el borde azul por defecto */
 }
 
-#input::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+/* Scrollbar del input */
+#input::-webkit-scrollbar { width: 4px; }
+#input::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+/* 3. Botones internos (Sticker y Clip) */
+.inner-action-btn {
+    width: 40px;
+    height: 44px; /* Altura para centrarse con el input de 1 línea */
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    padding: 0;
+    flex-shrink: 0;
+    margin-bottom: 1px; /* Ajuste fino para alinear con el texto */
 }
 
-/* Ajuste cuando el stack está activo (Reply) */
-.input-stack.active #input {
+.inner-action-btn:hover {
+    color: var(--accent);
+}
+
+.inner-action-btn svg {
+    stroke: currentColor;
+    width: 22px;
+    height: 22px;
+}
+
+/* 4. Ajustes del Reply (Respuesta) */
+/* Cuando hay reply, quitamos las esquinas superiores del wrapper, no del input */
+.input-stack.active .chat-input-wrapper {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
+    border-top: 1px solid transparent; /* Oculta el borde superior para unir con el reply */
 }
+
+/* 5. Ajustes de Grabación */
+/* Cuando se graba, ocultamos toda la píldora (wrapper) */
+.input-stack.recording .chat-input-wrapper {
+    display: none;
+}
+
+/* Asegurar que el UI de grabación se vea bien */
+.recording-ui {
+    border-radius: 24px;
+    height: 48px; /* Un poco más alto para coincidir con el diseño nuevo */
+}
+
+/* 6. Botón principal (Micrófono/Enviar) */
+.send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-left: 6px;
+    flex-shrink: 0;
+    background: #6366f1; /* O el color de tu imagen: #8b5cf6 para morado */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+    transition: transform .2s, background .2s;
+}
+
+/* Limpieza: Eliminar estilos viejos que puedan chocar */
+.attach-btn { display: none; } /* Ocultar clases viejas si quedan */
 
 /* --- EDITOR DE IMAGEN (Estilo AvenApp) --- */
 .image-editor-modal {
