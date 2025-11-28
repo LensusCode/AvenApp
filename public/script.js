@@ -83,6 +83,7 @@ const imageEditorModal = getEl('imageEditorModal'), imageToEdit = getEl('imageTo
 const profileOptionsBtn = getEl('profileOptionsBtn');
 const profileOptionsMenu = getEl('profileOptionsMenu');
 
+
 // --- SEGURIDAD: HELPERS ---
 
 // 1. Sanitizar HTML
@@ -620,6 +621,11 @@ socket.on('user_updated_profile', ({ userId, avatar }) => {
 });
 
 async function selectUser(target, elem) {
+    // --- RESET UX ---
+    lastMessageDate = null;
+    lastMessageUserId = null;
+    // ----------------
+
     currentTargetUserId = target.userId;
     currentTargetUserObj = target;
     clearReply();
@@ -636,16 +642,16 @@ async function selectUser(target, elem) {
     chatHeader.classList.remove('hidden');
     messagesList.classList.remove('hidden');
     chatForm.classList.remove('hidden');
-    chatForm.classList.remove('hidden');
+    
+    // Reset inputs
     inputMsg.style.height = '45px';
     inputMsg.value = '';
-    setTimeout(() => {
-        inputMsg.style.height = '45px';
-    }, 50);
-    messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px">Cargando historial...</li>';
+    
+    messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
 
     const history = await apiRequest(`/api/messages/${myUser.id}/${target.userId}`);
     messagesList.innerHTML = '';
+    
     if (history) {
         history.forEach(msg => {
             let rd = null;
@@ -658,8 +664,11 @@ async function selectUser(target, elem) {
             }
             appendMessageUI(msg.content, msg.from_user_id === myUser.id ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption);
         });
-        messagesList.scrollTop = messagesList.scrollHeight;
-    } else messagesList.innerHTML = '<li style="text-align:center;color:red">Error cargando mensajes</li>';
+        // Scroll inmediato al cargar
+        scrollToBottom(false);
+    } else {
+        messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
+    }
 }
 backBtn.addEventListener('click', () => chatContainer.classList.remove('mobile-chat-active'));
 
@@ -731,6 +740,7 @@ socket.on('private message', (msg) => {
         }
         appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption);
         messagesList.scrollTop = messagesList.scrollHeight;
+        scrollToBottom(true);
     }
 });
 
@@ -752,16 +762,20 @@ socket.on('message deleted', ({ messageId }) => {
 });
 
 function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null) {
+    // A. Renderizar fecha si es necesario
+    renderDateDivider(dateStr);
+
+    // B. Lógica de Agrupación Visual
+    const currentUserId = ownerType === 'me' ? myUser.id : currentTargetUserId;
+    const isSequence = lastMessageUserId === currentUserId; // ¿Es el mismo del anterior?
+
     const li = document.createElement('li');
     li.className = `message-row ${ownerType}`;
     if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
 
-    const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
-    const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
-    const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
+    // Generar contenido del mensaje (Tu lógica original intacta)
     let bodyHtml = '';
-
     if (msgType === 'audio') {
         if (!isValidUrl(content)) return;
         const uid = `audio-${msgId}-${Date.now()}`;
@@ -785,10 +799,48 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         bodyHtml = `<span>${escapeHtml(content)}</span>`;
     }
 
+    const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
+    const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
+    const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
     const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
+    
+    // Meta (Hora) - Ocultar visualmente en audios ya que tienen su propia hora
     const meta = msgType !== 'audio' ? `<div class="meta-row"><span class="meta">${new Date(dateStr).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>` : '';
-    li.innerHTML = `<div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div><div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>${deletedLabel}${quoteHtml}${bodyHtml}${meta}</div>`;
+
+    // HTML Final
+    li.innerHTML = `
+        <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
+        <div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>
+            ${deletedLabel}${quoteHtml}${bodyHtml}${meta}
+        </div>`;
+    
     messagesList.appendChild(li);
+
+    // C. Ajuste de Bordes (Grouping)
+    if (isSequence) {
+        // Obtenemos el mensaje anterior (que ahora es el penúltimo hijo)
+        // Nota: date-divider es un LI, así que nos aseguramos de no agrupar a través de una fecha
+        const prevLi = li.previousElementSibling;
+        
+        if (prevLi && prevLi.classList.contains('message-row') && !prevLi.classList.contains('date-divider')) {
+             // Modificamos el anterior (ahora es "top" o "middle")
+             prevLi.classList.remove('seq-bottom'); // Por si era bottom
+             if (prevLi.classList.contains('seq-top')) {
+                 prevLi.classList.add('seq-middle');
+                 prevLi.classList.remove('seq-top');
+             } else {
+                 prevLi.classList.add('seq-top');
+             }
+             
+             // El actual es "bottom" por defecto al ser el último
+             li.classList.add('seq-bottom');
+        }
+    }
+
+    // Actualizamos el rastreador
+    lastMessageUserId = currentUserId;
+
+    // Listeners
     if (msgType === 'sticker' && isValidUrl(content)) {
         li.querySelector('.sticker-img').addEventListener('click', (e) => { e.stopPropagation(); myFavorites.size ? openStickerOptions(content) : refreshFavoritesCache().then(() => openStickerOptions(content)); });
     }
@@ -820,10 +872,31 @@ function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
     wrap.addEventListener('touchend', end); wrap.addEventListener('touchcancel', end);
 }
 function addLongPressEvent(el, msgId) {
-    let timer; const start = (e) => { if (el.style.transform && el.style.transform !== 'translateX(0px)') return; el.classList.add('pressing'); const cx = e.clientX || e.touches[0].clientX, cy = e.clientY || e.touches[0].clientY; timer = setTimeout(() => openContextMenu(cx, cy, msgId), 600); };
-    const cancel = () => { clearTimeout(timer); el.classList.remove('pressing'); };
+    let timer; 
+    
+    const start = (e) => { 
+        // Si el mensaje se está deslizando (swipe), no iniciar long press
+        if (el.style.transform && el.style.transform !== 'translateX(0px)') return; 
+        
+        el.classList.add('pressing'); 
+        const cx = e.clientX || e.touches[0].clientX;
+        const cy = e.clientY || e.touches[0].clientY; 
+        timer = setTimeout(() => openContextMenu(cx, cy, msgId), 600); 
+    };
+
+    const cancel = () => { 
+        clearTimeout(timer); 
+        el.classList.remove('pressing'); 
+    };
+
     el.addEventListener('mousedown', (e) => { if (e.button === 0) start(e); });
-    ['mouseup', 'mouseleave', 'touchend', 'touchmove'].forEach(ev => el.addEventListener(ev, cancel));
+
+    // 1. Eventos que NO requieren passive explícito o no son de scroll
+    ['mouseup', 'mouseleave', 'touchend'].forEach(ev => el.addEventListener(ev, cancel));
+    
+    // 2. SOLUCIÓN: Agregar touchmove explícitamente como 'passive: true'
+    el.addEventListener('touchmove', cancel, { passive: true });
+
     el.addEventListener('touchstart', start, { passive: true });
 }
 function openContextMenu(x, y, msgId) { messageIdToDelete = msgId; const menu = msgContextMenu.querySelector('.context-menu-content'); msgContextMenu.classList.remove('hidden'); if (window.innerWidth <= 768) menu.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)'; else menu.style.cssText = `position:absolute;top:${Math.min(y, window.innerHeight-100)}px;left:${Math.min(x, window.innerWidth-200)}px`; }
@@ -987,4 +1060,51 @@ function initAudioPlayer(uid) {
     audio.addEventListener('play', () => {
         btn.innerHTML = ICONS.pause;
     });
+}
+
+let lastMessageDate = null;   // Para rastrear el cambio de día
+let lastMessageUserId = null; // Para agrupar mensajes del mismo usuario
+
+// ==========================================
+// 1. FUNCIÓN HELPER: Scroll Inteligente
+// ==========================================
+function scrollToBottom(smooth = true) {
+    // Si el usuario subió mucho, no bajar forzosamente. Si está cerca del final, bajar suave.
+    const threshold = 150; 
+    const isNearBottom = messagesList.scrollHeight - messagesList.scrollTop - messagesList.clientHeight <= threshold;
+    
+    // Si es el primer renderizado (smooth=false) o está cerca del final
+    if (!smooth || isNearBottom) {
+        messagesList.scrollTo({
+            top: messagesList.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+    }
+}
+
+// ==========================================
+// 2. FUNCIÓN HELPER: Divisor de Fechas
+// ==========================================
+function renderDateDivider(dateStr) {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    let label = date.toLocaleDateString();
+
+    // Lógica para "Hoy" y "Ayer"
+    if (date.toDateString() === today.toDateString()) label = "Hoy";
+    else if (date.toDateString() === yesterday.toDateString()) label = "Ayer";
+
+    // Si la fecha cambió respecto al mensaje anterior, insertar píldora
+    if (lastMessageDate !== label) {
+        const li = document.createElement('li');
+        li.className = 'date-divider';
+        li.innerHTML = `<span>${label}</span>`;
+        messagesList.appendChild(li);
+        
+        lastMessageDate = label;
+        lastMessageUserId = null; // Reseteamos la agrupación al cambiar de día
+    }
 }
