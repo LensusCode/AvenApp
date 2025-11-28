@@ -33,7 +33,7 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com"],
             mediaSrc: ["'self'", "blob:", "data:"], // Necesario para audios
-            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:"], // WebSockets
+            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:"], // WebSockets
             upgradeInsecureRequests: null,
         },
     },
@@ -403,9 +403,32 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
 });
 
 app.get('/api/stickers-proxy', authenticateToken, async (req, res) => {
-    const { q } = req.query;
-    const url = `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${GIPHY_API_KEY}&limit=24&rating=g&q=${encodeURIComponent(q || '')}`;
-    try { res.json(await (await fetch(url)).json()); } catch (e) { res.status(500).json({error:'Giphy Error'}); }
+    try {
+        const { q } = req.query;
+        const apiKey = process.env.GIPHY_API_KEY;
+
+        if (!apiKey) {
+            console.error("❌ ERROR: Falta GIPHY_API_KEY en el archivo .env");
+            return res.status(500).json({ error: 'Configuración de servidor incompleta' });
+        }
+
+        const url = `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${apiKey}&limit=24&rating=g&q=${encodeURIComponent(q || '')}`;
+
+        // Hacemos la petición a Giphy
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Giphy API respondió: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        res.json(data);
+
+    } catch (error) {
+        console.error("❌ ERROR en /api/stickers-proxy:", error.message);
+        // Si fetch no existe, el error dirá "fetch is not defined"
+        res.status(500).json({ error: 'Error interno obteniendo stickers' });
+    }
 });
 app.post('/api/favorites/add', authenticateToken, (req, res) => {
     db.run(`INSERT OR IGNORE INTO favorite_stickers (user_id, sticker_url) VALUES (?, ?)`, [req.user.id, req.body.url], (err) => res.json({success: !err}));

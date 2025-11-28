@@ -100,32 +100,54 @@
 </div>
 
         <div id="imageEditorModal" class="image-editor-modal hidden">
-    <!-- 1. Cabecera: Solo Cancelar y Resetear -->
-    <div class="editor-header">
-        <button id="closeEditorBtn" class="btn-text">Cancelar</button>
-        <button id="resetCropBtn" class="btn-text">Restaurar</button>
+    
+    <!-- 1. Cabecera Principal (Solo visible en modo vista) -->
+    <div id="mainHeader" class="editor-header">
+        <button id="closeEditorBtn" class="nav-icon-btn" title="Cerrar">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="editor-header-tools">
+            <!-- El botón para ENTRAR al modo recorte -->
+            <button id="enterCropModeBtn" class="nav-icon-btn" title="Editar / Recortar">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"></path></svg>
+            </button>
+        </div>
     </div>
 
-    <!-- 2. Canvas: La imagen y la cuadrícula -->
+    <!-- 2. Canvas Central -->
     <div class="editor-canvas-container">
         <img id="imageToEdit" src="" alt="Edit Preview">
     </div>
 
-    <!-- 3. Barra de Herramientas: Rotar en el centro -->
-    <div class="editor-toolbar">
-        <button id="rotateBtn" class="editor-tool-btn" title="Rotar 90°">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z"></path></svg>
-        </button>
-    </div>
-
-    <!-- 4. Footer: Comentario y Enviar -->
-    <div class="editor-footer">
+    <!-- 3. Footer Principal (Comentario y Enviar) -->
+    <div id="mainFooter" class="editor-footer">
         <div class="caption-input-container">
             <input type="text" id="imageCaptionInput" placeholder="Añade un comentario..." autocomplete="off">
         </div>
         <button id="sendImageBtn" class="editor-send-btn">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
+    </div>
+
+    <!-- 4. Footer de Recorte (Oculto por defecto) -->
+    <div id="cropFooter" class="editor-footer hidden" style="justify-content: space-between; background: #000; padding: 20px 30px;">
+        <!-- Cancelar -->
+        <button id="cancelCropBtn" style="background:none; border:none; color:#fff; font-size:15px; font-weight:500;">Cancelar</button>
+        
+        <div style="display:flex; gap: 20px;">
+            <!-- Flip (Espejo) -->
+            <button id="flipBtn" class="nav-icon-btn" title="Voltear horizontal">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"/></svg>
+            </button>
+
+            <!-- Rotar -->
+            <button id="rotateBtn" class="nav-icon-btn" title="Rotar 90°">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z"></path></svg>
+            </button>
+        </div>
+
+        <!-- OK -->
+        <button id="okCropBtn" style="background:none; border:none; color:#fff; font-size:15px; font-weight:bold;">OK</button>
     </div>
 </div>
 

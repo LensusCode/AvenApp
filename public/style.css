@@ -1758,10 +1758,69 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 20px;
-    background: rgba(10, 10, 10, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 10;
+    padding: 0 15px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); /* Degradado suave */
+    position: absolute; /* Flotante sobre la imagen */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 20; /* Por encima de la imagen/cropper */
+}
+
+/* Contenedor de herramientas derecha */
+.editor-header-tools {
+    display: flex;
+    gap: 15px;
+}
+
+/* Botones de icono (X, Crop, Rotate) */
+.editor-header .nav-icon-btn {
+    color: #fff;
+    background: rgba(0,0,0,0.3); /* Fondo semitransparente circular */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s, color 0.2s;
+}
+
+.editor-header .nav-icon-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.editor-header .nav-icon-btn.active {
+    background: #6366f1; /* Color activo para cuando el recorte está encendido */
+    color: white;
+}
+
+/* Ajuste del canvas para que ocupe todo el espacio disponible */
+.editor-canvas-container {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 60px; /* Espacio para que la cabecera no tape la imagen inicial */
+    padding-bottom: 20px;
+}
+
+/* Footer (Input y Enviar) con fondo oscuro sólido */
+.editor-footer {
+    position: relative;
+    z-index: 20;
+    background: #0a0a0a;
+    padding: 15px 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 .btn-text {
@@ -1776,18 +1835,6 @@ body {
 }
 .btn-text:hover { color: #fff; }
 
-/* Contenedor del Canvas */
-.editor-canvas-container {
-    flex: 1;
-    position: relative;
-    background: #000;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Importante para cropper */
-    touch-action: none; 
-}
 
 #imageToEdit {
     display: block;
@@ -1795,39 +1842,99 @@ body {
 }
 
 /* --- PERSONALIZACIÓN DE CROPPER.JS (LA CUADRÍCULA) --- */
-.cropper-modal {
-    background-color: #000;
-    opacity: 0.8;
+.cropper-container *, .cropper-crop-box, .cropper-view-box, 
+.cropper-canvas, .cropper-canvas > img, .cropper-view-box > img {
+    transition: none !important;
+}
+/* Animación solo al rotar */
+.animating-rotation .cropper-canvas,          /* El contenedor de la imagen de fondo */
+.animating-rotation .cropper-canvas > img,    /* La imagen de fondo en sí */
+.animating-rotation .cropper-view-box > img,  /* La imagen de dentro (recorte) */
+.animating-rotation .cropper-crop-box {
+    transition: transform 0.3s ease-in-out !important;
 }
 
+/* 2. El recuadro principal (Borde fino) */
 .cropper-view-box {
-    outline: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 0;
+    outline: 1px solid rgba(255, 255, 255, 0.7) !important;
+    border: none !important;
 }
 
+/* 3. Líneas de la cuadrícula (Regla de tercios) */
 .cropper-dashed {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4) !important;
 }
+.cropper-center { display: none !important; } /* Ocultar la cruz central */
 
+/* 4. ESTILOS GENERALES DE LOS PUNTOS (Invisible el fondo) */
 .cropper-point {
-    background-color: #fff;
-    width: 8px;
-    height: 8px;
-    opacity: 1;
-}
-.cropper-point.point-ne { top: -4px; right: -4px; }
-.cropper-point.point-nw { top: -4px; left: -4px; }
-.cropper-point.point-sw { bottom: -4px; left: -4px; }
-.cropper-point.point-se { bottom: -4px; right: -4px; }
-
-.cropper-point.point-n, .cropper-point.point-e, 
-.cropper-point.point-s, .cropper-point.point-w {
-    background-color: transparent; 
+    background-color: transparent !important; /* Fondo transparente */
+    opacity: 1 !important;
+    border-radius: 0 !important; /* Esquinas rectas */
+    z-index: 10;
 }
 
-.cropper-center {
-    display: none; 
+/* --- 5. LAS ESQUINAS (Forma de "L") --- */
+/* Definimos tamaño y grosor de la "L" */
+.cropper-point.point-nw, .cropper-point.point-ne,
+.cropper-point.point-sw, .cropper-point.point-se {
+    width: 20px !important;
+    height: 20px !important;
+    border: 0 solid #fff; /* Preparamos el borde blanco */
 }
+
+/* Esquina Superior Izquierda */
+.cropper-point.point-nw {
+    border-top-width: 3px;
+    border-left-width: 3px;
+    top: -2px; left: -2px;
+}
+/* Esquina Superior Derecha */
+.cropper-point.point-ne {
+    border-top-width: 3px;
+    border-right-width: 3px;
+    top: -2px; right: -2px;
+}
+/* Esquina Inferior Derecha */
+.cropper-point.point-se {
+    border-bottom-width: 3px;
+    border-right-width: 3px;
+    bottom: -2px; right: -2px;
+}
+/* Esquina Inferior Izquierda */
+.cropper-point.point-sw {
+    border-bottom-width: 3px;
+    border-left-width: 3px;
+    bottom: -2px; left: -2px;
+}
+
+/* --- 6. LOS LADOS (Líneas rectas) --- */
+/* Lados Superior e Inferior */
+.cropper-point.point-n, .cropper-point.point-s {
+    height: 3px !important;
+    width: 20px !important;
+    background-color: #fff !important;
+    left: 50%;
+    margin-left: -10px; /* Centrar */
+    border: none;
+}
+.cropper-point.point-n { top: -2px; }
+.cropper-point.point-s { bottom: -2px; }
+
+/* Lados Izquierdo y Derecho */
+.cropper-point.point-e, .cropper-point.point-w {
+    width: 3px !important;
+    height: 20px !important;
+    background-color: #fff !important;
+    top: 50%;
+    margin-top: -10px; /* Centrar */
+    border: none;
+}
+.cropper-point.point-e { right: -2px; }
+.cropper-point.point-w { left: -2px; }
+
+/* Fondo oscuro */
+.cropper-modal { background-color: #000; opacity: 0.85; }
 
 /* --- BARRA DE HERRAMIENTAS (ROTAR) --- */
 .editor-toolbar {
@@ -2376,6 +2483,74 @@ meta-row {
 /* Ocultar checks en los mensajes recibidos (Other) */
 .message.other .msg-status-icon {
     display: none;
+}
+
+/* --- MEJORA STICKER CON REPLY --- */
+
+/* 1. Límite de texto en el Reply (Estilo WhatsApp) */
+.quoted-message {
+    max-width: 100%;
+    /* Asegura que la caja gris no se estire infinitamente */
+    box-sizing: border-box; 
+    overflow: hidden; 
+}
+
+.quoted-text {
+    color: rgba(255, 255, 255, 0.7);
+    /* Estas 3 líneas hacen la magia de los "..." */
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Límite visual de ancho para que no ensanche demasiado el sticker */
+    max-width: 220px; 
+    display: block;
+}
+
+/* 2. EXCEPCIÓN: Sticker CON Reply (Fondo Burbuja) */
+/* Sobrescribimos la regla que hacía transparentes a todos los stickers */
+
+.message-row:has(.sticker-img) .message.sticker-reply-bubble {
+    /* Restauramos el padding y la sombra */
+    padding: 8px 8px 4px 8px !important; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+    border-radius: 12px !important;
+    
+    /* Forzamos que el contenido se apile (Reply arriba, Sticker abajo) */
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+}
+
+/* Color de fondo si soy YO (Me) */
+.message-row.me .message.sticker-reply-bubble {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+}
+
+/* Color de fondo si es OTRO (Other) */
+.message-row.other .message.sticker-reply-bubble {
+    background: #1f1f22 !important;
+    border: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+/* Ajuste del sticker cuando está DENTRO de una burbuja */
+.message.sticker-reply-bubble .sticker-img {
+    margin-top: 6px;
+    border-radius: 8px;
+    max-width: 150px;
+    
+    /* CAMBIO CLAVE: Centrar el sticker horizontalmente */
+    align-self: center !important; 
+    
+    /* Asegurar márgenes automáticos por si acaso */
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+
+/* 2. IMPORTANTE: Forzar el centrado también en tus mensajes (Me) */
+/* Antes esto lo alineaba a la derecha, ahora lo forzamos al centro */
+.message.me.sticker-reply-bubble .sticker-img {
+    align-self: center !important;
 }
 
 @media (max-width: 768px) {

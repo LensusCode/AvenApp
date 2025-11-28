@@ -131,52 +131,171 @@ function applyUserFilter() {
 }
 
 // --- EDITOR DE IMAGEN ---
+let currentEditFile = null; // El archivo original seleccionado
+let currentScaleX = 1;      // Para controlar el Flip
+
+// --- 1. ABRIR EDITOR (Vista Previa) ---
 chatImageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    currentEditFile = file;
     const reader = new FileReader();
+    
     reader.onload = (evt) => {
-    if (cropper) { cropper.destroy(); cropper = null; }
-    imageToEdit.src = evt.target.result;
-    imageEditorModal.classList.remove('hidden');
-    imageCaptionInput.value = '';
-    imageCaptionInput.focus();
-    imageToEdit.onload = () => {
-        cropper = new Cropper(imageToEdit, {
-            viewMode: 1, dragMode: 'move', aspectRatio: NaN, autoCropArea: 0.9, restore: false, guides: true,
-            center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true,
-            toggleDragModeOnDblclick: false, background: false, modal: true, minContainerWidth: 300, minContainerHeight: 300
-        });
+        // Resetear UI
+        if (cropper) { cropper.destroy(); cropper = null; }
+        getEl('imageEditorModal').classList.remove('hidden');
+        
+        // Mostrar elementos principales, ocultar recorte
+        getEl('mainHeader').classList.remove('hidden');
+        getEl('mainFooter').classList.remove('hidden');
+        getEl('cropFooter').classList.add('hidden');
+        
+        // Cargar imagen
+        imageToEdit.src = evt.target.result;
+        imageCaptionInput.value = '';
+        imageCaptionInput.focus();
     };
-};
     reader.readAsDataURL(file);
-    e.target.value = '';
+    e.target.value = ''; 
 });
 
-getEl('closeEditorBtn').addEventListener('click', () => { imageEditorModal.classList.add('hidden'); if (cropper) cropper.destroy(); });
-getEl('rotateBtn').addEventListener('click', () => { if (cropper) cropper.rotate(90); });
-getEl('resetCropBtn').addEventListener('click', () => { if (cropper) cropper.reset(); });
+// --- 2. CERRAR EDITOR COMPLETAMENTE ---
+getEl('closeEditorBtn').addEventListener('click', () => {
+    getEl('imageEditorModal').classList.add('hidden');
+    if (cropper) { cropper.destroy(); cropper = null; }
+    currentEditFile = null;
+});
 
-getEl('sendImageBtn').addEventListener('click', () => {
+// --- 3. ENTRAR A MODO RECORTE ---
+getEl('enterCropModeBtn').addEventListener('click', () => {
+    // Ocultar UI principal
+    getEl('mainHeader').classList.add('hidden');
+    getEl('mainFooter').classList.add('hidden');
+    
+    // Mostrar UI de recorte
+    getEl('cropFooter').classList.remove('hidden');
+    
+    // Iniciar Cropper
+    currentScaleX = 1; // Resetear flip
+    cropper = new Cropper(imageToEdit, {
+        viewMode: 1,
+        dragMode: 'none',       // Imagen fija
+        autoCropArea: 0.9,
+        restore: false,
+        guides: true,
+        center: false,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+        background: false,
+        minContainerWidth: 300,
+        minContainerHeight: 300
+    });
+});
+
+// --- 4. ACCIONES DEL MODO RECORTE ---
+
+// Botón ROTAR (Con tu lógica de girar todo)
+getEl('rotateBtn').addEventListener('click', () => {
     if (!cropper) return;
-    cropper.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob(async (blob) => {
-        const formData = new FormData();
-        formData.append('image', blob, 'edited-image.jpg');
-        getEl('sendImageBtn').innerHTML = '...';
+    
+    const container = document.querySelector('.cropper-container');
+    container.classList.add('animating-rotation');
+    
+    const cropBoxData = cropper.getCropBoxData();
+    const containerData = cropper.getContainerData();
+    
+    cropper.rotate(90); // Rotar
+    
+    // Invertir dimensiones del recuadro para que acompañe el giro
+    const containerCenterX = containerData.width / 2;
+    const containerCenterY = containerData.height / 2;
+    const newWidth = cropBoxData.height;
+    const newHeight = cropBoxData.width;
+    
+    cropper.setCropBoxData({
+        width: newWidth,
+        height: newHeight,
+        left: containerCenterX - (newWidth / 2),
+        top: containerCenterY - (newHeight / 2)
+    });
+    
+    setTimeout(() => container.classList.remove('animating-rotation'), 300);
+});
 
-        const data = await apiRequest('/api/upload-chat-image', 'POST', formData);
-        if (data) {
-            socket.emit('private message', {
-                content: data.imageUrl, toUserId: currentTargetUserId, type: 'image',
-                replyToId: currentReplyId, caption: imageCaptionInput.value.trim()
-            }, (res) => appendMessageUI(res.content, 'me', res.timestamp, res.id, 'image', null, false, res.caption));
-            clearReply();
-            imageEditorModal.classList.add('hidden');
-        } else alert("Error al enviar imagen");
+// Botón FLIP (Nuevo)
+getEl('flipBtn').addEventListener('click', () => {
+    if (!cropper) return;
+    currentScaleX = -currentScaleX; // Invertir estado
+    cropper.scaleX(currentScaleX);  // Aplicar flip horizontal
+});
 
-        getEl('sendImageBtn').innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
-        cropper.destroy(); cropper = null;
-    }, 'image/jpeg', 0.8);
+// Botón CANCELAR (Salir sin guardar cambios de recorte)
+getEl('cancelCropBtn').addEventListener('click', () => {
+    // Destruir cropper (esto visualmente resetea la imagen a como estaba antes de entrar)
+    if (cropper) { cropper.destroy(); cropper = null; }
+    
+    // Volver a la UI Principal
+    getEl('cropFooter').classList.add('hidden');
+    getEl('mainHeader').classList.remove('hidden');
+    getEl('mainFooter').classList.remove('hidden');
+});
+
+// Botón OK (Aplicar recorte y volver)
+getEl('okCropBtn').addEventListener('click', () => {
+    if (!cropper) return;
+    
+    // 1. Obtener la imagen recortada como DataURL (base64)
+    const croppedCanvas = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048 });
+    const croppedImageBase64 = croppedCanvas.toDataURL('image/jpeg', 0.9);
+    
+    // 2. Destruir cropper
+    cropper.destroy(); 
+    cropper = null;
+    
+    // 3. Reemplazar la imagen visible con la versión recortada
+    imageToEdit.src = croppedImageBase64;
+    
+    // 4. Volver a la UI Principal
+    getEl('cropFooter').classList.add('hidden');
+    getEl('mainHeader').classList.remove('hidden');
+    getEl('mainFooter').classList.remove('hidden');
+});
+
+// --- 5. ENVIAR IMAGEN FINAL ---
+getEl('sendImageBtn').addEventListener('click', async () => {
+    getEl('sendImageBtn').innerHTML = '...';
+    
+    // Convertir el src actual (que puede ser el original o el recortado) a Blob
+    const res = await fetch(imageToEdit.src);
+    const blob = await res.blob();
+    
+    const formData = new FormData();
+    formData.append('image', blob, 'image.jpg');
+
+    const data = await apiRequest('/api/upload-chat-image', 'POST', formData);
+    
+    if (data) {
+        socket.emit('private message', {
+            content: data.imageUrl,
+            toUserId: currentTargetUserId,
+            type: 'image',
+            replyToId: currentReplyId,
+            caption: imageCaptionInput.value.trim()
+        }, (res) => {
+            appendMessageUI(res.content, 'me', res.timestamp, res.id, 'image', null, false, res.caption);
+        });
+        clearReply();
+        getEl('imageEditorModal').classList.add('hidden');
+    } else {
+        alert("Error al subir imagen");
+    }
+    
+    getEl('sendImageBtn').innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+    currentEditFile = null;
 });
 
 // --- PERFIL Y EDICIÓN ---
@@ -665,7 +784,10 @@ async function selectUser(target, elem) {
             appendMessageUI(msg.content, msg.from_user_id === myUser.id ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption);
         });
         // Scroll inmediato al cargar
-        scrollToBottom(false);
+        scrollToBottom(false); 
+        
+        // Un segundo scroll de seguridad por si hay imágenes cargando
+        setTimeout(() => scrollToBottom(false), 300);
     } else {
         messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
     }
@@ -723,24 +845,44 @@ function sendMessage(content, type, replyId = null) {
             let rd = replyId ? { username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null; 
             appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption);
             messagesList.scrollTop = messagesList.scrollHeight;
+            scrollToBottom(true); 
         }
     });
 }
 
 socket.on('private message', (msg) => {
+    // Verificar si el mensaje viene del usuario con el que hablamos actualmente
     if (currentTargetUserId === msg.fromUserId) {
+        
+        // --- 1. DETECCIÓN INTELIGENTE DE SCROLL ---
+        const el = messagesList;
+        // Calculamos si el usuario está mirando lo último (con un margen de 150px)
+        const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+
+        // --- 2. PREPARAR DATOS DEL REPLY ---
         let rd = null;
         if (msg.replyToId) {
             let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
+            
             let rText = msg.reply_content;
+            
+            // Iconos/Texto para multimedia en el reply
             if (msg.reply_type === 'image') rText = ICONS.replyImage;
             else if (msg.reply_type === 'sticker') rText = "✨ Sticker";
-            else if (msg.type === 'audio') rText = "Mensaje de voz";
+            // Corrección: Usamos msg.reply_type aquí para detectar si el MENSAJE ORIGINAL era audio
+            else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz"; 
+
             rd = { username: rName, content: rText, type: msg.reply_type };
         }
+
+        // --- 3. RENDERIZAR MENSAJE ---
         appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption);
-        messagesList.scrollTop = messagesList.scrollHeight;
-        scrollToBottom(true);
+
+        // --- 4. APLICAR SCROLL SOLO SI ES NECESARIO ---
+        if (isAtBottom) {
+            scrollToBottom(true); // Baja suavemente
+        }
+        // Si no estaba abajo (isAtBottom es false), no hacemos nada para no molestar la lectura.
     }
 });
 
@@ -799,22 +941,30 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         bodyHtml = `<span>${escapeHtml(content)}</span>`;
     }
 
+     const isStickerWithReply = (msgType === 'sticker' && replyData !== null);
+    
+    // 2. Definir la clase extra
+    const stickerBubbleClass = isStickerWithReply ? 'sticker-reply-bubble' : '';
+
     const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
     const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
     const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
     const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
     
-    // Meta (Hora) - Ocultar visualmente en audios ya que tienen su propia hora
+    // Meta (Hora)
     const meta = msgType !== 'audio' ? `<div class="meta-row"><span class="meta">${new Date(dateStr).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>` : '';
 
-    // HTML Final
+
     li.innerHTML = `
         <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
-        <div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>
+        
+        <!-- AQUI AGREGAMOS LA CLASE stickerBubbleClass -->
+        <div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''} ${stickerBubbleClass}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>
             ${deletedLabel}${quoteHtml}${bodyHtml}${meta}
         </div>`;
     
     messagesList.appendChild(li);
+
 
     // C. Ajuste de Bordes (Grouping)
     if (isSequence) {
@@ -1069,17 +1219,27 @@ let lastMessageUserId = null; // Para agrupar mensajes del mismo usuario
 // 1. FUNCIÓN HELPER: Scroll Inteligente
 // ==========================================
 function scrollToBottom(smooth = true) {
-    // Si el usuario subió mucho, no bajar forzosamente. Si está cerca del final, bajar suave.
-    const threshold = 150; 
-    const isNearBottom = messagesList.scrollHeight - messagesList.scrollTop - messagesList.clientHeight <= threshold;
-    
-    // Si es el primer renderizado (smooth=false) o está cerca del final
-    if (!smooth || isNearBottom) {
-        messagesList.scrollTo({
-            top: messagesList.scrollHeight,
-            behavior: smooth ? 'smooth' : 'auto'
-        });
-    }
+    // Usamos setTimeout para asegurar que el DOM ya se pintó
+    setTimeout(() => {
+        const el = messagesList;
+        
+        // Opción A: Scroll Suave (Animado)
+        if (smooth) {
+            el.scrollTo({
+                top: el.scrollHeight,
+                behavior: 'smooth'
+            });
+        } 
+        // Opción B: Salto Instantáneo (Sin animación)
+        else {
+            el.scrollTo({
+                top: el.scrollHeight,
+                behavior: 'auto'
+            });
+            // Refuerzo para navegadores lentos o carga de imágenes
+            el.scrollTop = el.scrollHeight;
+        }
+    }, 50); // Pequeño retraso de 50ms para asegurar renderizado
 }
 
 // ==========================================
