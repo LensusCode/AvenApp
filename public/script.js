@@ -46,6 +46,7 @@ async function checkSession() {
 const ICONS = {
     blueBadge: `<span class="verified-badge" title="Verificado" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     purpleBadge: `<span class="verified-badge" title="Administrador" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#7c3aed"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
+    pinkBadge: `<span class="verified-badge" title="Verificado Amor" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle; filter: drop-shadow(0 2px 3px rgba(236, 72, 153, 0.5));"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><!-- Fondo Corazón Rosado con bordes suaves --><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ec4899"/><!-- Paloma blanca centrada --><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff" transform="scale(0.8) translate(3, 3)"/></svg></span>`,
     send: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
     mic: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
     play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
@@ -54,15 +55,25 @@ const ICONS = {
     replyAudio: `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`
 };
 
-const getBadgeHtml = (u) => !u ? '' : (u.is_admin ? ICONS.purpleBadge : (u.is_verified ? ICONS.blueBadge : ''));
+const getBadgeHtml = (u) => {
+    if (!u) return '';
+    if (u.is_admin) return ICONS.purpleBadge;
+    if (u.is_premium) return ICONS.pinkBadge; 
+    if (u.is_verified) return ICONS.blueBadge;
+    return '';
+};
 
 // --- VARIABLES DE ESTADO ---
 let currentTargetUserId = null, currentTargetUserObj = null;
-let messageIdToDelete = null, myNicknames = {}, allUsersCache = [];
+let messageIdToDelete = null;
+let deleteActionType = 'single'; 
+let currentContextMessageId = null; // NUEVA VARIABLE PARA EL MENÚ CONTEXTUAL
+let myNicknames = {}, allUsersCache = [];
 let currentReplyId = null, mediaRecorder = null, audioChunks = [], recordingInterval = null;
 let isRecording = false, shouldSendAudio = true;
 let currentStickerTab = 'giphy', myFavorites = new Set();
 let cropper = null, searchTimeout, currentStickerUrlInModal = null;
+let currentChatType = 'private';
 
 // --- ELEMENTOS DOM ---
 const getEl = (id) => document.getElementById(id);
@@ -443,6 +454,7 @@ profileBtn.addEventListener('click', () => {
     enableInlineEdit('profileBio', 'bio');
 });
 
+const togglePremiumBtn = getEl('togglePremiumBtn');
 // Evento: ABRIR INFO CONTACTO
 getEl('headerAvatarBtn').addEventListener('click', () => {
     if (!currentTargetUserObj) return;
@@ -474,13 +486,68 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
     if (myUser?.is_admin) {
         adminSec.classList.remove('hidden');
         getEl('toggleVerifyBtn').textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
-    } else {
+        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+    }
+     else {
         adminSec.classList.add('hidden');
     }
 
     modal.classList.remove('hidden');
     enableNicknameEdit('contactInfoName', currentTargetUserObj.userId);
 });
+
+// --- LÓGICA PARA EL BOTÓN DE VERIFICADO DE CORAZÓN ---
+if (togglePremiumBtn) {
+    togglePremiumBtn.addEventListener('click', async () => {
+        // Validación de seguridad
+        if (!currentTargetUserObj || !currentTargetUserId) return;
+
+        // 1. Guardar estado anterior por si falla
+        const previousState = currentTargetUserObj.is_premium;
+
+        // 2. ACTUALIZACIÓN OPTIMISTA (UI INMEDIATA)
+        currentTargetUserObj.is_premium = !currentTargetUserObj.is_premium;
+
+        // A. Actualizar texto del botón inmediatamente
+        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+
+        // B. Actualizar el nombre en el Modal (Info Contacto) para ver el icono nuevo
+        const modalNameEl = document.getElementById('contactInfoName');
+        const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
+        if (modalNameEl) {
+            modalNameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
+        }
+
+        // C. Actualizar el Header del Chat
+        updateChatHeaderInfo(currentTargetUserObj);
+
+        // D. Actualizar la lista de usuarios (para que salga el icono en la barra lateral)
+        const userListItem = document.querySelector(`.user-item[data-uid="${currentTargetUserObj.userId}"] div[style*="font-weight:600"]`);
+        if (userListItem) {
+             userListItem.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
+        }
+
+        // 3. Llamada a la API (Simulada o Real)
+        try {
+            // Nota: Asegúrate de tener esta ruta en tu servidor o usa la misma lógica que verify
+            // Enviaremos una petición para cambiar el estado 'is_premium' en la base de datos
+            const res = await apiRequest('/api/admin/toggle-premium', 'POST', {
+                targetUserId: currentTargetUserObj.userId
+            });
+
+            if (!res || !res.success) {
+                throw new Error("Error en servidor");
+            }
+        } catch (error) {
+            console.error(error);
+            // Revertir cambios si falló
+            currentTargetUserObj.is_premium = previousState;
+            updateChatHeaderInfo(currentTargetUserObj);
+            togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+            alert("No se pudo actualizar el verificado de corazón.");
+        }
+    });
+}
 
 // Cerrar modales
 getEl('closeContactInfo').addEventListener('click', () => getEl('contactInfoModal').classList.add('hidden'));
@@ -743,10 +810,16 @@ async function selectUser(target, elem) {
     // --- RESET UX ---
     lastMessageDate = null;
     lastMessageUserId = null;
-    // ----------------
+    
+    typingIndicator.classList.add('hidden');
+    typingText.textContent = ''; 
+    if(scrollToBottomBtn) scrollToBottomBtn.classList.add('hidden');
 
     currentTargetUserId = target.userId;
     currentTargetUserObj = target;
+
+    currentChatType = target.chat_type || 'private'; 
+
     clearReply();
     updateChatHeaderInfo(target);
     chatContainer.classList.add('mobile-chat-active');
@@ -761,10 +834,19 @@ async function selectUser(target, elem) {
     chatHeader.classList.remove('hidden');
     messagesList.classList.remove('hidden');
     chatForm.classList.remove('hidden');
+
+    const savedDraft = localStorage.getItem(`draft_${target.userId}`) || '';
+    inputMsg.value = savedDraft;
+    
+    // Ajustar altura del input automáticamente según el texto cargado
+    inputMsg.style.height = 'auto';
+    inputMsg.style.height = (inputMsg.scrollHeight > 45 ? inputMsg.scrollHeight : 45) + 'px';
+    
+    // Actualizar el botón (para que muestre "Enviar" si hay texto guardado)
+    updateButtonState();
     
     // Reset inputs
     inputMsg.style.height = '45px';
-    inputMsg.value = '';
     
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
 
@@ -786,13 +868,19 @@ async function selectUser(target, elem) {
         // Scroll inmediato al cargar
         scrollToBottom(false); 
         
-        // Un segundo scroll de seguridad por si hay imágenes cargando
-        setTimeout(() => scrollToBottom(false), 300);
+        // "Truco": Hacerlo de nuevo un poco después por si cargaron imágenes
+        setTimeout(() => scrollToBottom(false), 200); 
+
     } else {
         messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
     }
 }
-backBtn.addEventListener('click', () => chatContainer.classList.remove('mobile-chat-active'));
+backBtn.addEventListener('click', () => {
+    chatContainer.classList.remove('mobile-chat-active');
+    
+    // --- AGREGAR ESTO: Quitar el tema global al salir del chat ---
+    document.body.classList.remove('theme-love', 'theme-space');
+});
 
 // --- AUDIO Y CONTROLES ---
 function updateButtonState() { mainActionBtn.innerHTML = isRecording ? ICONS.send : (inputMsg.value.trim().length > 0 ? ICONS.send : ICONS.mic); }
@@ -800,13 +888,25 @@ inputMsg.addEventListener('input', () => { updateButtonState(); if (currentTarge
 mainActionBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     if (isRecording) return stopRecording();
+    
     const text = inputMsg.value.trim();
     if (text.length > 0) {
         sendMessage(text, 'text', currentReplyId);
-        inputMsg.value = ''; inputMsg.style.height = 'auto'; inputMsg.focus(); clearReply();
+        
+        // Limpiar input y UI
+        inputMsg.value = ''; 
+        inputMsg.style.height = '45px'; // Volver a altura original
+        inputMsg.focus(); 
+        clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
+        
+        // --- NUEVO: BORRAR EL BORRADOR GUARDADO ---
+        localStorage.removeItem(`draft_${currentTargetUserId}`);
+        
         updateButtonState();
-    } else startRecording();
+    } else {
+        startRecording();
+    }
 });
 
 async function startRecording() {
@@ -851,38 +951,32 @@ function sendMessage(content, type, replyId = null) {
 }
 
 socket.on('private message', (msg) => {
-    // Verificar si el mensaje viene del usuario con el que hablamos actualmente
     if (currentTargetUserId === msg.fromUserId) {
         
-        // --- 1. DETECCIÓN INTELIGENTE DE SCROLL ---
-        const el = messagesList;
-        // Calculamos si el usuario está mirando lo último (con un margen de 150px)
-        const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+        // 1. DETECCIÓN EN EL CONTENEDOR PADRE
+        const scrollContainer = messagesList.parentNode; // <--- CLAVE
+        
+        // Calculamos si el usuario está cerca del final (margen de 150px)
+        const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
 
-        // --- 2. PREPARAR DATOS DEL REPLY ---
+        // 2. Preparar Reply Data (tu código original)
         let rd = null;
         if (msg.replyToId) {
             let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
-            
             let rText = msg.reply_content;
-            
-            // Iconos/Texto para multimedia en el reply
             if (msg.reply_type === 'image') rText = ICONS.replyImage;
             else if (msg.reply_type === 'sticker') rText = "✨ Sticker";
-            // Corrección: Usamos msg.reply_type aquí para detectar si el MENSAJE ORIGINAL era audio
-            else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz"; 
-
+            else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz";
             rd = { username: rName, content: rText, type: msg.reply_type };
         }
 
-        // --- 3. RENDERIZAR MENSAJE ---
+        // 3. Renderizar
         appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption);
 
-        // --- 4. APLICAR SCROLL SOLO SI ES NECESARIO ---
+        // 4. Scroll condicional
         if (isAtBottom) {
-            scrollToBottom(true); // Baja suavemente
+            scrollToBottom(true);
         }
-        // Si no estaba abajo (isAtBottom es false), no hacemos nada para no molestar la lectura.
     }
 });
 
@@ -991,11 +1085,14 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     lastMessageUserId = currentUserId;
 
     // Listeners
-    if (msgType === 'sticker' && isValidUrl(content)) {
+     if (msgType === 'sticker' && isValidUrl(content)) {
         li.querySelector('.sticker-img').addEventListener('click', (e) => { e.stopPropagation(); myFavorites.size ? openStickerOptions(content) : refreshFavoritesCache().then(() => openStickerOptions(content)); });
     }
     const wrapper = li.querySelector('.message-content-wrapper');
-    if (ownerType === 'me') addLongPressEvent(wrapper, msgId);
+    
+    // CORRECCIÓN: Agregamos el evento a TODOS los mensajes, no solo a los míos
+    addLongPressEvent(wrapper, msgId); 
+
     addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
 }
 
@@ -1049,15 +1146,286 @@ function addLongPressEvent(el, msgId) {
 
     el.addEventListener('touchstart', start, { passive: true });
 }
-function openContextMenu(x, y, msgId) { messageIdToDelete = msgId; const menu = msgContextMenu.querySelector('.context-menu-content'); msgContextMenu.classList.remove('hidden'); if (window.innerWidth <= 768) menu.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)'; else menu.style.cssText = `position:absolute;top:${Math.min(y, window.innerHeight-100)}px;left:${Math.min(x, window.innerWidth-200)}px`; }
-msgContextMenu.addEventListener('click', (e) => { if (e.target === msgContextMenu) { msgContextMenu.classList.add('hidden'); messageIdToDelete = null; } });
-getEl('ctxDeleteBtn').addEventListener('click', () => { msgContextMenu.classList.add('hidden'); getEl('deleteConfirmModal').classList.remove('hidden'); });
-getEl('cancelDelete').addEventListener('click', () => { getEl('deleteConfirmModal').classList.add('hidden'); messageIdToDelete = null; });
-getEl('confirmDelete').addEventListener('click', () => { if (messageIdToDelete && currentTargetUserId) socket.emit('delete message', { messageId: messageIdToDelete, toUserId: currentTargetUserId }); getEl('deleteConfirmModal').classList.add('hidden'); messageIdToDelete = null; });
 
-socket.on('typing', ({ fromUserId, username }) => { if (fromUserId === currentTargetUserId) { typingText.textContent = `${escapeHtml(myNicknames[fromUserId] || username)} está escribiendo...`; typingIndicator.classList.remove('hidden'); } });
+// ==========================================
+// MENÚ CONTEXTUAL MEJORADO (COPIAR, EDITAR, BORRAR)
+// ==========================================
+
+// Función global para cerrar el menú y limpiar estados
+window.closeContextMenu = () => {
+    msgContextMenu.classList.add('hidden');
+    currentContextMessageId = null;
+    messageIdToDelete = null;
+};
+
+// Función para abrir el menú
+function openContextMenu(x, y, msgId) {
+    currentContextMessageId = msgId;
+    messageIdToDelete = msgId;
+    
+    const menu = msgContextMenu.querySelector('.context-menu-content');
+    msgContextMenu.classList.remove('hidden');
+
+    // --- LÓGICA DE PERMISOS ---
+    const msgEl = document.getElementById(`msg-${msgId}`);
+    const isMyMessage = msgEl && msgEl.classList.contains('me');
+    const isAdmin = myUser.is_admin;
+
+    // 1. Botón EDITAR: Solo mostrar si el mensaje es MÍO
+    const btnEdit = document.getElementById('ctxEditBtn');
+    if (btnEdit) {
+        // Solo puedes editar tus propios mensajes (incluso si eres admin, usualmente no editas a otros)
+        btnEdit.style.display = isMyMessage ? 'flex' : 'none';
+    }
+
+    // 2. Botón ELIMINAR PARA TODOS (En el modal siguiente):
+    // Preparamos la lógica para cuando se abra el modal de borrado
+    const btnEveryone = document.getElementById('btnDeleteEveryone');
+    if (btnEveryone) {
+        if (isMyMessage || isAdmin) {
+            btnEveryone.style.display = 'flex'; // Mostrar
+        } else {
+            btnEveryone.style.display = 'none'; // Ocultar (Solo "Eliminar para mí")
+        }
+    }
+    
+    // Cálculo de posición (sin cambios)
+    let top = y;
+    let left = x;
+    
+    if (y > window.innerHeight - 250) top = y - 200;
+    if (x > window.innerWidth - 220) left = window.innerWidth - 230;
+
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+}
+
+// 1. LISTENERS DEL MENÚ CONTEXTUAL
+
+// Responder
+getEl('ctxReplyBtn').addEventListener('click', () => {
+    const msgEl = document.getElementById(`msg-${currentContextMessageId}`);
+    if (msgEl) {
+        // Intentar obtener contenido (texto o imagen)
+        let content = msgEl.innerText;
+        let type = 'text';
+        
+        // Si tiene imagen
+        if (msgEl.querySelector('.chat-image')) {
+            content = msgEl.querySelector('.chat-image').src;
+            type = 'image';
+        } else if (msgEl.querySelector('.sticker-img')) {
+             content = msgEl.querySelector('.sticker-img').src;
+             type = 'sticker';
+        }
+        
+        // Usamos 'unknown' como ID temporal, o currentTargetUserId si es el otro
+        // Nota: Idealmente deberíamos guardar el authorId en el elemento HTML
+        setReply(currentContextMessageId, content, type, 'unknown'); 
+    }
+    closeContextMenu();
+});
+
+// Copiar
+// 2. Copiar
+getEl('ctxCopyBtn').addEventListener('click', async () => {
+    if (!currentContextMessageId) return;
+    
+    const msgEl = document.getElementById(`msg-${currentContextMessageId}`);
+    if (msgEl) {
+        let textToCopy = "";
+        
+        // Clonamos para limpiar el HTML sin romper la vista
+        const clone = msgEl.cloneNode(true);
+        
+        // Quitamos elementos que no son el mensaje (hora, respuestas, etc)
+        const unwanted = clone.querySelectorAll('.meta-row, .quoted-message, .deleted-label, .audio-meta-row');
+        unwanted.forEach(el => el.remove());
+        
+        textToCopy = clone.innerText.trim();
+        
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            
+            // --- AQUÍ LLAMAMOS A LA NOTIFICACIÓN ---
+            showToast("Mensaje copiado"); 
+            // ---------------------------------------
+
+        } catch (err) {
+            console.error('Error al copiar:', err);
+            showToast("Error al copiar");
+        }
+    }
+    closeContextMenu();
+});
+
+// Editar (Visual por ahora)
+getEl('ctxEditBtn').addEventListener('click', () => {
+    console.log("Editar mensaje:", currentContextMessageId);
+    // Aquí iría la lógica futura
+    closeContextMenu();
+});
+
+// Eliminar (Abre el Modal)
+// Listener del botón ELIMINAR en el menú contextual
+getEl('ctxDeleteBtn').addEventListener('click', () => {
+    const idToSave = currentContextMessageId;
+    closeContextMenu(); 
+    
+    // Configurar contexto mensaje individual
+    messageIdToDelete = idToSave;
+    deleteActionType = 'single'; 
+
+    // Restaurar textos originales
+    document.querySelector('#deleteConfirmModal h3').textContent = "¿Eliminar mensaje?";
+    document.querySelector('#deleteConfirmModal p').textContent = "Elige cómo quieres borrar este mensaje.";
+
+    getEl('deleteConfirmModal').classList.remove('hidden');
+});
+// ==========================================
+// LÓGICA DE BORRADO (MODAL MEJORADO)
+// ==========================================
+
+// Función helper para cerrar modal de borrado
+window.closeDeleteModal = () => {
+    getEl('deleteConfirmModal').classList.add('hidden');
+};
+
+// Función visual para quitar mensaje de la UI suavemente
+function removeMessageFromUI(msgId) {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+        const row = el.closest('.message-row');
+        row.style.transition = "all 0.3s ease";
+        row.style.opacity = "0";
+        row.style.transform = "scale(0.9)";
+        setTimeout(() => row.remove(), 300);
+    }
+}
+
+// 1. Eliminar PARA TODOS
+getEl('btnDeleteEveryone').addEventListener('click', () => {
+    if (!currentTargetUserId) return closeDeleteModal();
+
+    if (deleteActionType === 'single' && messageIdToDelete) {
+        // CASO 1: Mensaje Individual
+        socket.emit('delete message', { 
+            messageId: messageIdToDelete, 
+            toUserId: currentTargetUserId,
+            deleteType: 'everyone' 
+        });
+        removeMessageFromUI(messageIdToDelete);
+
+    } else if (deleteActionType === 'clear' || deleteActionType === 'delete_chat') {
+        socket.emit('clear chat history', { 
+            toUserId: currentTargetUserId, 
+            deleteType: 'everyone' 
+        });
+        
+        // Limpiar UI
+        
+        // Si la acción era "Eliminar Chat y Salir"
+        if (deleteActionType === 'delete_chat') {
+            performExitChat();
+        }
+    }
+    closeDeleteModal();
+});
+
+// --- ACCIÓN: ELIMINAR PARA MÍ ---
+getEl('btnDeleteMe').addEventListener('click', () => {
+    if (!currentTargetUserId) return closeDeleteModal();
+
+    if (deleteActionType === 'single' && messageIdToDelete) {
+        // CASO 1: Mensaje Individual
+        socket.emit('delete message', { 
+            messageId: messageIdToDelete, 
+            toUserId: currentTargetUserId, 
+            deleteType: 'me' 
+        });
+        removeMessageFromUI(messageIdToDelete);
+
+    } else if (deleteActionType === 'clear' || deleteActionType === 'delete_chat') {
+        // CASO 2: Vaciar Chat Completo (Solo para mí)
+        socket.emit('clear chat history', { 
+            toUserId: currentTargetUserId, 
+            deleteType: 'me' 
+        });
+
+        // Limpiar UI
+        document.getElementById('messages').innerHTML = '';
+
+        // Si la acción era "Eliminar Chat y Salir"
+        if (deleteActionType === 'delete_chat') {
+            performExitChat();
+        }
+    }
+    closeDeleteModal();
+});
+
+// Función auxiliar para salir del chat (UI)
+function performExitChat() {
+    // Eliminar de la lista lateral visualmente
+    const userItem = document.querySelector(`.user-item[data-uid="${currentTargetUserId}"]`);
+    if (userItem) userItem.remove();
+
+    // Salir a pantalla vacía
+    document.querySelector('.chat-container').classList.remove('mobile-chat-active');
+    document.querySelector('.chat-header').classList.add('hidden');
+    document.querySelector('.messages').classList.add('hidden');
+    document.querySelector('.composer').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+    
+    // Resetear usuario actual
+    currentTargetUserId = null;
+    currentTargetUserObj = null;
+}
+
+
+socket.on('typing', ({ fromUserId, username }) => {
+    // Solo mostrar si el que escribe es el usuario del chat abierto actualmente
+    if (fromUserId === currentTargetUserId) {
+        
+        // Lógica según el tipo de chat
+        if (currentChatType === 'private') {
+            // Chat privado: Solo "Escribiendo..." (Sin nombre)
+            typingText.textContent = "Escribiendo..."; 
+        } else if (currentChatType === 'group') {
+            // Grupo: "Juan está escribiendo..." (Con nombre)
+            const name = escapeHtml(myNicknames[fromUserId] || username);
+            typingText.textContent = `${name} está escribiendo...`;
+        } else if (currentChatType === 'channel') {
+            // Canal: Generalmente no se muestra nada, o solo "Escribiendo..."
+            typingText.textContent = "Escribiendo...";
+        } else {
+            // Fallback por defecto
+            typingText.textContent = "Escribiendo...";
+        }
+
+        typingIndicator.classList.remove('hidden');
+    }
+});
 socket.on('stop typing', ({ fromUserId }) => { if (fromUserId === currentTargetUserId) typingIndicator.classList.add('hidden'); });
-inputMsg.addEventListener('input', () => { inputMsg.style.height = 'auto'; inputMsg.style.height = inputMsg.scrollHeight + 'px'; const isScroll = inputMsg.scrollHeight >= 120; inputMsg.classList.toggle('scroll-active', isScroll); inputMsg.style.overflowY = isScroll ? 'auto' : 'hidden'; });
+inputMsg.addEventListener('input', () => {
+    // Ajustar altura del textarea (tu código actual)
+    inputMsg.style.height = 'auto'; 
+    inputMsg.style.height = inputMsg.scrollHeight + 'px'; 
+    const isScroll = inputMsg.scrollHeight >= 120; 
+    inputMsg.classList.toggle('scroll-active', isScroll); 
+    inputMsg.style.overflowY = isScroll ? 'auto' : 'hidden'; 
+    
+    // Actualizar botón (Micrófono vs Enviar)
+    updateButtonState(); 
+
+    // Socket typing (tu código actual)
+    if (currentTargetUserId) {
+        socket.emit('typing', { toUserId: currentTargetUserId });
+        
+        // --- NUEVO: GUARDAR BORRADOR EN LOCALSTORAGE ---
+        // Guardamos usando el ID del usuario como clave
+        localStorage.setItem(`draft_${currentTargetUserId}`, inputMsg.value);
+    }
+});
 inputMsg.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (inputMsg.value.trim().length) mainActionBtn.click(); } });
 
 // Login/PWA
@@ -1219,27 +1587,21 @@ let lastMessageUserId = null; // Para agrupar mensajes del mismo usuario
 // 1. FUNCIÓN HELPER: Scroll Inteligente
 // ==========================================
 function scrollToBottom(smooth = true) {
-    // Usamos setTimeout para asegurar que el DOM ya se pintó
+    // Identificamos el contenedor que realmente tiene el scroll (el padre de la lista)
+    const scrollContainer = messagesList.parentNode; 
+
+    // Usamos setTimeout para dar tiempo al navegador a pintar el nuevo mensaje
     setTimeout(() => {
-        const el = messagesList;
-        
-        // Opción A: Scroll Suave (Animado)
         if (smooth) {
-            el.scrollTo({
-                top: el.scrollHeight,
+            scrollContainer.scrollTo({
+                top: scrollContainer.scrollHeight,
                 behavior: 'smooth'
             });
-        } 
-        // Opción B: Salto Instantáneo (Sin animación)
-        else {
-            el.scrollTo({
-                top: el.scrollHeight,
-                behavior: 'auto'
-            });
-            // Refuerzo para navegadores lentos o carga de imágenes
-            el.scrollTop = el.scrollHeight;
+        } else {
+            // Scroll forzado e instantáneo
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
-    }, 50); // Pequeño retraso de 50ms para asegurar renderizado
+    }, 50);
 }
 
 // ==========================================
@@ -1268,3 +1630,310 @@ function renderDateDivider(dateStr) {
         lastMessageUserId = null; // Reseteamos la agrupación al cambiar de día
     }
 }
+// ==========================================
+// LÓGICA DEL BOTÓN "IR ABAJO"
+// ==========================================
+const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+// El contenedor que hace scroll es el padre de la lista de mensajes (chat-main)
+const chatScrollContainer = document.querySelector('.chat-main'); 
+
+if (scrollToBottomBtn && chatScrollContainer) {
+
+    // 1. Detectar scroll
+    chatScrollContainer.addEventListener('scroll', () => {
+        // Distancia desde el fondo = Altura Total - Scroll Actual - Altura Visible
+        const distanceToBottom = chatScrollContainer.scrollHeight - chatScrollContainer.scrollTop - chatScrollContainer.clientHeight;
+
+        // Si el usuario sube más de 300px, mostramos el botón
+        if (distanceToBottom > 300) {
+            scrollToBottomBtn.classList.remove('hidden');
+        } else {
+            scrollToBottomBtn.classList.add('hidden');
+        }
+    });
+
+    // 2. Click para bajar
+    scrollToBottomBtn.addEventListener('click', () => {
+        chatScrollContainer.scrollTo({
+            top: chatScrollContainer.scrollHeight,
+            behavior: 'smooth'
+        });
+    });
+}
+// --- FUNCIÓN PARA MOSTRAR NOTIFICACIONES ---
+function showToast(message) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    // Crear el elemento
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    
+    // Icono de check + Texto
+    toast.innerHTML = `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>${message}</span>
+    `;
+
+    // Agregar al contenedor
+    container.appendChild(toast);
+
+    // Eliminar después de 3 segundos
+    setTimeout(() => {
+        toast.classList.add('hiding'); // Activar animación de salida CSS
+        setTimeout(() => {
+            toast.remove(); // Eliminar del DOM
+        }, 300); // Esperar a que termine la animación
+    }, 3000);
+}
+/* =========================================================
+   LÓGICA DEL MENÚ DE CHAT (BÚSQUEDA, FONDO, VACIAR)
+   ========================================================= */
+
+const chatMenuBtn = document.getElementById('chatMenuBtn');
+const chatOptionsMenu = document.getElementById('chatOptionsMenu');
+const chatSearchBar = document.getElementById('chatSearchBar');
+const chatSearchInput = document.getElementById('chatSearchInput');
+const closeChatSearch = document.getElementById('closeChatSearch');
+const searchCount = document.getElementById('searchCount');
+const wallpaperInput = document.getElementById('wallpaperInput');
+
+// 1. TOGGLE MENÚ
+if (chatMenuBtn) {
+    chatMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatOptionsMenu.classList.toggle('hidden');
+    });
+}
+
+// Cerrar menú al hacer click fuera
+document.addEventListener('click', (e) => {
+    if (chatOptionsMenu && !chatOptionsMenu.classList.contains('hidden')) {
+        if (!chatOptionsMenu.contains(e.target) && !chatMenuBtn.contains(e.target)) {
+            chatOptionsMenu.classList.add('hidden');
+        }
+    }
+});
+
+// 2. OPCIÓN: BUSCAR
+document.getElementById('optSearch').addEventListener('click', () => {
+    chatOptionsMenu.classList.add('hidden');
+    chatSearchBar.classList.remove('hidden');
+    chatSearchInput.value = '';
+    chatSearchInput.focus();
+});
+
+closeChatSearch.addEventListener('click', () => {
+    chatSearchBar.classList.add('hidden');
+    clearSearchHighlights();
+});
+
+// Lógica de búsqueda en tiempo real (Cliente)
+chatSearchInput.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    clearSearchHighlights();
+    
+    if (term.length < 2) {
+        searchCount.textContent = "";
+        return;
+    }
+
+    const messages = document.querySelectorAll('.message span'); // Solo texto
+    let matches = 0;
+    let firstMatch = null;
+
+    messages.forEach(span => {
+        const text = span.textContent;
+        if (text.toLowerCase().includes(term)) {
+            matches++;
+            // Resaltar texto
+            const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            span.innerHTML = text.replace(regex, '<span class="highlight-text">$1</span>');
+            
+            if (!firstMatch) {
+                firstMatch = span.closest('.message-row');
+            }
+        }
+    });
+
+    searchCount.textContent = matches > 0 ? `${matches} resultados` : "Sin resultados";
+    
+    // Scrollear al primer resultado (el más antiguo o reciente según orden)
+    if (firstMatch) {
+        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
+
+function clearSearchHighlights() {
+    document.querySelectorAll('.highlight-text').forEach(mark => {
+        const parent = mark.parentNode;
+        parent.textContent = parent.textContent; // Eliminar HTML tags
+        parent.normalize();
+    });
+}
+
+// 3. OPCIÓN: CAMBIAR FONDO
+/* ==========================================
+   LÓGICA DE TEMAS Y FONDOS
+   ========================================== */
+
+const themeModal = document.getElementById('themeModal');
+// 'wallpaperInput' is declared earlier in the file; do not redeclare it here to avoid a duplicate const error.
+
+// 1. ABRIR EL MODAL AL DAR CLICK EN "CAMBIAR FONDO"
+document.getElementById('optWallpaper').addEventListener('click', () => {
+    chatOptionsMenu.classList.add('hidden'); // Cerrar menú de 3 puntos
+    themeModal.classList.remove('hidden');   // Abrir modal de temas
+});
+
+// 2. CERRAR MODAL
+document.getElementById('closeThemeBtn').addEventListener('click', () => {
+    themeModal.classList.add('hidden');
+});
+// Cerrar si tocas fuera
+themeModal.addEventListener('click', (e) => {
+    if (e.target === themeModal) themeModal.classList.add('hidden');
+});
+
+// 3. SELECCIONAR UN TEMA PREDEFINIDO
+window.selectTheme = function(themeName) {
+    if (!currentTargetUserId) return;
+
+    // Guardar preferencia: { type: 'preset', value: 'love' }
+    const config = { type: 'preset', value: themeName };
+    localStorage.setItem(`theme_config_${currentTargetUserId}`, JSON.stringify(config));
+
+    // Aplicar inmediatamente
+    applyThemeConfig(config);
+    
+    // Feedback visual en el modal
+    updateActiveThemeUI(themeName);
+    
+    // (Opcional) Cerrar modal automáticamente
+    // themeModal.classList.add('hidden');
+};
+
+// 4. ELEGIR DESDE GALERÍA
+document.getElementById('btnGalleryTheme').addEventListener('click', () => {
+    wallpaperInput.click();
+});
+
+wallpaperInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        if (currentTargetUserId) {
+            const base64 = evt.target.result;
+            // Guardar preferencia: { type: 'image', value: BASE64_STRING }
+            const config = { type: 'image', value: base64 };
+            localStorage.setItem(`theme_config_${currentTargetUserId}`, JSON.stringify(config));
+            
+            applyThemeConfig(config);
+            themeModal.classList.add('hidden'); // Cerrar modal tras elegir foto
+        }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; 
+});
+
+// 5. FUNCIÓN CENTRAL PARA APLICAR EL TEMA
+function applyThemeConfig(config) {
+    const mainColumn = document.querySelector('.main-column');
+    const chatMain = document.querySelector('.chat-main');
+    const body = document.body; // <--- Referencia al body
+    
+    // 1. LIMPIEZA: Quitar clases de temas anteriores del Body y MainColumn
+    mainColumn.classList.remove('theme-love', 'theme-space');
+    body.classList.remove('theme-love', 'theme-space'); // <--- Limpiar body
+    
+    // Resetear imagen de fondo inline
+    chatMain.style.backgroundImage = '';
+
+    if (!config) return; 
+
+    if (config.type === 'image') {
+        // Fondo de imagen (Solo afecta al área de chat, no al body completo usualmente)
+        chatMain.style.backgroundImage = `url('${config.value}')`;
+        chatMain.style.backgroundSize = 'cover';
+        chatMain.style.backgroundPosition = 'center';
+    } 
+    else if (config.type === 'preset') {
+        if (config.value === 'love') {
+            mainColumn.classList.add('theme-love');
+            body.classList.add('theme-love'); // <--- Aplicar al body
+        } else if (config.value === 'space') {
+            mainColumn.classList.add('theme-space');
+            body.classList.add('theme-space'); // <--- Aplicar al body
+        }
+    }
+}
+
+// Helper para resaltar la opción seleccionada en el modal
+function updateActiveThemeUI(activeTheme) {
+    document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+    // Lógica simple para encontrar cuál activar (puedes mejorarla con IDs)
+    if(activeTheme === 'love') document.querySelector('.theme-option:nth-child(2)').classList.add('active');
+    else if(activeTheme === 'space') document.querySelector('.theme-option:nth-child(3)').classList.add('active');
+    else document.querySelector('.theme-option:nth-child(1)').classList.add('active');
+}
+
+// 6. MODIFICAR selectUser PARA CARGAR EL TEMA AL ENTRAR AL CHAT
+// (Reemplaza o busca tu función selectUser existente y añade esto al final)
+
+const originalSelectUserFn = selectUser; // Guardamos la referencia anterior si la hubiera
+selectUser = async function(target, elem) {
+    // Llamar a la lógica original de carga de mensajes
+    await originalSelectUserFn(target, elem); 
+
+    // --- NUEVO: Cargar Tema ---
+    const savedConfig = localStorage.getItem(`theme_config_${target.userId}`);
+    if (savedConfig) {
+        try {
+            applyThemeConfig(JSON.parse(savedConfig));
+        } catch (e) {
+            applyThemeConfig(null); // Fallback si falla JSON
+        }
+    } else {
+        // Si no hay config, revisamos si había un fondo antiguo (compatibilidad)
+        const oldBg = localStorage.getItem(`bg_${target.userId}`);
+        if (oldBg) {
+            applyThemeConfig({ type: 'image', value: oldBg });
+        } else {
+            applyThemeConfig(null); // Default
+        }
+    }
+};
+
+// --- MODIFICACIÓN: OPCIÓN VACIAR CHAT (Abriendo modal) ---
+document.getElementById('optClearChat').addEventListener('click', () => {
+    chatOptionsMenu.classList.add('hidden');
+    
+    // 1. Configurar contexto
+    deleteActionType = 'clear'; 
+    messageIdToDelete = null; // No aplica ID específico
+    
+    // 2. Cambiar textos del modal dinámicamente
+    document.querySelector('#deleteConfirmModal h3').textContent = "¿Vaciar chat?";
+    document.querySelector('#deleteConfirmModal p').textContent = "Los mensajes se borrarán permanentemente.";
+    
+    // 3. Abrir modal
+    document.getElementById('deleteConfirmModal').classList.remove('hidden');
+});
+
+// --- MODIFICACIÓN: OPCIÓN ELIMINAR CHAT (Abriendo modal) ---
+document.getElementById('optDeleteChat').addEventListener('click', () => {
+    chatOptionsMenu.classList.add('hidden');
+    
+    // 1. Configurar contexto
+    deleteActionType = 'delete_chat';
+    messageIdToDelete = null;
+    
+    // 2. Cambiar textos del modal dinámicamente
+    document.querySelector('#deleteConfirmModal h3').textContent = "¿Eliminar chat?";
+    document.querySelector('#deleteConfirmModal p').textContent = "¿Borrar chat y salir? Esta acción no se puede deshacer.";
+    
+    // 3. Abrir modal
+    document.getElementById('deleteConfirmModal').classList.remove('hidden');
+});

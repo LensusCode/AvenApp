@@ -193,11 +193,18 @@
 
             <!-- Zona Admin -->
             <div id="adminActionsSection" class="detail-item hidden" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 20px;">
-                <label style="color:#ef4444; font-weight:bold;">Zona Admin</label>
-                <button id="toggleVerifyBtn" class="btn" style="width:100%; margin-top:10px; background:#3b82f6; color:white; padding:12px;">
-                    Verificar Usuario
-                </button>
-            </div>
+    <label style="color:#ef4444; font-weight:bold;">Zona Admin</label>
+    
+    <!-- Botón existente (Verificado Azul) -->
+    <button id="toggleVerifyBtn" class="btn" style="width:100%; margin-top:10px; background:#3b82f6; color:white; padding:12px;">
+        Verificar Usuario (Azul)
+    </button>
+
+    <!-- NUEVO BOTÓN (Verificado Corazón) -->
+    <button id="togglePremiumBtn" class="btn" style="width:100%; margin-top:10px; background:#ec4899; color:white; padding:12px;">
+        Verificado Love (Corazón)
+    </button>
+</div>
 
         </div>
     </div>
@@ -215,16 +222,37 @@
         </div>
 
         <!-- Confirmación Borrado -->
-        <div id="deleteConfirmModal" class="confirm-modal hidden">
-            <div class="confirm-card">
-                <h3>¿Eliminar mensaje?</h3>
-                <p style="color: #a1a1aa; font-size: 14px;">Se eliminará para todos.</p>
-                <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <button id="cancelDelete" class="btn">Cancelar</button>
-                    <button id="confirmDelete" class="btn danger">Eliminar</button>
-                </div>
-            </div>
+        <!-- Modal de Confirmación de Borrado Mejorado -->
+<div id="deleteConfirmModal" class="confirm-modal hidden">
+    <!-- Fondo para cerrar al tocar fuera -->
+    <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
+
+    <div class="confirm-card delete-options-card">
+        <h3>¿Eliminar mensaje?</h3>
+        <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
+            Elige cómo quieres borrar este mensaje.
+        </p>
+        
+        <div class="delete-actions-stack">
+            <!-- Botón Eliminar para todos (Rojo) -->
+            <button id="btnDeleteEveryone" class="delete-action-btn danger">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                Eliminar para todos
+            </button>
+
+            <!-- Botón Eliminar para mí -->
+            <button id="btnDeleteMe" class="delete-action-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
+                Eliminar para mí
+            </button>
+
+            <!-- Botón Cancelar -->
+            <button onclick="closeDeleteModal()" class="delete-action-btn cancel">
+                Cancelar
+            </button>
         </div>
+    </div>
+</div>
         <div id="verificationSuccessModal" class="profile-modal hidden">
     <div class="profile-card" style="text-align: center; max-width: 320px;">
         <div class="verified-anim-icon">
@@ -266,36 +294,110 @@
 </div>
 
         <!-- Menú Contextual -->
-        <div id="msgContextMenu" class="context-menu hidden">
-            <div class="context-menu-content">
-                <button id="ctxReplyBtn" class="ctx-item">↩ Responder</button>
-                <button id="ctxDeleteBtn" class="ctx-item danger">Eliminar mensaje</button>
-            </div>
-        </div>
+        <!-- Menú Contextual Mejorado -->
+<div id="msgContextMenu" class="context-menu hidden">
+    <!-- El fondo invisible para cerrar al tocar fuera -->
+    <div class="context-menu-backdrop" onclick="closeContextMenu()"></div>
+    
+    <div class="context-menu-content">
+        <!-- Botón Responder -->
+        <button id="ctxReplyBtn" class="ctx-item">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+            <span>Responder</span>
+        </button>
+
+        <!-- Botón Copiar -->
+        <button id="ctxCopyBtn" class="ctx-item">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar</span>
+        </button>
+
+        <!-- Botón Editar (Visual) -->
+        <button id="ctxEditBtn" class="ctx-item">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <span>Editar</span>
+        </button>
+
+        <!-- Separador opcional -->
+        <div style="height:1px; background:rgba(255,255,255,0.1); margin: 4px 0;"></div>
+
+        <!-- Botón Eliminar -->
+        <button id="ctxDeleteBtn" class="ctx-item danger">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span>Eliminar</span>
+        </button>
+    </div>
+</div>
 
         <!-- Panel Chat -->
         <section class="main-column">
-            <header class="chat-header hidden">
-                <div style="display:flex; align-items:center">
-                    <button id="backBtn" class="back-btn" type="button">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    </button>
-                    <div class="avatar-wrapper" id="headerAvatarBtn" style="cursor: pointer; display: flex; align-items: center;">
-                        <div class="avatar" id="currentChatAvatar"></div>
-                        <div class="title">
-                            <div class="name" id="chatTitle">Nombre</div>
-                            <div class="typing-indicator hidden" id="typingIndicator">
-                                <span id="typingText" style="font-weight: normal; font-size: 12px;">escribiendo...</span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- EN index.html -->
+
+<header class="chat-header hidden">
+    <div style="display:flex; align-items:center; flex: 1; min-width: 0;">
+        <button id="backBtn" class="back-btn" type="button">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </button>
+        
+        <!-- Info del contacto -->
+        <div class="avatar-wrapper" id="headerAvatarBtn" style="cursor: pointer; display: flex; align-items: center; flex: 1; overflow: hidden;">
+            <div class="avatar" id="currentChatAvatar"></div>
+            <div class="title" style="min-width: 0;">
+                <div class="name" id="chatTitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre</div>
+                <div class="typing-indicator hidden" id="typingIndicator">
+                    <span id="typingText" style="font-weight: normal; font-size: 12px;">escribiendo...</span>
                 </div>
-            </header>
+            </div>
+        </div>
+    </div>
+
+    <!-- BARRA DE BÚSQUEDA EN CHAT (Oculta por defecto) -->
+    <div id="chatSearchBar" class="chat-search-bar hidden">
+        <input type="text" id="chatSearchInput" placeholder="Buscar en este chat..." />
+        <button id="closeChatSearch" class="icon-btn-small">✕</button>
+        <div id="searchCount" style="font-size:12px; margin-left:5px; color:#aaa;"></div>
+    </div>
+
+    <!-- BOTÓN DE MENÚ (TRES PUNTOS) -->
+    <div class="chat-header-actions">
+        <button id="chatMenuBtn" class="nav-icon-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+        </button>
+
+        <!-- MENÚ DESPLEGABLE -->
+        <div id="chatOptionsMenu" class="chat-options-menu hidden">
+            <button id="optSearch" class="chat-opt-item">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Buscar
+            </button>
+            
+            <button id="optWallpaper" class="chat-opt-item">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                Cambiar fondo
+            </button>
+            <input type="file" id="wallpaperInput" accept="image/*" hidden />
+
+            <button id="optClearChat" class="chat-opt-item">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                Vaciar chat
+            </button>
+
+            <button id="optDeleteChat" class="chat-opt-item danger">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Eliminar chat
+            </button>
+        </div>
+    </div>
+</header>
 
             <main class="chat-main">
                 <div id="emptyState" class="empty-state">Selecciona un contacto</div>
                 <ul id="messages" class="messages hidden"></ul>
             </main>
+
+            <button id="scrollToBottomBtn" class="scroll-bottom-btn hidden" aria-label="Ir al final">
+    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+</button>
 
             <!-- PANEL DE STICKERS (NUEVO) -->
             <div id="stickerPanel" class="sticker-panel hidden">
@@ -374,6 +476,53 @@
     </div>
 </form>        </section>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div id="themeModal" class="theme-modal hidden">
+    <div class="theme-sheet">
+        <div class="theme-header-row">
+            <button id="closeThemeBtn" class="nav-icon-btn">✕</button>
+            <h3>Elige un tema</h3>
+            <div style="width: 40px;"></div> <!-- Espaciador para centrar -->
+        </div>
+
+        <div class="themes-scroller">
+            <!-- Opción 1: Sin tema (Default) -->
+            <div class="theme-option" onclick="selectTheme('default')">
+                <div class="theme-preview default-preview">
+                    <div class="mini-bubble-left"></div>
+                    <div class="mini-bubble-right"></div>
+                </div>
+                <span>Sin tema</span>
+            </div>
+
+            <!-- Opción 2: Tema Amor (Rosado) -->
+            <div class="theme-option" onclick="selectTheme('love')">
+                <div class="theme-preview love-preview">
+                    <div class="mini-bubble-left"></div>
+                    <div class="mini-bubble-right"></div>
+                </div>
+                <span>Amor</span>
+            </div>
+
+            <!-- Opción 3: Tema Espacio (Degradado Azul/Morado) -->
+            <div class="theme-option" onclick="selectTheme('space')">
+                <div class="theme-preview space-preview">
+                    <div class="mini-bubble-left"></div>
+                    <div class="mini-bubble-right"></div>
+                </div>
+                <span>Espacio</span>
+            </div>
+        </div>
+
+        <div class="theme-footer">
+            <button id="btnGalleryTheme" class="btn-gallery-link">
+                Elegir un fondo desde galería
+            </button>
+        </div>
+    </div>
+</div>
 
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="script.js" defer></script>

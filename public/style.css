@@ -137,14 +137,67 @@ body {
     position: relative;
 }
 
-.deleted-label {
-    display: block;
-    font-size: 10px;
-    color: #ef4444;
-    font-weight: bold;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+/* Ajustes para la tarjeta de borrado */
+.delete-options-card {
+    width: 320px;
+    padding: 25px;
+    background: #1e1e1e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.delete-actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.delete-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ececec;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+    text-align: left;
+}
+
+.delete-action-btn svg {
+    opacity: 0.7;
+}
+
+.delete-action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Estilo para "Para todos" (Rojo) */
+.delete-action-btn.danger {
+    color: #ff5f5f;
+    background: rgba(255, 95, 95, 0.1);
+}
+.delete-action-btn.danger:hover {
+    background: rgba(255, 95, 95, 0.2);
+}
+
+/* Estilo para Cancelar (Simple) */
+.delete-action-btn.cancel {
+    justify-content: center;
+    margin-top: 5px;
+    background: transparent;
+    color: #a1a1aa;
+}
+.delete-action-btn.cancel:hover {
+    color: #fff;
 }
 
 .hidden { display: none !important; }
@@ -236,6 +289,8 @@ body {
     position: relative;
     transform: translateZ(0);
 }
+
+
 
 .contact-card {
     width: 340px;
@@ -682,9 +737,7 @@ body {
 .modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(2px);
-    z-index: 1;
 }
 
 .sticker-options-content {
@@ -1095,21 +1148,84 @@ body {
 }
 
 .context-menu {
-    background: rgba(0, 0, 0, .1) !important;
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    /* Quitamos el fondo oscuro y el blur */
+    background: transparent !important; 
+    backdrop-filter: none !important; 
+    pointer-events: auto;
 }
 
-.context-menu-content {
+/* Capa transparente detrás para detectar clicks fuera */
+.context-menu-backdrop {
     position: absolute;
-    background: #18181b;
-    border: 1px solid var(--border);
+    inset: 0;
+    z-index: -1;
+}
+
+/* La tarjeta del menú estilo Telegram */
+.context-menu-content {
+    position: absolute; /* Se posicionará vía JS */
+    background: #1e1e1e; /* Color gris oscuro sólido */
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    padding: 8px;
-    min-width: 180px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+    padding: 6px;
+    min-width: 200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    animation: popIn .15s ease-out forwards;
+    gap: 2px;
+    animation: menuPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 5001;
+}
+
+/* Animación de entrada */
+@keyframes menuPop {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Items del menú */
+.ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+    border: 0;
+    color: #ececec;
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.ctx-item svg {
+    color: #a1a1aa; /* Iconos gris claro */
+}
+
+.ctx-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ctx-item:active {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* Estilo para Eliminar (Rojo) */
+.ctx-item.danger {
+    color: #ff5f5f;
+}
+.ctx-item.danger svg {
+    color: #ff5f5f;
+}
+.ctx-item.danger:hover {
+    background: rgba(255, 95, 95, 0.1);
 }
 
 @keyframes popIn {
@@ -2370,7 +2486,7 @@ input.invalid {
     color: #fff;
     padding: 12px 20px;
     border-radius: 8px;
-    border-left: 4px solid #6366f1; /* Default blue */
+    border-left: 4px solid #4ade80;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     min-width: 250px;
     opacity: 0;
@@ -2385,6 +2501,12 @@ input.invalid {
 
 .toast.success { border-left-color: #4ade80; }
 .toast.error { border-left-color: #ef4444; }
+
+.toast.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+}
 
 @keyframes slideIn {
     to { opacity: 1; transform: translateX(0); }
@@ -2553,6 +2675,411 @@ meta-row {
     align-self: center !important;
 }
 
+.scroll-bottom-btn {
+    position: absolute;
+    bottom: 90px; /* Un poco arriba del input de texto */
+    right: 20px;   /* Parte inferior izquierda */
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(31, 31, 35, 0.9); /* Fondo oscuro semitransparente */
+    border: 1px solid var(--border);
+    color: var(--accent); /* Color del icono (morado/azul) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 40; /* Por encima de los mensajes */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.scroll-bottom-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    transform: scale(1.1);
+}
+
+/* Estado oculto con animación suave */
+.scroll-bottom-btn.hidden {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    pointer-events: none; /* Evita clicks cuando no se ve */
+    display: flex !important; /* Sobrescribimos el display:none del helper .hidden */
+}
+
+/* --- MENÚ DE OPCIONES DE CHAT (Top Right) --- */
+.chat-header-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.chat-options-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 220px;
+    background: #18181b; /* Color gris oscuro estilo Telegram */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 8px 0;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    z-index: 100;
+    animation: menuFadeIn 0.2s ease-out;
+    transform-origin: top right;
+}
+
+.chat-opt-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.chat-opt-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.chat-opt-item svg {
+    color: #a1a1aa;
+}
+
+.chat-opt-item.danger {
+    color: #ff5f5f;
+}
+.chat-opt-item.danger svg {
+    color: #ff5f5f;
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --- BARRA DE BÚSQUEDA EN HEADER --- */
+.chat-search-bar {
+    position: absolute;
+    inset: 0;
+    background: #18181b; /* Mismo color que el header */
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    animation: slideDown 0.2s ease;
+}
+
+.chat-search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+}
+
+.icon-btn-small {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 18px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+.icon-btn-small:hover { color: #fff; }
+
+@keyframes slideDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- CLASE PARA RESALTAR BÚSQUEDA --- */
+.highlight-text {
+    background-color: #fbbf24;
+    color: #000;
+    border-radius: 2px;
+}
+
+/* --- MODAL DE TEMAS (BOTTOM SHEET) --- */
+.theme-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-end; /* Alineado al fondo */
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.theme-modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.theme-sheet {
+    background: #1c1c1e;
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    padding-bottom: 40px;
+    animation: slideUpTheme 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 80vh;
+}
+
+@keyframes slideUpTheme {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.theme-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.theme-header-row h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #fff;
+}
+
+/* Scroll horizontal de temas */
+.themes-scroller {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px 5px;
+    /* Ocultar barra de scroll */
+    scrollbar-width: none; 
+}
+.themes-scroller::-webkit-scrollbar { display: none; }
+
+.theme-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.theme-option span {
+    font-size: 13px;
+    color: #aaa;
+}
+
+.theme-option:hover span {
+    color: #fff;
+}
+
+/* Previsualizaciones (Mini Chats) */
+.theme-preview {
+    width: 100px;
+    height: 140px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    position: relative;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 5px;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.theme-preview:hover {
+    transform: scale(1.05);
+}
+
+.theme-option.active .theme-preview {
+    border-color: #6366f1; /* Borde azul de seleccionado */
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+/* Burbujitas dentro del preview */
+.mini-bubble-left, .mini-bubble-right {
+    height: 8px;
+    border-radius: 4px;
+    width: 60%;
+}
+.mini-bubble-left { align-self: flex-start; background: #333; }
+.mini-bubble-right { align-self: flex-end; background: #6366f1; }
+
+/* ESTILOS DE LOS TEMAS (PREVIEW) */
+
+/* 1. Default */
+.default-preview {
+    background: #141419; /* Gris oscuro */
+}
+
+/* 2. Amor (Preview) */
+.love-preview {
+    background: #2e0818; /* Fondo tinto/rosado oscuro */
+    background-image: radial-gradient(circle, #4a0e26 0%, #2e0818 100%);
+}
+.love-preview .mini-bubble-right { background: #ec4899; } /* Burbuja rosa */
+
+/* 3. Espacio (Preview) */
+.space-preview {
+    background: linear-gradient(180deg, #0f172a 0%, #312e81 100%);
+}
+
+.btn-gallery-link {
+    background: none;
+    border: none;
+    color: #6366f1;
+    font-size: 16px;
+    width: 100%;
+    padding: 15px;
+    cursor: pointer;
+    text-align: center;
+}
+.btn-gallery-link:hover { text-decoration: underline; }
+
+
+/* ================================================== 
+   DEFINICIÓN DE TEMAS REALES (VARIABLES CSS) 
+   ================================================== */
+
+/* TEMA: AMOR (Todo Rosado) */
+.chat-main.theme-love {
+    /* Fondo: Rosado oscuro con patrón o degradado */
+    background-color: #380e20 !important;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+}
+
+/* Burbujas del usuario (ME) en modo amor */
+.theme-love .message.me {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3) !important;
+}
+
+/* Burbujas del otro (OTHER) en modo amor */
+.theme-love .message.other {
+    background: #501528 !important; /* Rosado muy oscuro */
+    border: 1px solid rgba(236, 72, 153, 0.2) !important;
+}
+
+/* TEMA: ESPACIO */
+.chat-main.theme-space {
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+}
+
+.main-column.theme-love .chat-main {
+    background-color: #380e20 !important;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+}
+
+/* 2. Header (Barra superior) */
+.main-column.theme-love .chat-header {
+    background: rgba(56, 14, 32, 0.85) !important; /* Rosado muy oscuro semitransparente */
+    border-bottom: 1px solid rgba(236, 72, 153, 0.2);
+}
+.main-column.theme-love .chat-header .name {
+    color: #fbcfe8; /* Texto rosado claro */
+}
+
+/* 3. Composer (Barra de escritura) */
+.main-column.theme-love .chat-input-wrapper {
+    background: rgba(80, 20, 40, 0.6) !important; /* Fondo píldora rosado oscuro */
+    border: 1px solid rgba(236, 72, 153, 0.3);
+}
+.main-column.theme-love .chat-input-wrapper:focus-within {
+    border-color: #ec4899; /* Borde rosa al escribir */
+}
+
+/* 4. Botón de Enviar / Micrófono */
+.main-column.theme-love .send-btn {
+    background: #ec4899 !important; /* Rosado intenso */
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+}
+.main-column.theme-love .send-btn:hover {
+    background: #db2777 !important;
+}
+
+/* 5. Burbujas de chat */
+.main-column.theme-love .message.me {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+}
+.main-column.theme-love .message.other {
+    background: #501528 !important;
+    border: 1px solid rgba(236, 72, 153, 0.1) !important;
+}
+
+
+/* ---------------- TEMA: ESPACIO (AZUL) ---------------- */
+
+/* 1. Fondo */
+.main-column.theme-space .chat-main {
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+}
+
+/* 2. Header */
+.main-column.theme-space .chat-header {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+.main-column.theme-space .chat-header .name {
+    color: #c7d2fe;
+}
+
+/* 3. Composer */
+.main-column.theme-space .chat-input-wrapper {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* 4. Botón Enviar */
+.main-column.theme-space .send-btn {
+    background: #6366f1 !important; /* Indigo */
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+body.theme-love {
+    background-color: #380e20 !important;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+    transition: background 0.3s ease;
+}
+
+/* TEMA ESPACIO: Pinta todo el fondo de la página */
+body.theme-space {
+    background-color: #0f172a !important;
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+    transition: background 0.3s ease;
+}
+
+/* OPCIONAL: Si quieres que la barra lateral (Sidebar) también se tinte un poco */
+body.theme-love .sidebar {
+    background: rgba(56, 14, 32, 0.6) !important; /* Rosado oscuro transparente */
+    border-right: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+body.theme-space .sidebar {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-right: 1px solid rgba(99, 102, 241, 0.2);
+}
+
 @media (max-width: 768px) {
     
     body {
@@ -2629,5 +3156,9 @@ meta-row {
     
     .audio-slider-container {
         height: 18px; /* Ondas un poco más bajas */
+    }
+    .scroll-bottom-btn {
+        bottom: 80px;
+        right: 15px;
     }
 }

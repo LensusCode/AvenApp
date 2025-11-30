@@ -9,6 +9,7 @@ const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
 const sharp = require('sharp');
+sharp.cache(false);
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -32,8 +33,8 @@ app.use(helmet({
             scriptSrcAttr: ["'unsafe-inline'"], 
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com"],
-            mediaSrc: ["'self'", "blob:", "data:"], // Necesario para audios
-            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:"], // WebSockets
+            mediaSrc: ["'self'", "blob:", "data:"], 
+            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:"], 
             upgradeInsecureRequests: null,
         },
     },
@@ -51,7 +52,7 @@ app.get('/ping', (req, res) => res.status(200).send('Pong'));
 // --- RATE LIMITING ---
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 20, // Aumentado un poco para pruebas
+    max: 20, 
     message: { error: "Demasiados intentos. Inténtalo más tarde." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -122,22 +123,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a la base de datos SQLite.');
 });
 
-// INICIALIZACIÓN DE TABLAS (CORREGIDA)
+// INICIALIZACIÓN DE TABLAS
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, avatar TEXT)`);
     
-    // Columnas adicionales (callbacks vacíos para ignorar error si ya existen)
+    // Columnas adicionales
     db.run(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`, () => {});
     db.run(`ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0`, () => {});
-    
-    // --- ESTAS LÍNEAS SOLUCIONAN TU ERROR "SQLITE_ERROR" ---
+    db.run(`ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0`, () => {});
     db.run(`ALTER TABLE users ADD COLUMN display_name TEXT`, () => {});
     db.run(`ALTER TABLE users ADD COLUMN bio TEXT`, () => {});
-    // --------------------------------------------------------
 
     db.run(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user_id INTEGER, to_user_id INTEGER, content TEXT, type TEXT DEFAULT 'text', reply_to_id INTEGER, is_deleted INTEGER DEFAULT 0, caption TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS nicknames (user_id INTEGER, target_user_id INTEGER, nickname TEXT, PRIMARY KEY (user_id, target_user_id))`);
     db.run(`CREATE TABLE IF NOT EXISTS favorite_stickers (user_id INTEGER, sticker_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sticker_url))`);
+    
+    // [NUEVO] TABLA PARA MENSAJES OCULTOS "ELIMINAR PARA MÍ"
+    db.run(`CREATE TABLE IF NOT EXISTS hidden_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message_id INTEGER, UNIQUE(user_id, message_id))`);
 });
 
 // --- MIDDLEWARE AUTH ---
@@ -156,8 +158,7 @@ const authenticateToken = (req, res, next) => {
 
 // --- EMISIÓN DE USUARIOS ---
 function emitUsers() {
-    // ACTUALIZADO: Seleccionamos display_name y bio
-    db.all(`SELECT id, username, display_name, bio, avatar, is_verified, is_admin FROM users`, (err, rows) => {
+    db.all(`SELECT id, username, display_name, bio, avatar, is_verified, is_admin, is_premium FROM users`, (err, rows) => {
         if (err) return;
         const onlineUserIds = new Set();
         if (io.of("/")) {
@@ -168,12 +169,13 @@ function emitUsers() {
         const users = rows.map(row => ({
             userId: row.id,
             username: row.username,
-            display_name: row.display_name, // Enviamos el nombre real
-            bio: row.bio,                   // Enviamos la biografía
+            display_name: row.display_name,
+            bio: row.bio,
             avatar: row.avatar || '/profile.png',
             online: onlineUserIds.has(row.id),
             is_verified: row.is_verified,
-            is_admin: row.is_admin 
+            is_admin: row.is_admin,
+            is_premium: row.is_premium 
         }));
         io.emit('users', users);
     });
@@ -181,7 +183,6 @@ function emitUsers() {
 
 // ================= RUTAS API =================
 
-// 1. Verificar Usuario (Para validación en tiempo real en login.js)
 app.post('/api/check-username', (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: 'Vacío' });
@@ -191,7 +192,6 @@ app.post('/api/check-username', (req, res) => {
     });
 });
 
-// 2. Registro Actualizado (Guarda display_name)
 app.post('/api/register', (req, res) => {
     const { username, password, firstName, lastName } = req.body;
     
@@ -204,7 +204,6 @@ app.post('/api/register', (req, res) => {
     const hash = bcrypt.hashSync(password, 10);
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-    // Insertar incluyendo display_name
     db.run(`INSERT INTO users (username, password, avatar, display_name) VALUES (?, ?, ?, ?)`, 
     [username, hash, '/profile.png', fullName], function(err) {
         if (err) {
@@ -215,7 +214,6 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-// 3. Login
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const SUPER_ADMIN_ENV = process.env.SUPER_ADMIN_USER; 
@@ -225,7 +223,6 @@ app.post('/api/login', (req, res) => {
             return res.status(400).json({ error: 'Credenciales incorrectas' });
         }
         
-        // Auto-admin por variable de entorno
         if (SUPER_ADMIN_ENV && row.username === SUPER_ADMIN_ENV && row.is_admin !== 1) {
             db.run(`UPDATE users SET is_admin = 1, is_verified = 1 WHERE id = ?`, [row.id]);
             row.is_admin = 1; row.is_verified = 1;
@@ -240,17 +237,17 @@ app.post('/api/login', (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        // Enviamos todos los campos necesarios al frontend
         res.json({ 
             success: true,
             user: { 
                 id: row.id, 
                 username: row.username, 
-                display_name: row.display_name, // Nuevo
-                bio: row.bio,                   // Nuevo
+                display_name: row.display_name,
+                bio: row.bio,
                 avatar: row.avatar || '/profile.png', 
                 is_admin: row.is_admin, 
-                is_verified: row.is_verified 
+                is_verified: row.is_verified,
+                is_premium: row.is_premium
             } 
         });
     });
@@ -261,16 +258,13 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
-// 4. Obtener datos del usuario actual (Session check)
 app.get('/api/me', authenticateToken, (req, res) => {
-    // ACTUALIZADO: Seleccionamos display_name y bio
-    db.get(`SELECT id, username, display_name, bio, avatar, is_admin, is_verified FROM users WHERE id = ?`, [req.user.id], (err, row) => {
+    db.get(`SELECT id, username, display_name, bio, avatar, is_admin, is_verified, is_premium FROM users WHERE id = ?`, [req.user.id], (err, row) => {
         if(row) res.json(row);
         else res.status(401).json({error: 'Usuario no encontrado'});
     });
 });
 
-// 5. EDITAR PERFIL (Nuevo)
 app.put('/api/profile/update', authenticateToken, (req, res) => {
     const { field, value } = req.body;
     const allowedFields = ['username', 'display_name', 'bio'];
@@ -290,13 +284,14 @@ app.put('/api/profile/update', authenticateToken, (req, res) => {
             if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Usuario en uso' });
             return res.status(500).json({ error: 'Error DB' });
         }
-        emitUsers(); // Refrescar a todos
+        emitUsers();
         res.json({ success: true, field, value: finalValue });
     });
 });
 
 // --- SUBIDA DE ARCHIVOS ---
 
+// RUTA SUBIDA AVATAR (CORREGIDA)
 app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Faltan datos' });
     const tempFilePath = req.file.path;
@@ -307,8 +302,17 @@ app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async
     const finalPath = path.join(dir, filename);
     
     try {
-        await sharp(tempFilePath).resize(500, 500, { fit: 'cover' }).toFormat('jpeg').jpeg({ quality: 80 }).toFile(finalPath);
-        fs.unlinkSync(tempFilePath);
+        await sharp(tempFilePath)
+            .resize(500, 500, { fit: 'cover' })
+            .toFormat('jpeg')
+            .jpeg({ quality: 80 })
+            .toFile(finalPath);
+
+        // Usamos unlink asíncrono para que no tumbe el servidor si hay error
+        fs.unlink(tempFilePath, (err) => {
+            if (err) console.error("Advertencia al borrar temp:", err.message);
+        });
+
         const avatarUrl = `/uploads/${filename}`;
         db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, req.user.id], (err) => {
             if (err) return res.status(500).json({error: 'Error interno'});
@@ -316,11 +320,14 @@ app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async
             res.json({ avatarUrl });
         });
     } catch (error) { 
-        if(fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-        res.status(500).json({ error: 'Error procesando' }); 
+        console.error("Error procesando avatar:", error);
+        // Intentar borrar incluso si falló el proceso
+        fs.unlink(tempFilePath, () => {}); 
+        res.status(500).json({ error: 'Error procesando imagen' }); 
     }
 });
 
+// RUTA SUBIDA IMAGEN CHAT (CORREGIDA)
 app.post('/api/upload-chat-image', authenticateToken, upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No hay imagen' });
     const tempFilePath = req.file.path;
@@ -329,13 +336,24 @@ app.post('/api/upload-chat-image', authenticateToken, upload.single('image'), as
     
     const filename = `chat-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpeg`;
     const finalPath = path.join(dir, filename);
+    
     try {
-        await sharp(tempFilePath).resize(1024, 1024, { fit: 'inside' }).toFormat('jpeg').jpeg({ quality: 80 }).toFile(finalPath);
-        fs.unlinkSync(tempFilePath);
+        await sharp(tempFilePath)
+            .resize(1024, 1024, { fit: 'inside' })
+            .toFormat('jpeg')
+            .jpeg({ quality: 80 })
+            .toFile(finalPath);
+            
+        // Usamos unlink asíncrono para evitar el crash EBUSY
+        fs.unlink(tempFilePath, (err) => {
+            if (err) console.error("Advertencia al borrar temp:", err.message);
+        });
+
         res.json({ imageUrl: `/uploads/${filename}` });
     } catch (error) { 
-        if(fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-        res.status(500).json({ error: 'Error procesando' }); 
+        console.error("Error procesando imagen chat:", error);
+        fs.unlink(tempFilePath, () => {});
+        res.status(500).json({ error: 'Error procesando imagen' }); 
     }
 });
 
@@ -377,6 +395,19 @@ app.post('/api/admin/toggle-verify', authenticateToken, (req, res) => {
     });
 });
 
+app.post('/api/admin/toggle-premium', authenticateToken, (req, res) => {
+    if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
+    db.run(`UPDATE users SET is_premium = 1 - IFNULL(is_premium, 0) WHERE id = ?`, [req.body.targetUserId], function(err) {
+        if (err) {
+            console.error("Error toggling premium:", err.message);
+            return res.status(500).json({ error: 'Error DB' });
+        }
+        emitUsers(); 
+        res.json({ success: true });
+    });
+});
+
+// [MODIFICADO] RUTA OBTENER MENSAJES (Ahora filtra los "ocultos para mí")
 app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
     const { myId, otherId } = req.params;
     if (parseInt(myId) !== req.user.id && !req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
@@ -384,12 +415,25 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
     db.get(`SELECT is_admin FROM users WHERE id = ?`, [myId], (err, userRow) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
         const isAdmin = userRow && userRow.is_admin === 1;
+        
         let sqlCondition = `((m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?))`;
+        
+        // Si NO es admin, ocultamos los eliminados globalmente
         if (!isAdmin) sqlCondition += ` AND m.is_deleted = 0`;
 
-        const sql = `SELECT m.*, r.content as reply_content, r.type as reply_type, r.from_user_id as reply_from_id FROM messages m LEFT JOIN messages r ON m.reply_to_id = r.id WHERE ${sqlCondition} ORDER BY m.timestamp ASC`;
+        // [MODIFICADO] SQL: LEFT JOIN con hidden_messages para filtrar los que borré "para mí"
+        const sql = `
+            SELECT m.*, r.content as reply_content, r.type as reply_type, r.from_user_id as reply_from_id 
+            FROM messages m 
+            LEFT JOIN messages r ON m.reply_to_id = r.id 
+            LEFT JOIN hidden_messages h ON h.message_id = m.id AND h.user_id = ? 
+            WHERE ${sqlCondition} 
+            AND h.id IS NULL 
+            ORDER BY m.timestamp ASC
+        `;
 
-        db.all(sql, [myId, otherId, otherId, myId], (err, rows) => {
+        // Añadimos myId como primer parámetro para el join de hidden_messages
+        db.all(sql, [myId, myId, otherId, otherId, myId], (err, rows) => {
             if (err) return res.status(500).json({ error: 'Error DB' });
             const decryptedRows = rows.map(row => ({
                 ...row,
@@ -414,7 +458,6 @@ app.get('/api/stickers-proxy', authenticateToken, async (req, res) => {
 
         const url = `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${apiKey}&limit=24&rating=g&q=${encodeURIComponent(q || '')}`;
 
-        // Hacemos la petición a Giphy
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -426,7 +469,6 @@ app.get('/api/stickers-proxy', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error("❌ ERROR en /api/stickers-proxy:", error.message);
-        // Si fetch no existe, el error dirá "fetch is not defined"
         res.status(500).json({ error: 'Error interno obteniendo stickers' });
     }
 });
@@ -508,14 +550,120 @@ io.on('connection', (socket) => {
         );
     });
 
-    socket.on('delete message', ({ messageId, toUserId }) => {
-        db.run(`UPDATE messages SET is_deleted = 1 WHERE id = ? AND from_user_id = ?`, [messageId, userId], function(err) {
-            if (this.changes > 0) {
-                socket.to(`user_${toUserId}`).emit('message deleted', { messageId });
-                socket.emit('message deleted', { messageId });
+    // [MODIFICADO] EVENTO DELETE MESSAGE
+    socket.on('delete message', ({ messageId, toUserId, deleteType }) => {
+        const userId = socket.data.userId;
+        const isAdmin = socket.data.isAdmin;
+
+        if (deleteType === 'everyone') {
+            // CASO 1: Eliminar para todos (Global)
+            // Solo permitido si eres admin o el dueño del mensaje
+            let query = `UPDATE messages SET is_deleted = 1 WHERE id = ?`;
+            let params = [messageId];
+
+            if (!isAdmin) {
+                // Restricción extra para usuarios normales
+                query += ` AND from_user_id = ?`;
+                params.push(userId);
+            }
+
+            db.run(query, params, function(err) {
+                if (!err && this.changes > 0) {
+                    // Notificar a AMBOS (emisor y receptor)
+                    socket.to(`user_${toUserId}`).emit('message deleted', { messageId });
+                    socket.emit('message deleted', { messageId });
+                }
+            });
+
+        } else if (deleteType === 'me') {
+            // CASO 2: Eliminar para mí (Local)
+            // Simplemente lo ocultamos insertando en hidden_messages
+            db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, messageId], function(err) {
+                if(err) console.error("Error hidden_msg:", err);
+                // NO emitimos al otro usuario.
+                // El frontend del que solicitó ya lo borró visualmente.
+            });
+        }
+    });
+    socket.on('clear chat history', ({ toUserId, deleteType }) => {
+    const userId = socket.data.userId;   // Tu ID
+    const targetId = parseInt(toUserId); // El ID del otro
+
+    if (!targetId) return;
+
+    if (deleteType === 'everyone') {
+        // --- CASO 1: ELIMINAR PARA TODOS ---
+        const sqlUpdate = `
+            UPDATE messages 
+            SET is_deleted = 1 
+            WHERE (from_user_id = ? AND to_user_id = ?) 
+               OR (from_user_id = ? AND to_user_id = ?)
+        `;
+        
+        db.run(sqlUpdate, [userId, targetId, targetId, userId], function(err) {
+            if (!err) {
+                // 1. Notificar al EMISOR (Tú): "Limpia el chat con targetId"
+                socket.emit('chat history cleared', { chatId: targetId });
+
+                // 2. Notificar al RECEPTOR (El otro): "Limpia el chat con userId"
+                socket.to(`user_${targetId}`).emit('chat history cleared', { chatId: userId });
             }
         });
-    });
+
+    } else {
+        // --- CASO 2: ELIMINAR PARA MÍ ---
+        const sqlGet = `SELECT id FROM messages WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
+        
+        db.all(sqlGet, [userId, targetId, targetId, userId], (err, rows) => {
+            if (rows && rows.length > 0) {
+                const stmt = db.prepare(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`);
+                rows.forEach(row => {
+                    stmt.run(userId, row.id);
+                });
+                stmt.finalize();
+                
+                // Solo te notificamos a ti (Tú limpias tu pantalla, el otro no)
+                socket.emit('chat history cleared', { chatId: targetId });
+            }
+        });
+    }
+});
+
+    // --- SOCKET: ALGUIEN VACIÓ EL CHAT ---
+socket.on('chat history cleared', ({ chatId }) => {
+    console.log("Evento recibido para limpiar chat con ID:", chatId);
+
+    // 1. Verificamos si tengo abierto un chat
+    // 2. Verificamos si el chat abierto es el mismo que se acaba de vaciar
+    if (currentTargetUserId && parseInt(currentTargetUserId) === parseInt(chatId)) {
+        
+        // --- AQUÍ OCURRE LA MAGIA SIN RECARGAR ---
+        const messagesList = document.getElementById('messages');
+        
+        // Efecto visual de desvanecimiento antes de borrar (Opcional, se ve pro)
+        messagesList.style.opacity = '0';
+        messagesList.style.transition = 'opacity 0.3s ease';
+
+        setTimeout(() => {
+            // Borrar todo el HTML de la lista de mensajes
+            messagesList.innerHTML = '';
+            
+            // Añadir mensaje de sistema
+            const li = document.createElement('li');
+            li.style.cssText = 'text-align:center; color:#666; margin:20px; font-size:12px; font-weight:500; list-style:none; opacity:0; animation: fadeIn 0.5s forwards;';
+            li.textContent = 'El historial del chat ha sido vaciado.';
+            messagesList.appendChild(li);
+
+            // Restaurar opacidad
+            messagesList.style.opacity = '1';
+            
+            // Ocultar botón de scroll si existía
+            const scrollBtn = document.getElementById('scrollToBottomBtn');
+            if(scrollBtn) scrollBtn.classList.add('hidden');
+
+        }, 300); // Espera 300ms a que termine la transición
+    }
+});
 
     socket.on('typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('typing', { fromUserId: userId, username: socket.data.username }));
     socket.on('stop typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('stop typing', { fromUserId: userId }));
