@@ -10,6 +10,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@libsql/client": "^0.15.15",
     "@octokit/rest": "^22.0.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",

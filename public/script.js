@@ -309,6 +309,41 @@ getEl('sendImageBtn').addEventListener('click', async () => {
     currentEditFile = null;
 });
 
+
+socket.on('chat history cleared', ({ chatId }) => {
+    console.log("Evento recibido para limpiar chat con ID:", chatId);
+
+    // 1. Verificamos si tengo abierto un chat
+    // 2. Verificamos si el chat abierto es el mismo que se acaba de vaciar
+    if (currentTargetUserId && parseInt(currentTargetUserId) === parseInt(chatId)) {
+        
+        // --- AQUÍ OCURRE LA MAGIA SIN RECARGAR ---
+        const messagesList = document.getElementById('messages');
+        
+        // Efecto visual de desvanecimiento antes de borrar (Opcional, se ve pro)
+        messagesList.style.opacity = '0';
+        messagesList.style.transition = 'opacity 0.3s ease';
+
+        setTimeout(() => {
+            // Borrar todo el HTML de la lista de mensajes
+            messagesList.innerHTML = '';
+            
+            // Añadir mensaje de sistema
+            const li = document.createElement('li');
+            li.style.cssText = 'text-align:center; color:#666; margin:20px; font-size:12px; font-weight:500; list-style:none; opacity:0; animation: fadeIn 0.5s forwards;';
+            li.textContent = 'El historial del chat ha sido vaciado.';
+            messagesList.appendChild(li);
+
+            // Restaurar opacidad
+            messagesList.style.opacity = '1';
+            
+            // Ocultar botón de scroll si existía
+            const scrollBtn = document.getElementById('scrollToBottomBtn');
+            if(scrollBtn) scrollBtn.classList.add('hidden');
+
+        }, 300); // Espera 300ms a que termine la transición
+    }
+});
 // --- PERFIL Y EDICIÓN ---
 
 socket.on('nicknames', (map) => {

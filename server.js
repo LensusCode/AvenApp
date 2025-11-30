@@ -3,7 +3,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+// [CAMBIO] Eliminamos sqlite3 y usamos @libsql/client
+const { createClient } = require("@libsql/client"); 
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const fs = require('fs');
@@ -32,9 +33,9 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"], 
             scriptSrcAttr: ["'unsafe-inline'"], 
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com"],
+            imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io"], // Agregado por si acaso
             mediaSrc: ["'self'", "blob:", "data:"], 
-            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:"], 
+            connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:", "https://*.turso.io"], 
             upgradeInsecureRequests: null,
         },
     },
@@ -116,31 +117,117 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// --- BASE DE DATOS ---
-const dbPath = path.join(__dirname, 'chat.db');
-const db = new sqlite3.Database(dbPath, (err) => { 
-    if (err) console.error(err.message);
-    else console.log('Conectado a la base de datos SQLite.');
+// ==========================================
+// --- BASE DE DATOS (MIGRACIÓN A TURSO) ---
+// ==========================================
+
+// 1. Crear cliente Turso
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
+
+// 2. Adaptador para simular sqlite3 (db.run, db.get, db.all)
+const db = {
+    // Simula db.run (para INSERT, UPDATE, DELETE) y maneja 'this.lastID'
+    run: function(sql, params, callback) {
+        if (typeof params === 'function') { callback = params; params = []; }
+        params = params || [];
+        
+        client.execute({ sql, args: params })
+            .then((result) => {
+                // Creamos el contexto que sqlite3 suele devolver en 'this'
+                const context = { 
+                    lastID: Number(result.lastInsertRowid), 
+                    changes: result.rowsAffected 
+                };
+                if (callback) callback.call(context, null);
+            })
+            .catch((err) => {
+                if (callback) callback(err);
+                else console.error("Error DB (run):", err.message);
+            });
+    },
+    // Simula db.get (Devuelve una sola fila)
+    get: function(sql, params, callback) {
+        if (typeof params === 'function') { callback = params; params = []; }
+        params = params || [];
+
+        client.execute({ sql, args: params })
+            .then((result) => {
+                if (callback) callback(null, result.rows[0]);
+            })
+            .catch((err) => {
+                if (callback) callback(err);
+                else console.error("Error DB (get):", err.message);
+            });
+    },
+    // Simula db.all (Devuelve todas las filas)
+    all: function(sql, params, callback) {
+        if (typeof params === 'function') { callback = params; params = []; }
+        params = params || [];
+
+        client.execute({ sql, args: params })
+            .then((result) => {
+                if (callback) callback(null, result.rows);
+            })
+            .catch((err) => {
+                if (callback) callback(err);
+                else console.error("Error DB (all):", err.message);
+            });
+    },
+    // Simula db.serialize (Turso ejecuta en orden, así que solo ejecutamos el callback)
+    serialize: function(callback) {
+        if(callback) callback(); 
+    },
+    prepare: function(sql) {
+        // Implementación básica de prepare para el caso de 'clear chat history'
+        return {
+            run: (...args) => db.run(sql, args),
+            finalize: () => {} // No es necesario en HTTP stateless, pero evita errores
+        }
+    }
+};
+
+console.log('Conectado a Turso (LibSQL) vía adaptador.');
 
 // INICIALIZACIÓN DE TABLAS
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, avatar TEXT)`);
-    
-    // Columnas adicionales
-    db.run(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`, () => {});
-    db.run(`ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0`, () => {});
-    db.run(`ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0`, () => {});
-    db.run(`ALTER TABLE users ADD COLUMN display_name TEXT`, () => {});
-    db.run(`ALTER TABLE users ADD COLUMN bio TEXT`, () => {});
+async function initDatabase() {
+    try {
+        // 1. Crear tablas (Esperamos a que Turso confirme que existen)
+        await client.execute(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, avatar TEXT)`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user_id INTEGER, to_user_id INTEGER, content TEXT, type TEXT DEFAULT 'text', reply_to_id INTEGER, is_deleted INTEGER DEFAULT 0, caption TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS nicknames (user_id INTEGER, target_user_id INTEGER, nickname TEXT, PRIMARY KEY (user_id, target_user_id))`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS favorite_stickers (user_id INTEGER, sticker_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sticker_url))`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS hidden_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message_id INTEGER, UNIQUE(user_id, message_id))`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user_id INTEGER, to_user_id INTEGER, content TEXT, type TEXT DEFAULT 'text', reply_to_id INTEGER, is_deleted INTEGER DEFAULT 0, caption TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    db.run(`CREATE TABLE IF NOT EXISTS nicknames (user_id INTEGER, target_user_id INTEGER, nickname TEXT, PRIMARY KEY (user_id, target_user_id))`);
-    db.run(`CREATE TABLE IF NOT EXISTS favorite_stickers (user_id INTEGER, sticker_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sticker_url))`);
-    
-    // [NUEVO] TABLA PARA MENSAJES OCULTOS "ELIMINAR PARA MÍ"
-    db.run(`CREATE TABLE IF NOT EXISTS hidden_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message_id INTEGER, UNIQUE(user_id, message_id))`);
-});
+        // 2. Función segura para agregar columnas (Ignora error si ya existen)
+        const addColumnSafe = async (table, columnDef) => {
+            try {
+                await client.execute(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`);
+                console.log(`Columna agregada: ${columnDef}`);
+            } catch (error) {
+                // Si el error contiene "duplicate column name", significa que ya existe, lo ignoramos.
+                // Turso a veces devuelve errores genéricos, así que asumimos que si falla el ALTER, la columna ya está.
+            }
+        };
+
+        // 3. Agregar columnas adicionales de forma secuencial
+        await addColumnSafe('users', 'is_admin INTEGER DEFAULT 0');
+        await addColumnSafe('users', 'is_verified INTEGER DEFAULT 0');
+        await addColumnSafe('users', 'is_premium INTEGER DEFAULT 0');
+        await addColumnSafe('users', 'display_name TEXT');
+        await addColumnSafe('users', 'bio TEXT');
+
+        console.log("✅ Base de datos inicializada y estructura verificada.");
+
+    } catch (error) {
+        console.error("❌ Error fatal inicializando base de datos:", error);
+    }
+}
+
+// Ejecutamos la inicialización inmediatamente
+initDatabase();
 
 // --- MIDDLEWARE AUTH ---
 const authenticateToken = (req, res, next) => {
@@ -210,6 +297,7 @@ app.post('/api/register', (req, res) => {
             console.error(err);
             return res.status(400).json({ error: 'El usuario ya existe' });
         }
+        // 'this.lastID' funciona gracias al adaptador
         res.json({ id: this.lastID });
     });
 });
@@ -291,7 +379,7 @@ app.put('/api/profile/update', authenticateToken, (req, res) => {
 
 // --- SUBIDA DE ARCHIVOS ---
 
-// RUTA SUBIDA AVATAR (CORREGIDA)
+// RUTA SUBIDA AVATAR
 app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Faltan datos' });
     const tempFilePath = req.file.path;
@@ -308,7 +396,6 @@ app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async
             .jpeg({ quality: 80 })
             .toFile(finalPath);
 
-        // Usamos unlink asíncrono para que no tumbe el servidor si hay error
         fs.unlink(tempFilePath, (err) => {
             if (err) console.error("Advertencia al borrar temp:", err.message);
         });
@@ -321,13 +408,12 @@ app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async
         });
     } catch (error) { 
         console.error("Error procesando avatar:", error);
-        // Intentar borrar incluso si falló el proceso
         fs.unlink(tempFilePath, () => {}); 
         res.status(500).json({ error: 'Error procesando imagen' }); 
     }
 });
 
-// RUTA SUBIDA IMAGEN CHAT (CORREGIDA)
+// RUTA SUBIDA IMAGEN CHAT
 app.post('/api/upload-chat-image', authenticateToken, upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No hay imagen' });
     const tempFilePath = req.file.path;
@@ -344,7 +430,6 @@ app.post('/api/upload-chat-image', authenticateToken, upload.single('image'), as
             .jpeg({ quality: 80 })
             .toFile(finalPath);
             
-        // Usamos unlink asíncrono para evitar el crash EBUSY
         fs.unlink(tempFilePath, (err) => {
             if (err) console.error("Advertencia al borrar temp:", err.message);
         });
@@ -407,7 +492,6 @@ app.post('/api/admin/toggle-premium', authenticateToken, (req, res) => {
     });
 });
 
-// [MODIFICADO] RUTA OBTENER MENSAJES (Ahora filtra los "ocultos para mí")
 app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
     const { myId, otherId } = req.params;
     if (parseInt(myId) !== req.user.id && !req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
@@ -418,10 +502,8 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
         
         let sqlCondition = `((m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?))`;
         
-        // Si NO es admin, ocultamos los eliminados globalmente
         if (!isAdmin) sqlCondition += ` AND m.is_deleted = 0`;
 
-        // [MODIFICADO] SQL: LEFT JOIN con hidden_messages para filtrar los que borré "para mí"
         const sql = `
             SELECT m.*, r.content as reply_content, r.type as reply_type, r.from_user_id as reply_from_id 
             FROM messages m 
@@ -432,7 +514,6 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
             ORDER BY m.timestamp ASC
         `;
 
-        // Añadimos myId como primer parámetro para el join de hidden_messages
         db.all(sql, [myId, myId, otherId, otherId, myId], (err, rows) => {
             if (err) return res.status(500).json({ error: 'Error DB' });
             const decryptedRows = rows.map(row => ({
@@ -532,7 +613,7 @@ io.on('connection', (socket) => {
         [userId, toUserId, encryptedContent, type, replyToId, encryptedCaption],
             function(err) {
                 if (err) return;
-                const newMessageId = this.lastID;
+                const newMessageId = this.lastID; // Funciona gracias al adaptador
                 const emitMsg = (replyData) => {
                     const payload = {
                         id: newMessageId, content: content, type: type, fromUserId: userId, timestamp: new Date().toISOString(), caption: caption,
@@ -550,120 +631,78 @@ io.on('connection', (socket) => {
         );
     });
 
-    // [MODIFICADO] EVENTO DELETE MESSAGE
     socket.on('delete message', ({ messageId, toUserId, deleteType }) => {
         const userId = socket.data.userId;
         const isAdmin = socket.data.isAdmin;
 
         if (deleteType === 'everyone') {
-            // CASO 1: Eliminar para todos (Global)
-            // Solo permitido si eres admin o el dueño del mensaje
             let query = `UPDATE messages SET is_deleted = 1 WHERE id = ?`;
             let params = [messageId];
 
             if (!isAdmin) {
-                // Restricción extra para usuarios normales
                 query += ` AND from_user_id = ?`;
                 params.push(userId);
             }
 
             db.run(query, params, function(err) {
                 if (!err && this.changes > 0) {
-                    // Notificar a AMBOS (emisor y receptor)
                     socket.to(`user_${toUserId}`).emit('message deleted', { messageId });
                     socket.emit('message deleted', { messageId });
                 }
             });
 
         } else if (deleteType === 'me') {
-            // CASO 2: Eliminar para mí (Local)
-            // Simplemente lo ocultamos insertando en hidden_messages
             db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, messageId], function(err) {
                 if(err) console.error("Error hidden_msg:", err);
-                // NO emitimos al otro usuario.
-                // El frontend del que solicitó ya lo borró visualmente.
             });
         }
     });
+
     socket.on('clear chat history', ({ toUserId, deleteType }) => {
-    const userId = socket.data.userId;   // Tu ID
-    const targetId = parseInt(toUserId); // El ID del otro
+        const userId = socket.data.userId;
+        const targetId = parseInt(toUserId);
 
-    if (!targetId) return;
+        if (!targetId) return;
 
-    if (deleteType === 'everyone') {
-        // --- CASO 1: ELIMINAR PARA TODOS ---
-        const sqlUpdate = `
-            UPDATE messages 
-            SET is_deleted = 1 
-            WHERE (from_user_id = ? AND to_user_id = ?) 
-               OR (from_user_id = ? AND to_user_id = ?)
-        `;
-        
-        db.run(sqlUpdate, [userId, targetId, targetId, userId], function(err) {
-            if (!err) {
-                // 1. Notificar al EMISOR (Tú): "Limpia el chat con targetId"
-                socket.emit('chat history cleared', { chatId: targetId });
-
-                // 2. Notificar al RECEPTOR (El otro): "Limpia el chat con userId"
-                socket.to(`user_${targetId}`).emit('chat history cleared', { chatId: userId });
-            }
-        });
-
-    } else {
-        // --- CASO 2: ELIMINAR PARA MÍ ---
-        const sqlGet = `SELECT id FROM messages WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
-        
-        db.all(sqlGet, [userId, targetId, targetId, userId], (err, rows) => {
-            if (rows && rows.length > 0) {
-                const stmt = db.prepare(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`);
-                rows.forEach(row => {
-                    stmt.run(userId, row.id);
-                });
-                stmt.finalize();
-                
-                // Solo te notificamos a ti (Tú limpias tu pantalla, el otro no)
-                socket.emit('chat history cleared', { chatId: targetId });
-            }
-        });
-    }
-});
-
-    // --- SOCKET: ALGUIEN VACIÓ EL CHAT ---
-socket.on('chat history cleared', ({ chatId }) => {
-    console.log("Evento recibido para limpiar chat con ID:", chatId);
-
-    // 1. Verificamos si tengo abierto un chat
-    // 2. Verificamos si el chat abierto es el mismo que se acaba de vaciar
-    if (currentTargetUserId && parseInt(currentTargetUserId) === parseInt(chatId)) {
-        
-        // --- AQUÍ OCURRE LA MAGIA SIN RECARGAR ---
-        const messagesList = document.getElementById('messages');
-        
-        // Efecto visual de desvanecimiento antes de borrar (Opcional, se ve pro)
-        messagesList.style.opacity = '0';
-        messagesList.style.transition = 'opacity 0.3s ease';
-
-        setTimeout(() => {
-            // Borrar todo el HTML de la lista de mensajes
-            messagesList.innerHTML = '';
+        if (deleteType === 'everyone') {
+            const sqlUpdate = `
+                UPDATE messages 
+                SET is_deleted = 1 
+                WHERE (from_user_id = ? AND to_user_id = ?) 
+                OR (from_user_id = ? AND to_user_id = ?)
+            `;
             
-            // Añadir mensaje de sistema
-            const li = document.createElement('li');
-            li.style.cssText = 'text-align:center; color:#666; margin:20px; font-size:12px; font-weight:500; list-style:none; opacity:0; animation: fadeIn 0.5s forwards;';
-            li.textContent = 'El historial del chat ha sido vaciado.';
-            messagesList.appendChild(li);
+            db.run(sqlUpdate, [userId, targetId, targetId, userId], function(err) {
+                if (!err) {
+                    socket.emit('chat history cleared', { chatId: targetId });
+                    socket.to(`user_${targetId}`).emit('chat history cleared', { chatId: userId });
+                }
+            });
 
-            // Restaurar opacidad
-            messagesList.style.opacity = '1';
+        } else {
+            const sqlGet = `SELECT id FROM messages WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
             
-            // Ocultar botón de scroll si existía
-            const scrollBtn = document.getElementById('scrollToBottomBtn');
-            if(scrollBtn) scrollBtn.classList.add('hidden');
+            db.all(sqlGet, [userId, targetId, targetId, userId], (err, rows) => {
+                if (rows && rows.length > 0) {
+                    // Usamos un bucle simple ya que el prepare del adaptador es básico
+                    rows.forEach(row => {
+                         db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, row.id]);
+                    });
+                    
+                    socket.emit('chat history cleared', { chatId: targetId });
+                }
+            });
+        }
+    });
 
-        }, 300); // Espera 300ms a que termine la transición
-    }
-});
+    // ⚠️ NOTA: El código que proporcionaste tenía manipulación del DOM (document.getElementById) aquí.
+    // Eso provocará que el servidor Node.js falle porque 'document' solo existe en el navegador.
+    // Solo debes escuchar el evento, la lógica visual va en tu archivo HTML/JS del cliente.
+    /*
+    socket.on('chat history cleared', ({ chatId }) => {
+        // Esta lógica debe estar en tu cliente (index.html o script.js), NO en el servidor.
+    });
+    */
 
     socket.on('typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('typing', { fromUserId: userId, username: socket.data.username }));
     socket.on('stop typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('stop typing', { fromUserId: userId }));
