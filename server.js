@@ -3,29 +3,61 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
-// [CAMBIO] Eliminamos sqlite3 y usamos @libsql/client
 const { createClient } = require("@libsql/client"); 
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const fs = require('fs');
+const fs = require('fs'); // Se mantiene para utilidades, pero ya no para almacenamiento
 const crypto = require('crypto');
-const sharp = require('sharp');
-sharp.cache(false);
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 
+// --- INTEGRACIÓN CLOUDINARY ---
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- CONFIGURACIÓN ---
+// --- CONFIGURACIÓN DE VARIABLES ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; 
 const JWT_SECRET = process.env.JWT_SECRET; 
 const GIPHY_API_KEY = process.env.GIPHY_API_KEY; 
 
-// --- HELMET CSP ---
+// --- CONFIGURACIÓN CLOUDINARY ---
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// 1. Storage para IMÁGENES (Avatar y Chat)
+const imageStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'social-network/images', // Carpeta en tu Cloudinary
+        allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
+        // transformation: [{ width: 1000, crop: "limit" }] // Opcional: limitar tamaño al subir
+    }
+});
+
+// 2. Storage para AUDIOS
+// Nota: Cloudinary trata los audios como 'video' en resource_type
+const audioStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'social-network/audios',
+        resource_type: 'video', 
+        allowed_formats: ['mp3', 'wav', 'ogg', 'webm', 'm4a']
+    }
+});
+
+const uploadImage = multer({ storage: imageStorage });
+const uploadAudio = multer({ storage: audioStorage });
+
+// --- HELMET CSP (SEGURIDAD) ---
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -33,8 +65,9 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"], 
             scriptSrcAttr: ["'unsafe-inline'"], 
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io"], // Agregado por si acaso
-            mediaSrc: ["'self'", "blob:", "data:"], 
+            // AQUI AGREGAMOS res.cloudinary.com
+            imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com"], 
+            mediaSrc: ["'self'", "blob:", "data:", "https://res.cloudinary.com"], 
             connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:", "https://*.turso.io"], 
             upgradeInsecureRequests: null,
         },
@@ -104,129 +137,69 @@ function decrypt(text) {
     }
 }
 
-// --- MULTER ---
-const tempDir = path.join(__dirname, 'temp_uploads');
-if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, tempDir),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix);
-    }
-});
-const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
-
 // ==========================================
-// --- BASE DE DATOS (MIGRACIÓN A TURSO) ---
+// --- BASE DE DATOS (TURSO / LIBSQL) ---
 // ==========================================
 
-// 1. Crear cliente Turso
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// 2. Adaptador para simular sqlite3 (db.run, db.get, db.all)
+// Adaptador para simular sqlite3
 const db = {
-    // Simula db.run (para INSERT, UPDATE, DELETE) y maneja 'this.lastID'
     run: function(sql, params, callback) {
         if (typeof params === 'function') { callback = params; params = []; }
         params = params || [];
-        
         client.execute({ sql, args: params })
             .then((result) => {
-                // Creamos el contexto que sqlite3 suele devolver en 'this'
-                const context = { 
-                    lastID: Number(result.lastInsertRowid), 
-                    changes: result.rowsAffected 
-                };
+                const context = { lastID: Number(result.lastInsertRowid), changes: result.rowsAffected };
                 if (callback) callback.call(context, null);
             })
-            .catch((err) => {
-                if (callback) callback(err);
-                else console.error("Error DB (run):", err.message);
-            });
+            .catch((err) => { if (callback) callback(err); else console.error("Error DB (run):", err.message); });
     },
-    // Simula db.get (Devuelve una sola fila)
     get: function(sql, params, callback) {
         if (typeof params === 'function') { callback = params; params = []; }
         params = params || [];
-
         client.execute({ sql, args: params })
-            .then((result) => {
-                if (callback) callback(null, result.rows[0]);
-            })
-            .catch((err) => {
-                if (callback) callback(err);
-                else console.error("Error DB (get):", err.message);
-            });
+            .then((result) => { if (callback) callback(null, result.rows[0]); })
+            .catch((err) => { if (callback) callback(err); else console.error("Error DB (get):", err.message); });
     },
-    // Simula db.all (Devuelve todas las filas)
     all: function(sql, params, callback) {
         if (typeof params === 'function') { callback = params; params = []; }
         params = params || [];
-
         client.execute({ sql, args: params })
-            .then((result) => {
-                if (callback) callback(null, result.rows);
-            })
-            .catch((err) => {
-                if (callback) callback(err);
-                else console.error("Error DB (all):", err.message);
-            });
+            .then((result) => { if (callback) callback(null, result.rows); })
+            .catch((err) => { if (callback) callback(err); else console.error("Error DB (all):", err.message); });
     },
-    // Simula db.serialize (Turso ejecuta en orden, así que solo ejecutamos el callback)
-    serialize: function(callback) {
-        if(callback) callback(); 
-    },
-    prepare: function(sql) {
-        // Implementación básica de prepare para el caso de 'clear chat history'
-        return {
-            run: (...args) => db.run(sql, args),
-            finalize: () => {} // No es necesario en HTTP stateless, pero evita errores
-        }
-    }
+    serialize: function(callback) { if(callback) callback(); },
+    prepare: function(sql) { return { run: (...args) => db.run(sql, args), finalize: () => {} } }
 };
 
-console.log('Conectado a Turso (LibSQL) vía adaptador.');
+console.log('Conectado a Turso (LibSQL).');
 
 // INICIALIZACIÓN DE TABLAS
 async function initDatabase() {
     try {
-        // 1. Crear tablas (Esperamos a que Turso confirme que existen)
         await client.execute(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, avatar TEXT)`);
         await client.execute(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user_id INTEGER, to_user_id INTEGER, content TEXT, type TEXT DEFAULT 'text', reply_to_id INTEGER, is_deleted INTEGER DEFAULT 0, caption TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         await client.execute(`CREATE TABLE IF NOT EXISTS nicknames (user_id INTEGER, target_user_id INTEGER, nickname TEXT, PRIMARY KEY (user_id, target_user_id))`);
         await client.execute(`CREATE TABLE IF NOT EXISTS favorite_stickers (user_id INTEGER, sticker_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sticker_url))`);
         await client.execute(`CREATE TABLE IF NOT EXISTS hidden_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message_id INTEGER, UNIQUE(user_id, message_id))`);
 
-        // 2. Función segura para agregar columnas (Ignora error si ya existen)
         const addColumnSafe = async (table, columnDef) => {
-            try {
-                await client.execute(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`);
-                console.log(`Columna agregada: ${columnDef}`);
-            } catch (error) {
-                // Si el error contiene "duplicate column name", significa que ya existe, lo ignoramos.
-                // Turso a veces devuelve errores genéricos, así que asumimos que si falla el ALTER, la columna ya está.
-            }
+            try { await client.execute(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); } catch (error) {}
         };
 
-        // 3. Agregar columnas adicionales de forma secuencial
         await addColumnSafe('users', 'is_admin INTEGER DEFAULT 0');
         await addColumnSafe('users', 'is_verified INTEGER DEFAULT 0');
         await addColumnSafe('users', 'is_premium INTEGER DEFAULT 0');
         await addColumnSafe('users', 'display_name TEXT');
         await addColumnSafe('users', 'bio TEXT');
 
-        console.log("✅ Base de datos inicializada y estructura verificada.");
-
-    } catch (error) {
-        console.error("❌ Error fatal inicializando base de datos:", error);
-    }
+        console.log("✅ Base de datos verificada.");
+    } catch (error) { console.error("❌ Error DB Init:", error); }
 }
-
-// Ejecutamos la inicialización inmediatamente
 initDatabase();
 
 // --- MIDDLEWARE AUTH ---
@@ -281,23 +254,16 @@ app.post('/api/check-username', (req, res) => {
 
 app.post('/api/register', (req, res) => {
     const { username, password, firstName, lastName } = req.body;
-    
-    if(!username || !password || !firstName || !lastName) {
-        return res.status(400).json({error: 'Todos los campos son obligatorios'});
-    }
-    if(password.length < 8) return res.status(400).json({error: 'Mínimo 8 caracteres'});
-    if(username.length > 20) return res.status(400).json({error: 'Usuario muy largo'});
+    if(!username || !password || !firstName || !lastName) return res.status(400).json({error: 'Datos incompletos'});
+    if(password.length < 8) return res.status(400).json({error: 'Contraseña corta'});
+    if(username.length > 20) return res.status(400).json({error: 'Usuario largo'});
     
     const hash = bcrypt.hashSync(password, 10);
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
     db.run(`INSERT INTO users (username, password, avatar, display_name) VALUES (?, ?, ?, ?)`, 
     [username, hash, '/profile.png', fullName], function(err) {
-        if (err) {
-            console.error(err);
-            return res.status(400).json({ error: 'El usuario ya existe' });
-        }
-        // 'this.lastID' funciona gracias al adaptador
+        if (err) return res.status(400).json({ error: 'Usuario existe' });
         res.json({ id: this.lastID });
     });
 });
@@ -317,27 +283,9 @@ app.post('/api/login', (req, res) => {
         }
 
         const token = jwt.sign({ id: row.id, username: row.username, is_admin: row.is_admin }, JWT_SECRET, { expiresIn: '7d' });
+        res.cookie('chat_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
 
-        res.cookie('chat_token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
-
-        res.json({ 
-            success: true,
-            user: { 
-                id: row.id, 
-                username: row.username, 
-                display_name: row.display_name,
-                bio: row.bio,
-                avatar: row.avatar || '/profile.png', 
-                is_admin: row.is_admin, 
-                is_verified: row.is_verified,
-                is_premium: row.is_premium
-            } 
-        });
+        res.json({ success: true, user: { id: row.id, username: row.username, display_name: row.display_name, bio: row.bio, avatar: row.avatar || '/profile.png', is_admin: row.is_admin, is_verified: row.is_verified, is_premium: row.is_premium } });
     });
 });
 
@@ -349,127 +297,65 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', authenticateToken, (req, res) => {
     db.get(`SELECT id, username, display_name, bio, avatar, is_admin, is_verified, is_premium FROM users WHERE id = ?`, [req.user.id], (err, row) => {
         if(row) res.json(row);
-        else res.status(401).json({error: 'Usuario no encontrado'});
+        else res.status(401).json({error: 'No encontrado'});
     });
 });
 
 app.put('/api/profile/update', authenticateToken, (req, res) => {
     const { field, value } = req.body;
     const allowedFields = ['username', 'display_name', 'bio'];
-    
     if (!allowedFields.includes(field)) return res.status(400).json({ error: 'Campo inválido' });
-
     let finalValue = value ? value.trim() : '';
-    
-    if (field === 'username') {
-        if (finalValue.length < 3 || finalValue.length > 20) return res.status(400).json({ error: 'Usuario: 3-20 caracteres' });
-    }
-    if (field === 'display_name' && finalValue.length > 30) return res.status(400).json({ error: 'Nombre muy largo' });
-    if (field === 'bio' && finalValue.length > 150) return res.status(400).json({ error: 'Biografía muy larga' });
+    if (field === 'username' && (finalValue.length < 3 || finalValue.length > 20)) return res.status(400).json({ error: 'Usuario: 3-20 caracteres' });
 
     db.run(`UPDATE users SET ${field} = ? WHERE id = ?`, [finalValue, req.user.id], function(err) {
-        if (err) {
-            if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Usuario en uso' });
-            return res.status(500).json({ error: 'Error DB' });
-        }
+        if (err) return res.status(400).json({ error: 'Error o usuario duplicado' });
         emitUsers();
         res.json({ success: true, field, value: finalValue });
     });
 });
 
-// --- SUBIDA DE ARCHIVOS ---
+// --- RUTAS DE SUBIDA (MODIFICADAS PARA CLOUDINARY) ---
 
-// RUTA SUBIDA AVATAR
-app.post('/api/upload-avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'Faltan datos' });
-    const tempFilePath = req.file.path;
-    const dir = './public/uploads';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    
-    const filename = `avatar-${req.user.id}-${Date.now()}.jpeg`;
-    const finalPath = path.join(dir, filename);
-    
+// 1. SUBIDA DE AVATAR
+// Usamos uploadImage (Cloudinary). req.file.path contiene la URL segura.
+app.post('/api/upload-avatar', authenticateToken, uploadImage.single('avatar'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No se subió imagen' });
+
     try {
-        await sharp(tempFilePath)
-            .resize(500, 500, { fit: 'cover' })
-            .toFormat('jpeg')
-            .jpeg({ quality: 80 })
-            .toFile(finalPath);
+        // Manipulación de URL de Cloudinary para asegurar recorte (Face detection)
+        // Insertamos transformaciones en la URL si no se hicieron al subir
+        let avatarUrl = req.file.path;
+        
+        // Truco opcional: Forzar recorte 500x500 centrado en cara vía URL
+        const splitUrl = avatarUrl.split('/upload/');
+        if (splitUrl.length === 2) {
+            avatarUrl = `${splitUrl[0]}/upload/w_500,h_500,c_fill,g_face/${splitUrl[1]}`;
+        }
 
-        fs.unlink(tempFilePath, (err) => {
-            if (err) console.error("Advertencia al borrar temp:", err.message);
-        });
-
-        const avatarUrl = `/uploads/${filename}`;
         db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, req.user.id], (err) => {
-            if (err) return res.status(500).json({error: 'Error interno'});
+            if (err) return res.status(500).json({ error: 'Error DB' });
             io.emit('user_updated_profile', { userId: req.user.id, avatar: avatarUrl });
             res.json({ avatarUrl });
         });
-    } catch (error) { 
-        console.error("Error procesando avatar:", error);
-        fs.unlink(tempFilePath, () => {}); 
-        res.status(500).json({ error: 'Error procesando imagen' }); 
+    } catch (error) {
+        console.error("Error Avatar:", error);
+        res.status(500).json({ error: 'Error procesando avatar' });
     }
 });
 
-// RUTA SUBIDA IMAGEN CHAT
-app.post('/api/upload-chat-image', authenticateToken, upload.single('image'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No hay imagen' });
-    const tempFilePath = req.file.path;
-    const dir = './public/uploads';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    
-    const filename = `chat-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpeg`;
-    const finalPath = path.join(dir, filename);
-    
-    try {
-        await sharp(tempFilePath)
-            .resize(1024, 1024, { fit: 'inside' })
-            .toFormat('jpeg')
-            .jpeg({ quality: 80 })
-            .toFile(finalPath);
-            
-        fs.unlink(tempFilePath, (err) => {
-            if (err) console.error("Advertencia al borrar temp:", err.message);
-        });
-
-        res.json({ imageUrl: `/uploads/${filename}` });
-    } catch (error) { 
-        console.error("Error procesando imagen chat:", error);
-        fs.unlink(tempFilePath, () => {});
-        res.status(500).json({ error: 'Error procesando imagen' }); 
-    }
+// 2. SUBIDA DE IMAGEN CHAT
+app.post('/api/upload-chat-image', authenticateToken, uploadImage.single('image'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No se subió imagen' });
+    // Cloudinary ya nos da la URL HTTPS
+    res.json({ imageUrl: req.file.path });
 });
 
-app.post('/api/upload-audio', authenticateToken, upload.single('audio'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No hay audio' });
-    const tempFilePath = req.file.path;
-
-    try {
-        const bufferHeader = Buffer.alloc(4);
-        const fd = fs.openSync(tempFilePath, 'r');
-        fs.readSync(fd, bufferHeader, 0, 4, 0);
-        fs.closeSync(fd);
-        const header = bufferHeader.toString('hex').toLowerCase();
-        let ext = '';
-        if (header === '1a45dfa3') ext = 'webm';
-        else if (header.startsWith('494433') || header.startsWith('fff')) ext = 'mp3';
-        else if (header === '4f676753') ext = 'ogg';
-        else if (header === '52494646') ext = 'wav';
-
-        if (!ext) {
-            fs.unlinkSync(tempFilePath);
-            return res.status(400).json({ error: 'Formato no válido' });
-        }
-        const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1E9)}.${ext}`;
-        const finalPath = path.join('./public/uploads', filename);
-        fs.renameSync(tempFilePath, finalPath);
-        res.json({ audioUrl: `/uploads/${filename}` });
-    } catch (e) {
-        if(fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-        res.status(500).json({error: "Error subiendo audio"});
-    }
+// 3. SUBIDA DE AUDIO
+app.post('/api/upload-audio', authenticateToken, uploadAudio.single('audio'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No se subió audio' });
+    // req.file.path es la URL del recurso (tratado como video en Cloudinary)
+    res.json({ audioUrl: req.file.path });
 });
 
 app.post('/api/admin/toggle-verify', authenticateToken, (req, res) => {
@@ -483,12 +369,8 @@ app.post('/api/admin/toggle-verify', authenticateToken, (req, res) => {
 app.post('/api/admin/toggle-premium', authenticateToken, (req, res) => {
     if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
     db.run(`UPDATE users SET is_premium = 1 - IFNULL(is_premium, 0) WHERE id = ?`, [req.body.targetUserId], function(err) {
-        if (err) {
-            console.error("Error toggling premium:", err.message);
-            return res.status(500).json({ error: 'Error DB' });
-        }
-        emitUsers(); 
-        res.json({ success: true });
+        if (err) return res.status(500).json({ error: 'Error DB' });
+        emitUsers(); res.json({ success: true });
     });
 });
 
@@ -501,7 +383,6 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
         const isAdmin = userRow && userRow.is_admin === 1;
         
         let sqlCondition = `((m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?))`;
-        
         if (!isAdmin) sqlCondition += ` AND m.is_deleted = 0`;
 
         const sql = `
@@ -509,8 +390,7 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
             FROM messages m 
             LEFT JOIN messages r ON m.reply_to_id = r.id 
             LEFT JOIN hidden_messages h ON h.message_id = m.id AND h.user_id = ? 
-            WHERE ${sqlCondition} 
-            AND h.id IS NULL 
+            WHERE ${sqlCondition} AND h.id IS NULL 
             ORDER BY m.timestamp ASC
         `;
 
@@ -530,27 +410,15 @@ app.get('/api/messages/:myId/:otherId', authenticateToken, (req, res) => {
 app.get('/api/stickers-proxy', authenticateToken, async (req, res) => {
     try {
         const { q } = req.query;
-        const apiKey = process.env.GIPHY_API_KEY;
-
-        if (!apiKey) {
-            console.error("❌ ERROR: Falta GIPHY_API_KEY en el archivo .env");
-            return res.status(500).json({ error: 'Configuración de servidor incompleta' });
-        }
-
-        const url = `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${apiKey}&limit=24&rating=g&q=${encodeURIComponent(q || '')}`;
-
+        if (!process.env.GIPHY_API_KEY) return res.status(500).json({ error: 'Falta API Key' });
+        const url = `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${process.env.GIPHY_API_KEY}&limit=24&rating=g&q=${encodeURIComponent(q || '')}`;
         const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`Giphy API respondió: ${response.status} ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`Giphy API error`);
         const data = await response.json();
         res.json(data);
-
     } catch (error) {
-        console.error("❌ ERROR en /api/stickers-proxy:", error.message);
-        res.status(500).json({ error: 'Error interno obteniendo stickers' });
+        console.error("Error Stickers:", error.message);
+        res.status(500).json({ error: 'Error interno' });
     }
 });
 app.post('/api/favorites/add', authenticateToken, (req, res) => {
@@ -603,8 +471,8 @@ io.on('connection', (socket) => {
 
     socket.on('private message', ({ content, toUserId, type = 'text', replyToId = null, caption = null }, callback) => {
         if (msgCount > 5) return; msgCount++;
-        if (!toUserId || !content || typeof content !== 'string' || content.length > 10000) return;
-        if (type !== 'text' && type !== 'image' && type !== 'audio' && type !== 'sticker') type = 'text';
+        if (!toUserId || !content) return;
+        if (!['text','image','audio','sticker'].includes(type)) type = 'text';
 
         const encryptedContent = encrypt(content);
         const encryptedCaption = caption ? encrypt(caption) : null;
@@ -613,7 +481,7 @@ io.on('connection', (socket) => {
         [userId, toUserId, encryptedContent, type, replyToId, encryptedCaption],
             function(err) {
                 if (err) return;
-                const newMessageId = this.lastID; // Funciona gracias al adaptador
+                const newMessageId = this.lastID; 
                 const emitMsg = (replyData) => {
                     const payload = {
                         id: newMessageId, content: content, type: type, fromUserId: userId, timestamp: new Date().toISOString(), caption: caption,
@@ -638,11 +506,7 @@ io.on('connection', (socket) => {
         if (deleteType === 'everyone') {
             let query = `UPDATE messages SET is_deleted = 1 WHERE id = ?`;
             let params = [messageId];
-
-            if (!isAdmin) {
-                query += ` AND from_user_id = ?`;
-                params.push(userId);
-            }
+            if (!isAdmin) { query += ` AND from_user_id = ?`; params.push(userId); }
 
             db.run(query, params, function(err) {
                 if (!err && this.changes > 0) {
@@ -650,59 +514,34 @@ io.on('connection', (socket) => {
                     socket.emit('message deleted', { messageId });
                 }
             });
-
         } else if (deleteType === 'me') {
-            db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, messageId], function(err) {
-                if(err) console.error("Error hidden_msg:", err);
-            });
+            db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, messageId], (err)=>{});
         }
     });
 
     socket.on('clear chat history', ({ toUserId, deleteType }) => {
         const userId = socket.data.userId;
         const targetId = parseInt(toUserId);
-
         if (!targetId) return;
 
         if (deleteType === 'everyone') {
-            const sqlUpdate = `
-                UPDATE messages 
-                SET is_deleted = 1 
-                WHERE (from_user_id = ? AND to_user_id = ?) 
-                OR (from_user_id = ? AND to_user_id = ?)
-            `;
-            
+            const sqlUpdate = `UPDATE messages SET is_deleted = 1 WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
             db.run(sqlUpdate, [userId, targetId, targetId, userId], function(err) {
                 if (!err) {
                     socket.emit('chat history cleared', { chatId: targetId });
                     socket.to(`user_${targetId}`).emit('chat history cleared', { chatId: userId });
                 }
             });
-
         } else {
             const sqlGet = `SELECT id FROM messages WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
-            
             db.all(sqlGet, [userId, targetId, targetId, userId], (err, rows) => {
                 if (rows && rows.length > 0) {
-                    // Usamos un bucle simple ya que el prepare del adaptador es básico
-                    rows.forEach(row => {
-                         db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, row.id]);
-                    });
-                    
+                    rows.forEach(row => db.run(`INSERT OR IGNORE INTO hidden_messages (user_id, message_id) VALUES (?, ?)`, [userId, row.id]));
                     socket.emit('chat history cleared', { chatId: targetId });
                 }
             });
         }
     });
-
-    // ⚠️ NOTA: El código que proporcionaste tenía manipulación del DOM (document.getElementById) aquí.
-    // Eso provocará que el servidor Node.js falle porque 'document' solo existe en el navegador.
-    // Solo debes escuchar el evento, la lógica visual va en tu archivo HTML/JS del cliente.
-    /*
-    socket.on('chat history cleared', ({ chatId }) => {
-        // Esta lógica debe estar en tu cliente (index.html o script.js), NO en el servidor.
-    });
-    */
 
     socket.on('typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('typing', { fromUserId: userId, username: socket.data.username }));
     socket.on('stop typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('stop typing', { fromUserId: userId }));

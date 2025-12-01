@@ -776,21 +776,63 @@ getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSu
 // --- LISTA DE USUARIOS Y SOCKETS ---
 socket.on('users', (users) => {
     allUsersCache = users;
+
+    // 1. Si tengo abierto el chat/perfil de alguien, actualizar sus datos en tiempo real
     if (currentTargetUserId) {
         const updated = users.find(u => u.userId === currentTargetUserId);
         if (updated) {
             currentTargetUserObj = updated;
-            updateChatHeaderInfo(updated);
-            if (myUser.is_admin) getEl('toggleVerifyBtn').textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+            updateChatHeaderInfo(updated); // Actualiza icono en el header del chat
+            
+            // Si soy admin y estoy viendo su perfil, actualizar textos de botones
+            if (myUser.is_admin) {
+                const verifyBtn = getEl('toggleVerifyBtn');
+                if(verifyBtn) verifyBtn.textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
+                
+                const premBtn = getEl('togglePremiumBtn');
+                if(premBtn) premBtn.textContent = updated.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+            }
         }
     }
+
+    // 2. Revisar mis propios datos (ME)
     const me = users.find(u => u.userId === myUser.id);
     if (me) {
-        if (!myUser.is_verified && me.is_verified) getEl('verificationSuccessModal').classList.remove('hidden');
+        // A) Lógica Insignia AZUL (Verificado)
+        // Si antes no la tenía (false) y ahora sí (true), mostramos modal
+        if (!myUser.is_verified && me.is_verified) {
+            const modal = getEl('verificationSuccessModal');
+            // Opcional: Asegurar que el texto sea el estándar
+            modal.querySelector('h2').textContent = "¡Felicidades!";
+            modal.querySelector('p').textContent = "Tu cuenta ha sido verificada correctamente. Ahora tienes la insignia oficial.";
+            modal.classList.remove('hidden');
+        }
+
+        // B) Lógica Insignia PINK (Premium/Love) - NUEVO
+        // Si antes no tenía corazón (false) y ahora sí (true), mostramos EL MISMO modal
+        if (!myUser.is_premium && me.is_premium) {
+            const modal = getEl('verificationSuccessModal');
+            
+            // (Opcional) Puedes personalizar el texto aquí si quieres diferenciarlo, 
+            // o dejarlo igual como pediste. Aquí te dejo un ejemplo comentado:
+            /* 
+            modal.querySelector('h2').textContent = "¡Insignia Love!";
+            modal.querySelector('p').textContent = "Has recibido la insignia especial de Corazón."; 
+            */
+            
+            modal.classList.remove('hidden');
+        }
+
+        // C) Actualizar mi estado local
         myUser.is_verified = me.is_verified;
+        myUser.is_premium = me.is_premium; // IMPORTANTE: Guardar el nuevo estado del corazón
         myUser.is_admin = me.is_admin;
+        myUser.avatar = me.avatar;
+        
         localStorage.setItem('chatUser', JSON.stringify(myUser));
     }
+
+    // 3. Refrescar la lista de la barra lateral
     applyUserFilter();
 });
 
@@ -898,7 +940,21 @@ async function selectUser(target, elem) {
                 else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
                 rd = { username: rName, content: rContent, type: msg.reply_type };
             }
-            appendMessageUI(msg.content, msg.from_user_id === myUser.id ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption);
+            let fixedDate = msg.timestamp;
+        if (typeof fixedDate === 'string' && fixedDate.includes(' ')) {
+            fixedDate = fixedDate.replace(' ', 'T') + 'Z';
+        }
+
+        appendMessageUI(
+            msg.content, 
+            msg.from_user_id === myUser.id ? 'me' : 'other', 
+            fixedDate,  // <--- Usamos la fecha corregida aquí
+            msg.id, 
+            msg.type, 
+            rd, 
+            msg.is_deleted, 
+            msg.caption
+        );
         });
         // Scroll inmediato al cargar
         scrollToBottom(false); 
