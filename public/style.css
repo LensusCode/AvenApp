@@ -427,6 +427,7 @@ body {
     border: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    height: 100%;
     overflow: hidden;
     backdrop-filter: blur(12px);
 }
@@ -465,10 +466,7 @@ body {
     position: relative;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    
-    /* --- CORRECCIÓN 2: Evitar que el scroll empuje el form --- */
     min-height: 0; 
-    /* -------------------------------------------------------- */
 }
 
 /* 2. Scrollbar Moderna (Estilo Dark) */
@@ -1256,54 +1254,88 @@ body {
 }
 
 /* Stickers panel */
+/* Stickers panel - Estilo Base */
+/* --- PANEL DE STICKERS (TIPO TECLADO) --- */
 .sticker-panel {
-    position: absolute;
-    bottom: 80px;
-    left: 20px;
-    width: 320px;
-    height: 350px;
-    background: rgba(20, 20, 25, .95);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    /* Quitamos position: absolute para que ocupe espacio real */
+    position: relative; 
+    width: 100%;
+    
+    /* Altura por defecto (Oculto) */
+    height: 0; 
+    overflow: hidden;
+    
+    /* Animación suave al abrir */
+    transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    
+    background: #18181b; 
     display: flex;
     flex-direction: column;
-    z-index: 50;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, .5);
-    transition: transform .2s, opacity .2s;
-    will-change: transform, opacity;
+    border-top: 1px solid var(--border);
 }
 
+/* Clase para abrir el panel */
+.sticker-panel.open {
+    /* Altura similar a un teclado móvil promedio */
+    height: 300px; 
+    display: flex !important; /* Forzamos display flex */
+}
+
+/* Eliminar la clase .hidden antigua para evitar conflictos */
 .sticker-panel.hidden {
-    display: none;
+    display: none; /* O height: 0 si prefieres animar siempre */
+}
+
+/* Contenido interno */
+.sticker-content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Importante para scroll flex */
 }
 
 .sticker-header {
-    padding: 10px;
-    border-bottom: 1px solid var(--border);
-}
-
-.sticker-header input {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, .1);
-    border: 0;
-    color: #fff;
-    outline: 0;
+    padding: 8px;
 }
 
 .sticker-grid {
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr); /* 4 columnas se ve mejor en este modo */
     gap: 8px;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
 }
 
+/* BARRA INFERIOR (BOTONES) */
+.sticker-bottom-nav {
+    height: 45px;
+    background: rgba(255,255,255,0.01);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: center; /* Centrados */
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.sticker-nav-btn {
+    background: transparent;
+    border: none;
+    width: 56px;
+    height: 90%;
+    color: #52525b; /* Gris oscuro inactivo */
+    cursor: pointer;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sticker-nav-btn.active-btn {
+    color: #e4e4e7; /* Blanco activo */
+    background: rgba(255,255,255,0.05);
+    border-bottom: 2px solid var(--accent);
+}
 .sticker-thumb {
     width: 100%;
     height: 80px;
@@ -2372,12 +2404,11 @@ body {
 
 input {
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 24px;
     color: #fff;
-    font-size: 16px;
     transition: all 0.3s ease;
     outline: none;
 }
@@ -2771,7 +2802,7 @@ input.invalid {
 .chat-search-bar {
     position: absolute;
     inset: 0;
-    background: #18181b; /* Mismo color que el header */
+    background: #18181b;
     z-index: 20;
     display: flex;
     align-items: center;
@@ -2801,13 +2832,6 @@ input.invalid {
 @keyframes slideDown {
     from { transform: translateY(-10px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
-}
-
-/* --- CLASE PARA RESALTAR BÚSQUEDA --- */
-.highlight-text {
-    background-color: #fbbf24;
-    color: #000;
-    border-radius: 2px;
 }
 
 /* --- MODAL DE TEMAS (BOTTOM SHEET) --- */
@@ -3198,6 +3222,82 @@ body.theme-space .sidebar {
     color: #3b82f6 !important;
 }
 
+/* --- BARRA DE BÚSQUEDA MEJORADA --- */
+.chat-search-bar {
+    position: absolute;
+    inset: 0;
+    background: #18181b; 
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    animation: slideDown 0.2s ease;
+    gap: 10px;
+}
+
+.chat-search-bar input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+}
+
+.search-nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.search-count-text {
+    font-size: 13px;
+    color: #a1a1aa;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.nav-icon-btn.small {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- ESTILOS DE RESALTADO --- */
+
+/* 1. Coincidencias generales (Sutil, blanco transparente) */
+.highlight-text {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 2px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+
+/* 2. Coincidencia ACTIVA (La que seleccionas con las flechas) */
+.highlight-text.active-match {
+    background-color: #ffffff; /* Color acento (naranja/amarillo) */
+    color: #000;
+}
+
+/* 3. ANIMACIÓN DE MENSAJE SELECCIONADO (Efecto "Flash") */
+@keyframes flashMessage {
+    0% { background-color: rgba(99, 102, 241, 0.5); transform: scale(1.02); }
+    100% { background-color: transparent; transform: scale(1); }
+}
+
+/* Clase que aplicaremos al mensaje entero */
+.message-flash {
+    animation: flashMessage 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    z-index: 5;
+    /* Aseguramos que el borde también resalte si el tema lo requiere */
+    border-color: rgba(99, 102, 241, 0.5); 
+}
 /* Ajuste para que los iconos del input (pencil) se alineen */
 
 @media (max-width: 768px) {
@@ -3280,5 +3380,26 @@ body.theme-space .sidebar {
     .scroll-bottom-btn {
         bottom: 80px;
         right: 15px;
+    }
+    .sticker-panel {
+        position: fixed; /* Fijo a la pantalla */
+        bottom: 0;
+        left: 0;
+        width: 100%;       /* Ancho completo */
+        height: 40vh;      /* Altura similar a un teclado */
+        max-height: 350px;
+        border-radius: 20px 20px 0 0; /* Solo bordes superiores redondeados */
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        z-index: 2000;     /* Por encima de todo */
+        box-shadow: 0 -5px 25px rgba(0,0,0,0.5);
+    }
+    
+    .sticker-panel.hidden {
+        display: none;
+        transform: translateY(100%); /* Animación de salida hacia abajo */
+    }
+    .sticker-panel.open {
+        height: 320px; /* Un poco más alto en móviles */
     }
 }

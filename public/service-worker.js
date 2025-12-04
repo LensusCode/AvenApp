@@ -1,6 +1,6 @@
-const CACHE_STATIC_NAME = 'aven-static-v1.0.33';
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.33';
-const CACHE_IMG_NAME = 'aven-images-v1.0.33'; // Caché exclusiva para imágenes pesadas
+const CACHE_STATIC_NAME = 'aven-static-v1.0.34';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.34';
+const CACHE_IMG_NAME = 'aven-images-v1.0.34'; // Caché exclusiva para imágenes pesadas
 const CACHE_LIMIT = 50; // Límite de ítems en la caché dinámica
 
 const urlsToCache = [

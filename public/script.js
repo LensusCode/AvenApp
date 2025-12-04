@@ -749,6 +749,9 @@ function openStickerOptions(url) { toggleStickerModal(true, url); }
 
 // --- REPLY ---
 function setReply(msgId, content, type, ownerId) {
+    if (isEditing) {
+        cancelEditing();
+    }
     currentReplyId = msgId;
     let name = ownerId === myUser.id ? "Tú" : (myNicknames[ownerId] || allUsersCache.find(u => u.userId == ownerId)?.username || "Usuario");
     replyToName.textContent = escapeHtml(name);
@@ -1318,17 +1321,23 @@ function openContextMenu(x, y, msgId) {
     msgContextMenu.classList.remove('hidden');
 
     // 1. OBTENER ELEMENTOS
-    const msgEl = document.getElementById(`row-${msgId}`); // El LI (Contiene el timestamp)
-    const msgDiv = document.getElementById(`msg-${msgId}`); // La burbuja (Contiene la clase 'me')
+    const msgEl = document.getElementById(`row-${msgId}`); 
+    const msgDiv = document.getElementById(`msg-${msgId}`); 
 
-    // 2. DEFINIR VARIABLES CLAVE (Aquí estaba el error antes)
+    // 2. DEFINIR VARIABLES CLAVE
     const isMyMessage = msgDiv ? msgDiv.classList.contains('me') : false;
+    
+    // --- NUEVO: Detectar si está eliminado ---
+    // Verificamos si tiene la clase visual de eliminado o el texto interno
+    const isDeleted = msgDiv ? (msgDiv.classList.contains('deleted-msg') || msgDiv.querySelector('.deleted-label') !== null) : false;
+    // ----------------------------------------
+
     const isAdmin = myUser && myUser.is_admin; 
 
-    // --- LÓGICA BOTÓN EDITAR (24 HORAS) ---
+    // --- LÓGICA BOTÓN EDITAR (24 HORAS + NO ELIMINADO) ---
     const btnEdit = document.getElementById('ctxEditBtn');
     if (btnEdit) {
-        if (msgEl && isMyMessage) {
+        if (msgEl && isMyMessage && !isDeleted) { // <--- AGREGAMOS !isDeleted AQUÍ
             // Obtener fecha guardada en el dataset
             const msgTime = parseInt(msgEl.dataset.timestamp || 0);
             const now = Date.now();
@@ -1336,14 +1345,14 @@ function openContextMenu(x, y, msgId) {
             // Calcular diferencia en horas
             const hoursDiff = (now - msgTime) / (1000 * 60 * 60);
 
-            // Mostrar SOLO si es mío Y han pasado menos de 24 horas
+            // Mostrar SOLO si es mío, tiene menos de 24h Y NO ESTÁ ELIMINADO
             if (hoursDiff < 24) {
                 btnEdit.style.display = 'flex';
             } else {
                 btnEdit.style.display = 'none';
             }
         } else {
-            // Si no es mío, ocultar editar
+            // Si no es mío o está borrado, ocultar editar
             btnEdit.style.display = 'none';
         }
     }
@@ -1892,48 +1901,130 @@ closeChatSearch.addEventListener('click', () => {
 });
 
 // Lógica de búsqueda en tiempo real (Cliente)
+// --- VARIABLES DE BÚSQUEDA GLOBAL ---
+let searchMatches = [];     // Almacena los elementos <span> de las coincidencias
+let searchCurrentIndex = -1; // Índice actual (-1 significa ninguno seleccionado)
+
+// Elementos DOM
+const searchUpBtn = document.getElementById('searchUpBtn');
+const searchDownBtn = document.getElementById('searchDownBtn');
+
+// 1. INPUT DE BÚSQUEDA
 chatSearchInput.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
+    
+    // Limpiar estado anterior
     clearSearchHighlights();
+    searchMatches = [];
+    searchCurrentIndex = -1;
     
     if (term.length < 2) {
         searchCount.textContent = "";
+        toggleSearchNav(false);
         return;
     }
 
-    const messages = document.querySelectorAll('.message span'); // Solo texto
-    let matches = 0;
-    let firstMatch = null;
-
+    // Buscar en todos los mensajes de texto
+    const messages = document.querySelectorAll('.message-content-wrapper span'); // Asegúrate que apunta al texto
+    
     messages.forEach(span => {
+        // Obviamos metadatos, horas, etc.
+        if(span.closest('.meta-row') || span.classList.contains('meta')) return;
+
         const text = span.textContent;
         if (text.toLowerCase().includes(term)) {
-            matches++;
-            // Resaltar texto
+            // Regex para preservar mayúsculas/minúsculas visuales
             const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            span.innerHTML = text.replace(regex, '<span class="highlight-text">$1</span>');
             
-            if (!firstMatch) {
-                firstMatch = span.closest('.message-row');
-            }
+            // Reemplazar texto por HTML con spans
+            span.innerHTML = text.replace(regex, '<span class="highlight-text">$1</span>');
         }
     });
 
-    searchCount.textContent = matches > 0 ? `${matches} resultados` : "Sin resultados";
-    
-    // Scrollear al primer resultado (el más antiguo o reciente según orden)
-    if (firstMatch) {
-        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Recolectar todos los spans creados
+    searchMatches = Array.from(document.querySelectorAll('.highlight-text'));
+
+    if (searchMatches.length > 0) {
+        toggleSearchNav(true);
+        // Seleccionar el último mensaje por defecto (el más reciente suele estar abajo)
+        // O el primero si prefieres buscar desde arriba. Vamos al último para ver lo reciente:
+        searchCurrentIndex = searchMatches.length - 1; 
+        updateSearchUI();
+    } else {
+        searchCount.textContent = "0 res.";
+        toggleSearchNav(false);
     }
 });
 
+// 2. FUNCIONES DE NAVEGACIÓN
+searchUpBtn.addEventListener('click', () => navigateSearch(-1));   // Ir hacia atrás (arriba)
+searchDownBtn.addEventListener('click', () => navigateSearch(1));  // Ir hacia adelante (abajo)
+
+function navigateSearch(direction) {
+    if (searchMatches.length === 0) return;
+
+    searchCurrentIndex += direction;
+
+    // Loop infinito (Carrusel)
+    if (searchCurrentIndex < 0) searchCurrentIndex = searchMatches.length - 1;
+    if (searchCurrentIndex >= searchMatches.length) searchCurrentIndex = 0;
+
+    updateSearchUI();
+}
+
+function updateSearchUI() {
+    // 1. Actualizar contador "1 de 5"
+    // Sumamos 1 al índice porque los humanos cuentan desde 1
+    searchCount.textContent = `${searchCurrentIndex + 1} de ${searchMatches.length}`;
+
+    // 2. Quitar clase activa de todos
+    searchMatches.forEach(m => m.classList.remove('active-match'));
+    document.querySelectorAll('.message-flash').forEach(m => m.classList.remove('message-flash'));
+
+    // 3. Resaltar el actual
+    const currentEl = searchMatches[searchCurrentIndex];
+    if (currentEl) {
+        currentEl.classList.add('active-match');
+
+        // 4. Obtener la burbuja del mensaje padre para hacer el efecto FLASH
+        const messageBubble = currentEl.closest('.message-content-wrapper'); // O '.message' según tu HTML
+        if (messageBubble) {
+            // Removemos y agregamos la clase para reiniciar la animación si ya estaba
+            messageBubble.classList.remove('message-flash');
+            void messageBubble.offsetWidth; // Trigger reflow
+            messageBubble.classList.add('message-flash');
+            
+            // 5. Scroll suave hacia el mensaje
+            messageBubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+}
+
+function toggleSearchNav(show) {
+    // Habilitar/Deshabilitar botones si hay resultados
+    searchUpBtn.disabled = !show;
+    searchDownBtn.disabled = !show;
+    searchUpBtn.style.opacity = show ? 1 : 0.5;
+    searchDownBtn.style.opacity = show ? 1 : 0.5;
+}
+
+// 3. LIMPIEZA
 function clearSearchHighlights() {
     document.querySelectorAll('.highlight-text').forEach(mark => {
         const parent = mark.parentNode;
-        parent.textContent = parent.textContent; // Eliminar HTML tags
-        parent.normalize();
+        parent.textContent = parent.textContent; // Eliminar HTML tags (spans) y dejar texto plano
+        parent.normalize(); // Unir nodos de texto fragmentados
     });
+    // Limpiar clases de flash
+    document.querySelectorAll('.message-flash').forEach(m => m.classList.remove('message-flash'));
 }
+
+// Actualizar el botón de cerrar búsqueda existente para limpiar también
+closeChatSearch.addEventListener('click', () => {
+    chatSearchBar.classList.add('hidden');
+    chatSearchInput.value = '';
+    clearSearchHighlights();
+});
 
 // 3. OPCIÓN: CAMBIAR FONDO
 /* ==========================================
@@ -2373,4 +2464,80 @@ socket.on('message updated', ({ messageId, newContent, isEdited }) => {
         msgEl.style.animation = "highlightEdit 0.5s ease";
         setTimeout(() => msgEl.style.animation = "", 500);
     }
+});
+document.querySelectorAll('.sticker-nav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        // Si tiene la clase inactive-btn, es Emoji o GIF (No funcional)
+        if (btn.classList.contains('inactive-btn')) {
+            // Opcional: Vibración o feedback
+            if(navigator.vibrate) navigator.vibrate(20);
+            console.log("Función no disponible aún");
+        }
+    });
+});
+/* --- CÓDIGO CORREGIDO --- */
+
+// Solo definimos btnStickers porque no estaba guardada como variable global arriba.
+// stickerPanel e inputMsg YA EXISTEN al principio del archivo, así que las usamos directamente.
+const btnStickers = document.getElementById('btnStickers');
+
+// 1. ABRIR/CERRAR STICKERS
+btnStickers.addEventListener('click', () => {
+    // Si está cerrado, lo abrimos
+    if (!stickerPanel.classList.contains('open')) {
+        // CERRAR TECLADO NATIVO (Importante para que no compitan)
+        inputMsg.blur();
+        
+        // Mostrar panel
+        stickerPanel.classList.remove('hidden');
+        
+        // Pequeño timeout para permitir que el navegador quite el display:none antes de animar height
+        setTimeout(() => {
+            stickerPanel.classList.add('open');
+            scrollToBottom(true); // Scrollear chat al fondo
+        }, 10);
+        
+        // Cargar stickers si es la primera vez
+        if (currentStickerTab === 'giphy') loadStickers();
+        else loadFavoritesFromServer();
+        
+    } else {
+        // Si ya está abierto, lo cerramos
+        closeStickerPanel();
+    }
+});
+
+// 2. CERRAR STICKERS AL ESCRIBIR (Comportamiento nativo)
+inputMsg.addEventListener('focus', () => {
+    if (stickerPanel.classList.contains('open')) {
+        closeStickerPanel();
+    }
+});
+
+// Función helper para cerrar
+function closeStickerPanel() {
+    stickerPanel.classList.remove('open');
+    // Esperar la animación CSS (0.3s) antes de ocultar completamente
+    setTimeout(() => {
+        stickerPanel.classList.add('hidden');
+    }, 300);
+}
+
+// 3. Listener para clicks fuera
+document.addEventListener('click', (e) => {
+    if (!stickerPanel.contains(e.target) && !btnStickers.contains(e.target) && stickerPanel.classList.contains('open')) {
+        // Solo cerrar si el click no fue en el input
+        if (e.target !== inputMsg) {
+             closeStickerPanel();
+        }
+    }
+});
+
+// 4. Feedback visual para botones inactivos
+document.querySelectorAll('.sticker-nav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        if (btn.classList.contains('inactive-btn')) {
+            if(navigator.vibrate) navigator.vibrate(20);
+        }
+    });
 });
