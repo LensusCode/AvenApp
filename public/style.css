@@ -995,7 +995,6 @@ body {
     border-radius: 6px;
     padding: 6px 10px;
     display: flex;
-    gap: 10px;
     position: relative;
     overflow: hidden;
     border-left: 4px solid var(--accent);
@@ -1030,7 +1029,6 @@ body {
 
 .reply-to-text svg {
     display: inline-block;
-    vertical-align: -5px;
 }
 
 .reply-sticker-preview {
@@ -2574,14 +2572,15 @@ input.invalid {
     outline: none;
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
     display: block;
-}
+}   
 
-meta-row {
+.meta-row {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: flex-end;
-    gap: 4px;
-    margin-top: 2px;
+    gap: 5px;
+    flex-wrap: nowrap; 
+    margin-top: 2px;   
 }
 
 /* El SVG de los checks */
@@ -3079,6 +3078,127 @@ body.theme-space .sidebar {
     background: rgba(15, 23, 42, 0.6) !important;
     border-right: 1px solid rgba(99, 102, 241, 0.2);
 }
+
+/* --- BARRA DE MENSAJE FIJADO (Estilo Telegram) --- *
+/* 2. La barra de fijado debe estar debajo del menú pero encima del chat */
+.pinned-message-bar {
+    z-index: 1;
+    position: absolute;
+    top: 64px; 
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: rgba(20, 20, 25, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    backdrop-filter: blur(10px);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.pinned-message-bar.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pinned-bar-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+}
+
+.pinned-bar-line {
+    width: 2px;
+    height: 32px;
+    background-color: var(--accent); /* Color morado/azul del tema */
+    border-radius: 2px;
+    margin-right: 12px;
+}
+
+.pinned-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.pinned-label {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.pinned-preview {
+    font-size: 13px;
+    color: #ececec;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pinned-close-btn {
+    background: none;
+    border: none;
+    color: #a1a1aa;
+    padding: 8px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+.pinned-close-btn:hover {
+    color: #fff;
+}
+
+/* Ajuste importante: Si la barra está visible, el chat debe bajar un poco o tener padding */
+.chat-container.has-pinned-message .chat-main {
+    padding-top: 70px; /* 20px padding normal + 50px barra */
+}
+.main-column.theme-love .pinned-message-bar {
+    background: rgba(56, 14, 32, 0.95) !important; /* Fondo Tinto/Rosado */
+    border-bottom: 1px solid rgba(236, 72, 153, 0.3);
+}
+.main-column.theme-love .pinned-bar-line {
+    background-color: #ec4899 !important; /* Línea lateral Rosada */
+}
+.main-column.theme-love .pinned-label {
+    color: #fbcfe8 !important; /* Texto título rosado claro */
+}
+
+/* TEMA: ESPACIO (Space) */
+.main-column.theme-space .pinned-message-bar {
+    background: rgba(15, 23, 42, 0.95) !important; /* Fondo Azul Oscuro */
+    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+}
+.main-column.theme-space .pinned-bar-line {
+    background-color: #6366f1 !important; /* Línea lateral Índigo */
+}
+.main-column.theme-space .pinned-label {
+    color: #c7d2fe !important; /* Texto título azul claro */
+}
+/* Etiqueta "editado" */
+.edited-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    white-space: nowrap;
+}
+
+/* Animación al editar */
+@keyframes highlightEdit {
+    0% { background-color: rgba(59, 130, 246, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* El botón de editar en el input se parece al reply pero con borde azul */
+
+#editPreview .reply-to-name {
+    color: #3b82f6 !important;
+}
+
+/* Ajuste para que los iconos del input (pencil) se alineen */
 
 @media (max-width: 768px) {
     

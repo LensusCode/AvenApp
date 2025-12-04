@@ -75,6 +75,12 @@ let currentStickerTab = 'giphy', myFavorites = new Set();
 let cropper = null, searchTimeout, currentStickerUrlInModal = null;
 let currentChatType = 'private';
 
+let isEditing = false;
+let currentEditingId = null;
+const editPreview = document.getElementById('editPreview');
+const editPreviewText = document.getElementById('editPreviewText');
+const closeEditBtn = document.getElementById('closeEditBtn');
+
 // --- ELEMENTOS DOM ---
 const getEl = (id) => document.getElementById(id);
 const profileBtn = getEl('profileBtn'), profileModal = getEl('profileModal'), closeProfile = getEl('closeProfile');
@@ -953,7 +959,8 @@ async function selectUser(target, elem) {
             msg.type, 
             rd, 
             msg.is_deleted, 
-            msg.caption
+            msg.caption,
+            msg.is_edited 
         );
         });
         // Scroll inmediato al cargar
@@ -965,6 +972,7 @@ async function selectUser(target, elem) {
     } else {
         messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
     }
+    checkAndLoadPinnedMessage(target.userId);
 }
 backBtn.addEventListener('click', () => {
     chatContainer.classList.remove('mobile-chat-active');
@@ -972,12 +980,51 @@ backBtn.addEventListener('click', () => {
     // --- AGREGAR ESTO: Quitar el tema global al salir del chat ---
     document.body.classList.remove('theme-love', 'theme-space');
 });
+async function checkAndLoadPinnedMessage(targetUserId) {
+    // Primero: Ocultar barra por defecto para limpiar estado anterior
+    hidePinnedBar();
 
+    // A. Verificar "Fijado para mí" (LocalStorage)
+    const localPinData = localStorage.getItem(`pinned_local_${myUser.id}_${targetUserId}`);
+    if (localPinData) {
+        try {
+            const { messageId, content, type } = JSON.parse(localPinData);
+            currentPinnedMessageId = messageId;
+            showPinnedBar(content, type);
+            return; // Si hay local, tiene prioridad visual (o puedes decidir lo contrario)
+        } catch (e) {
+            localStorage.removeItem(`pinned_local_${myUser.id}_${targetUserId}`);
+        }
+    }
+
+    // B. Verificar "Fijado para todos" (Base de Datos)
+    try {
+        const res = await apiRequest(`/api/pinned-message/${targetUserId}`);
+        if (res && res.found) {
+            currentPinnedMessageId = res.messageId;
+            showPinnedBar(res.content, res.type);
+        }
+    } catch (e) {
+        console.error("Error cargando fijado:", e);
+    }
+}
 // --- AUDIO Y CONTROLES ---
 function updateButtonState() { mainActionBtn.innerHTML = isRecording ? ICONS.send : (inputMsg.value.trim().length > 0 ? ICONS.send : ICONS.mic); }
 inputMsg.addEventListener('input', () => { updateButtonState(); if (currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId }); });
 mainActionBtn.addEventListener('click', async (e) => {
     e.preventDefault();
+    if (isEditing) {
+        const newText = inputMsg.value.trim();
+        if (newText.length > 0 && currentEditingId) {
+            socket.emit('edit message', {
+                messageId: currentEditingId,
+                newContent: newText,
+                toUserId: currentTargetUserId
+            });
+            cancelEditing();
+        }
+        return;
+    }
     if (isRecording) return stopRecording();
     
     const text = inputMsg.value.trim();
@@ -1034,7 +1081,7 @@ function sendMessage(content, type, replyId = null) {
     socket.emit('private message', { content, toUserId: currentTargetUserId, type, replyToId: replyId }, (res) => {
         if (res?.id) {
             let rd = replyId ? { username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null; 
-            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption);
+            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption, 0);
             messagesList.scrollTop = messagesList.scrollHeight;
             scrollToBottom(true); 
         }
@@ -1062,7 +1109,7 @@ socket.on('private message', (msg) => {
         }
 
         // 3. Renderizar
-        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption);
+        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0);
 
         // 4. Scroll condicional
         if (isAtBottom) {
@@ -1088,8 +1135,7 @@ socket.on('message deleted', ({ messageId }) => {
     }
 });
 
-function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null) {
-    // A. Renderizar fecha si es necesario
+function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0) {    // A. Renderizar fecha si es necesario
     renderDateDivider(dateStr);
 
     // B. Lógica de Agrupación Visual
@@ -1100,6 +1146,8 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     li.className = `message-row ${ownerType}`;
     if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
+
+    
 
     // Generar contenido del mensaje (Tu lógica original intacta)
     let bodyHtml = '';
@@ -1126,6 +1174,18 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         bodyHtml = `<span>${escapeHtml(content)}</span>`;
     }
 
+    li.dataset.timestamp = new Date(dateStr).getTime(); // <--- AGREGAR ESTO
+
+// 2. Modificar la parte de "Meta (Hora)" para incluir "editado"
+// Busca donde defines "const meta = ..." y cámbialo por esto:
+// (Nota: asegúrate de recibir el parámetro 'isEdited' en la función appendMessageUI)
+
+// Asegúrate que la firma de la función acepte isEdited:
+// function appendMessageUI(..., isEdited = 0, ...) {
+
+const editedHtml = isEdited ? '<span class="edited-label">editado</span>' : '';
+const meta = msgType !== 'audio' ? `<div class="meta-row">${editedHtml}<span class="meta">${new Date(dateStr).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>` : '';
+
      const isStickerWithReply = (msgType === 'sticker' && replyData !== null);
     
     // 2. Definir la clase extra
@@ -1136,10 +1196,10 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
     const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
     
-    // Meta (Hora)
-    const meta = msgType !== 'audio' ? `<div class="meta-row"><span class="meta">${new Date(dateStr).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>` : '';
+    // Meta (Hora
 
 
+    
     li.innerHTML = `
         <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
         
@@ -1257,30 +1317,48 @@ function openContextMenu(x, y, msgId) {
     const menu = msgContextMenu.querySelector('.context-menu-content');
     msgContextMenu.classList.remove('hidden');
 
-    // --- LÓGICA DE PERMISOS ---
-    const msgEl = document.getElementById(`msg-${msgId}`);
-    const isMyMessage = msgEl && msgEl.classList.contains('me');
-    const isAdmin = myUser.is_admin;
+    // 1. OBTENER ELEMENTOS
+    const msgEl = document.getElementById(`row-${msgId}`); // El LI (Contiene el timestamp)
+    const msgDiv = document.getElementById(`msg-${msgId}`); // La burbuja (Contiene la clase 'me')
 
-    // 1. Botón EDITAR: Solo mostrar si el mensaje es MÍO
+    // 2. DEFINIR VARIABLES CLAVE (Aquí estaba el error antes)
+    const isMyMessage = msgDiv ? msgDiv.classList.contains('me') : false;
+    const isAdmin = myUser && myUser.is_admin; 
+
+    // --- LÓGICA BOTÓN EDITAR (24 HORAS) ---
     const btnEdit = document.getElementById('ctxEditBtn');
     if (btnEdit) {
-        // Solo puedes editar tus propios mensajes (incluso si eres admin, usualmente no editas a otros)
-        btnEdit.style.display = isMyMessage ? 'flex' : 'none';
+        if (msgEl && isMyMessage) {
+            // Obtener fecha guardada en el dataset
+            const msgTime = parseInt(msgEl.dataset.timestamp || 0);
+            const now = Date.now();
+            
+            // Calcular diferencia en horas
+            const hoursDiff = (now - msgTime) / (1000 * 60 * 60);
+
+            // Mostrar SOLO si es mío Y han pasado menos de 24 horas
+            if (hoursDiff < 24) {
+                btnEdit.style.display = 'flex';
+            } else {
+                btnEdit.style.display = 'none';
+            }
+        } else {
+            // Si no es mío, ocultar editar
+            btnEdit.style.display = 'none';
+        }
     }
 
-    // 2. Botón ELIMINAR PARA TODOS (En el modal siguiente):
-    // Preparamos la lógica para cuando se abra el modal de borrado
+    // --- LÓGICA BOTÓN ELIMINAR PARA TODOS ---
     const btnEveryone = document.getElementById('btnDeleteEveryone');
     if (btnEveryone) {
         if (isMyMessage || isAdmin) {
-            btnEveryone.style.display = 'flex'; // Mostrar
+            btnEveryone.style.display = 'flex'; 
         } else {
-            btnEveryone.style.display = 'none'; // Ocultar (Solo "Eliminar para mí")
+            btnEveryone.style.display = 'none'; 
         }
     }
     
-    // Cálculo de posición (sin cambios)
+    // --- POSICIONAMIENTO DEL MENÚ ---
     let top = y;
     let left = x;
     
@@ -1351,12 +1429,6 @@ getEl('ctxCopyBtn').addEventListener('click', async () => {
 });
 
 // Editar (Visual por ahora)
-getEl('ctxEditBtn').addEventListener('click', () => {
-    console.log("Editar mensaje:", currentContextMessageId);
-    // Aquí iría la lógica futura
-    closeContextMenu();
-});
-
 // Eliminar (Abre el Modal)
 // Listener del botón ELIMINAR en el menú contextual
 getEl('ctxDeleteBtn').addEventListener('click', () => {
@@ -2027,4 +2099,278 @@ document.getElementById('optDeleteChat').addEventListener('click', () => {
     
     // 3. Abrir modal
     document.getElementById('deleteConfirmModal').classList.remove('hidden');
+});
+let messageIdToPin = null;
+let currentPinnedMessageId = null; // ID del mensaje actualmente fijado
+
+// 1. ABRIR EL MODAL DESDE EL MENÚ CONTEXTUAL
+// (Asegúrate de tener el botón <button id="ctxPinBtn">Fijar</button> en tu HTML del menú contextual)
+const ctxPinBtn = document.getElementById('ctxPinBtn');
+if (ctxPinBtn) {
+    ctxPinBtn.addEventListener('click', () => {
+        // Guardamos el ID del mensaje seleccionado
+        messageIdToPin = currentContextMessageId;
+        closeContextMenu(); // Cerrar menú de 3 puntos/contextual
+        
+        // Abrir modal de confirmación
+        document.getElementById('pinConfirmModal').classList.remove('hidden');
+    });
+}
+
+// 2. CERRAR MODAL
+window.closePinModal = () => {
+    document.getElementById('pinConfirmModal').classList.add('hidden');
+    messageIdToPin = null;
+};
+
+// 3. ACCIÓN: FIJAR PARA TODOS
+document.getElementById('btnPinEveryone').addEventListener('click', () => {
+    if (!messageIdToPin || !currentTargetUserId) return;
+    
+    // Emitir al servidor
+    socket.emit('pin message', {
+        messageId: messageIdToPin,
+        toUserId: currentTargetUserId,
+        type: 'everyone'
+    });
+    
+    closePinModal();
+});
+
+// 4. ACCIÓN: FIJAR PARA MÍ (Local)
+document.getElementById('btnPinMe').addEventListener('click', () => {
+    if (!messageIdToPin || !currentTargetUserId) return;
+
+    // Obtener datos del DOM para guardar texto limpio
+    const msgEl = document.getElementById(`msg-${messageIdToPin}`);
+    if (msgEl) {
+        // Clonar y limpiar para obtener texto sin hora
+        const clone = msgEl.cloneNode(true);
+        const garbage = clone.querySelectorAll('.meta, .meta-row, .quoted-message, .deleted-label, .audio-meta-row, .swipe-reply-icon');
+        garbage.forEach(el => el.remove());
+        
+        let type = 'text';
+        if(clone.querySelector('.chat-image')) type = 'image';
+        else if(clone.querySelector('.sticker-img')) type = 'sticker';
+        else if(clone.querySelector('audio')) type = 'audio';
+
+        let text = clone.innerText.trim();
+        if(!text && type !== 'text') text = ""; 
+
+        // GUARDAR EN LOCALSTORAGE
+        const pinData = { messageId: messageIdToPin, content: text, type: type };
+        localStorage.setItem(`pinned_local_${myUser.id}_${currentTargetUserId}`, JSON.stringify(pinData));
+        
+        // Actualizar UI
+        currentPinnedMessageId = messageIdToPin;
+        showPinnedBar(text, type);
+    }
+    closePinModal();
+});
+
+// Acción: Desfijar (Limpiar LocalStorage y Servidor)
+document.getElementById('unpinBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!currentTargetUserId) return;
+
+    // 1. Intentar borrar local
+    localStorage.removeItem(`pinned_local_${myUser.id}_${currentTargetUserId}`);
+
+    // 2. Intentar borrar servidor (Para todos)
+    socket.emit('pin message', {
+        messageId: null, 
+        toUserId: currentTargetUserId,
+        type: 'everyone'
+    });
+
+    hidePinnedBar();
+});
+
+// 6. CLIC EN LA BARRA -> IR AL MENSAJE
+document.getElementById('pinnedBarContent').addEventListener('click', () => {
+    if (!currentPinnedMessageId) return;
+    
+    const msgEl = document.getElementById(`msg-${currentPinnedMessageId}`);
+    if (msgEl) {
+        msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Efecto visual de resaltado
+        msgEl.style.transition = 'background 0.5s';
+        const originalBg = msgEl.style.background;
+        msgEl.style.background = 'rgba(99, 102, 241, 0.3)'; // Resaltado azulado
+        setTimeout(() => { msgEl.style.background = originalBg; }, 1000);
+    } else {
+        showToast("El mensaje fijado es antiguo y no está cargado.");
+    }
+});
+
+// 7. ESCUCHAR EVENTO DE SOCKET (ACTUALIZAR BARRA)
+socket.on('chat pinned update', ({ messageId, content, type }) => {
+    // Si es null, significa que se desfijó
+    if (!messageId) {
+        hidePinnedBar();
+    } else {
+        currentPinnedMessageId = messageId;
+        showPinnedBar(content, type);
+    }
+});
+
+// --- FUNCIONES UI AUXILIARES ---
+
+function showPinnedBar(content, type) {
+    const bar = document.getElementById('pinnedMessageBar');
+    const textEl = document.getElementById('pinnedMessageText');
+    const container = document.querySelector('.chat-container');
+
+    // Procesar texto previo
+    let previewText = content;
+    if (type === 'image') previewText = '📷 Foto';
+    else if (type === 'sticker') previewText = '✨ Sticker';
+    else if (type === 'audio') previewText = '🎤 Mensaje de voz';
+    
+    // Si el contenido está encriptado o es JSON, mostrar texto genérico (seguridad)
+    if (previewText.startsWith('{"iv":')) previewText = "🔒 Mensaje encriptado";
+
+    textEl.textContent = previewText;
+    
+    bar.classList.remove('hidden');
+    container.classList.add('has-pinned-message'); // Para ajustar padding
+}
+
+function hidePinnedBar() {
+    const bar = document.getElementById('pinnedMessageBar');
+    const container = document.querySelector('.chat-container');
+    
+    bar.classList.add('hidden');
+    container.classList.remove('has-pinned-message');
+    currentPinnedMessageId = null;
+}
+
+// Función helper para actualizar UI buscando el contenido en el DOM si no viene del socket
+function updatePinnedBarUI(msgId) {
+    const msgEl = document.getElementById(`msg-${msgId}`);
+    if (msgEl) {
+        // 1. Clonamos el elemento para limpiarlo sin afectar el chat real
+        const clone = msgEl.cloneNode(true);
+        
+        // 2. Eliminamos elementos que NO son el mensaje principal
+        // (.meta = hora, .quoted-message = respuesta, .deleted-label = etiqueta borrado)
+        const garbage = clone.querySelectorAll('.meta, .meta-row, .quoted-message, .deleted-label, .audio-meta-row, .swipe-reply-icon');
+        garbage.forEach(el => el.remove());
+
+        // 3. Detectar tipo
+        let type = 'text';
+        if(clone.querySelector('.chat-image')) type = 'image';
+        else if(clone.querySelector('.sticker-img')) type = 'sticker';
+        else if(clone.querySelector('audio')) type = 'audio';
+
+        // 4. Obtener texto limpio
+        let cleanText = clone.innerText.trim();
+
+        // Si quedó vacío pero es multimedia, ajustar texto
+        if (!cleanText && type === 'image') cleanText = ""; // showPinnedBar pondrá "Foto"
+        
+        currentPinnedMessageId = msgId;
+        showPinnedBar(cleanText, type);
+    }
+}
+document.getElementById('ctxEditBtn').addEventListener('click', () => {
+    const msgEl = document.getElementById(`msg-${currentContextMessageId}`);
+    if (!msgEl) return closeContextMenu();
+
+    // Obtener texto limpio (sin hora, sin respuestas, etc.)
+    const clone = msgEl.cloneNode(true);
+    const garbage = clone.querySelectorAll('.meta-row, .quoted-message, .deleted-label, .audio-meta-row, .pin-icon');
+    garbage.forEach(el => el.remove());
+    
+    const textToEdit = clone.innerText.trim();
+    
+    startEditing(currentContextMessageId, textToEdit);
+    closeContextMenu();
+});
+
+// 2. INICIAR MODO EDICIÓN
+function startEditing(msgId, currentText) {
+    isEditing = true;
+    currentEditingId = msgId;
+
+    // UI
+    clearReply(); // No se puede responder y editar a la vez
+    editPreview.classList.remove('hidden');
+    editPreviewText.textContent = currentText;
+    document.getElementById('inputStack').classList.add('active');
+    inputMsg.value = currentText;
+    inputMsg.focus();
+    
+    // Cambiar icono de envío a Checkmark (✓)
+    updateButtonState(); 
+}
+
+// 3. CANCELAR EDICIÓN
+function cancelEditing() {
+    isEditing = false;
+    currentEditingId = null;
+    editPreview.classList.add('hidden');
+    document.getElementById('inputStack').classList.remove('active');
+    inputMsg.value = '';
+    updateButtonState();
+}
+
+closeEditBtn.addEventListener('click', cancelEditing);
+
+// 4. MODIFICAR UPDATE BUTTON STATE (Para mostrar el Check)
+// Busca tu función updateButtonState y modifícala:
+function updateButtonState() {
+    if (isEditing) {
+        // Icono de Checkmark para confirmar edición
+        mainActionBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        mainActionBtn.style.backgroundColor = "#3b82f6"; // Azul Telegram
+    } else {
+        // Tu lógica original
+        mainActionBtn.style.backgroundColor = ""; // Reset color
+        mainActionBtn.innerHTML = isRecording ? ICONS.send : (inputMsg.value.trim().length > 0 ? ICONS.send : ICONS.mic);
+    }
+}
+socket.on('message updated', ({ messageId, newContent, isEdited }) => {
+    const msgEl = document.getElementById(`msg-${messageId}`);
+    if (msgEl) {
+        // 1. Actualizar el contenido del mensaje (preservando hora y checks)
+        // La forma más segura es buscar el nodo de texto directo o el span de contenido
+        // Como tu estructura es compleja, vamos a reconstruir la parte de texto:
+        
+        // Asumiendo que el texto está en un span directo o nodo texto dentro de .message-content-wrapper
+        // Borramos el texto viejo pero guardamos los metadatos
+        const metaRow = msgEl.querySelector('.meta-row');
+        const quote = msgEl.querySelector('.quoted-message');
+        const pin = msgEl.querySelector('.pin-icon');
+        
+        // Limpiamos contenido
+        msgEl.innerHTML = '';
+        
+        // Restauramos elementos auxiliares
+        if(pin) msgEl.appendChild(pin);
+        if(quote) msgEl.appendChild(quote);
+        
+        // Insertamos nuevo texto
+        const textSpan = document.createElement('span');
+        textSpan.textContent = newContent; // Ya viene desencriptado del server o plano
+        msgEl.appendChild(textSpan);
+        
+        // Actualizamos o creamos la etiqueta "editado"
+        if (isEdited && metaRow) {
+            if (!metaRow.querySelector('.edited-label')) {
+                const editLabel = document.createElement('span');
+                editLabel.className = 'edited-label';
+                editLabel.textContent = 'editado';
+                editLabel.style.marginRight = '4px';
+                metaRow.prepend(editLabel); // Poner antes de la hora
+            }
+        }
+        
+        // Restauramos metadatos
+        if(metaRow) msgEl.appendChild(metaRow);
+        
+        // Animación visual
+        msgEl.style.animation = "highlightEdit 0.5s ease";
+        setTimeout(() => msgEl.style.animation = "", 500);
+    }
 });

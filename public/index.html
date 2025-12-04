@@ -91,7 +91,7 @@
             <div class="detail-item">
                 <label class="detail-label">Biografía</label>
                 <div class="detail-value bio-text" id="profileBio">
-                    La unión hace la fuerza, pero la inteligencia gana batallas. 🚀
+                    Sin biografía.
                 </div>
             </div>
 
@@ -312,6 +312,14 @@
             <span>Copiar</span>
         </button>
 
+        <button id="ctxPinBtn" class="ctx-item">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="17" x2="12" y2="22"></line>
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+            </svg>
+            <span>Fijar mensaje</span>
+        </button>
+
         <!-- Botón Editar (Visual) -->
         <button id="ctxEditBtn" class="ctx-item">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -390,6 +398,20 @@
     </div>
 </header>
 
+
+<div id="pinnedMessageBar" class="pinned-message-bar hidden">
+    <div class="pinned-bar-content" id="pinnedBarContent">
+        <div class="pinned-bar-line"></div> <!-- Línea azul vertical -->
+        <div class="pinned-info">
+            <span class="pinned-label">Mensaje fijado</span>
+            <span id="pinnedMessageText" class="pinned-preview">Cargando...</span>
+        </div>
+    </div>
+    <button id="unpinBtn" class="pinned-close-btn">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
             <main class="chat-main">
                 <div id="emptyState" class="empty-state">Selecciona un contacto</div>
                 <ul id="messages" class="messages hidden"></ul>
@@ -431,6 +453,20 @@
                 </div>
                 <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
             </div>
+
+            <div id="editPreview" class="reply-preview hidden">
+    <div class="reply-content-container" style="border-left: none; align-items: center;">
+        <!-- Icono Lápiz Azul -->
+        <div style="margin-right: 12px; color: #3b82f6;">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>
+        </div>
+        <div class="reply-info">
+            <span class="reply-to-name" style="color: #3b82f6;">Editar mensaje</span>
+            <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
+        </div>
+    </div>
+    <button type="button" id="closeEditBtn" class="close-reply">✕</button>
+</div>
 
             <!-- NUEVO WRAPPER: Contiene Sticker + Input + Imagen -->
             <div class="chat-input-wrapper">
@@ -494,7 +530,7 @@
                     <div class="mini-bubble-left"></div>
                     <div class="mini-bubble-right"></div>
                 </div>
-                <span>Sin tema</span>
+                <span>Predeterminado</span>
             </div>
 
             <!-- Opción 2: Tema Amor (Rosado) -->
@@ -519,6 +555,34 @@
         <div class="theme-footer">
             <button id="btnGalleryTheme" class="btn-gallery-link">
                 Elegir un fondo desde galería
+            </button>
+        </div>
+    </div>
+</div>
+<div id="pinConfirmModal" class="confirm-modal hidden">
+    <div class="modal-backdrop" onclick="closePinModal()"></div>
+    <div class="confirm-card delete-options-card">
+        <h3>¿Fijar mensaje?</h3>
+        <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
+            Elige cómo quieres fijar este mensaje en el chat.
+        </p>
+        
+        <div class="delete-actions-stack">
+            <!-- Botón Fijar para todos -->
+            <button id="btnPinEveryone" class="delete-action-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Fijar para todos
+            </button>
+
+            <!-- Botón Fijar para mí -->
+            <button id="btnPinMe" class="delete-action-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
+                Fijar para mí
+            </button>
+
+            <!-- Botón Cancelar -->
+            <button onclick="closePinModal()" class="delete-action-btn cancel">
+                Cancelar
             </button>
         </div>
     </div>

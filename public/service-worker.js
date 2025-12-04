@@ -1,90 +1,137 @@
-const CACHE_NAME = 'aven-app-v1.0.30'; // Cambiamos el nombre para forzar actualización
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.30'; // Para guardar datos de la API (historial)
+const CACHE_STATIC_NAME = 'aven-static-v1.0.33';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.33';
+const CACHE_IMG_NAME = 'aven-images-v1.0.33'; // Caché exclusiva para imágenes pesadas
+const CACHE_LIMIT = 50; // Límite de ítems en la caché dinámica
 
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/script.js',
-  '/socket.io/socket.io.js', // Librería del cliente
   '/manifest.json',
-  '/offline.html' // Opcional: Una página de error personalizada
+  '/offline.html',
+  '/profile.png', // IMPORTANTE: Una imagen por defecto si falla la carga
+  '/profile.png'   // Imagen para posts que no cargan
 ];
 
-// 1. INSTALACIÓN: Pre-cachear recursos estáticos (App Shell)
+// --- FUNCIONES AUXILIARES ---
+
+// Función para limitar el tamaño de la caché (FIFO)
+const trimCache = (cacheName, maxItems) => {
+  caches.open(cacheName).then(cache => {
+    cache.keys().then(keys => {
+      if (keys.length > maxItems) {
+        cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
+      }
+    });
+  });
+};
+
+// 1. INSTALACIÓN
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(CACHE_STATIC_NAME)
       .then((cache) => {
         console.log('[Service Worker] Pre-cacheando App Shell');
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting()) // Fuerza al SW a activarse inmediatamente
+      .then(() => self.skipWaiting())
   );
 });
 
-// 2. ACTIVACIÓN: Limpiar cachés antiguas
+// 2. ACTIVACIÓN
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(keyList.map((key) => {
-        // Si la caché no es la actual (estática o dinámica), la borramos
-        if (key !== CACHE_NAME && key !== CACHE_DYNAMIC_NAME) {
-          console.log('[Service Worker] Borrando caché antigua:', key);
+        if (key !== CACHE_STATIC_NAME && 
+            key !== CACHE_DYNAMIC_NAME && 
+            key !== CACHE_IMG_NAME) {
+          console.log('[Service Worker] Limpiando caché antigua:', key);
           return caches.delete(key);
         }
       }));
     })
   );
-  return self.clients.claim(); // Toma el control de todos los clientes inmediatamente
+  return self.clients.claim();
 });
 
-// 3. FETCH: Estrategias de intercepción
+// 3. FETCH (Estrategias Interceptadas)
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // A. Ignorar WebSockets (Socket.io usa WS y polling, no queremos cachear el polling en tiempo real)
-  if (url.pathname.includes('socket.io')) {
+  // A. Ignorar Socket.io y peticiones POST (Los SW no pueden cachear POST por defecto)
+  if (url.pathname.includes('socket.io') || request.method !== 'GET') {
     return;
   }
 
-  // B. Estrategia para API (Historial de mensajes): Network First, luego Cache
-  // Si tu app pide el historial por HTTP (ej: /api/messages), usamos esto.
+  // B. Estrategia para API (Network First con Fallback a Caché)
+  // Ideal para feeds: intenta obtener lo más nuevo, si falla, muestra lo viejo.
   if (url.pathname.includes('/api/')) {
     event.respondWith(
       caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
         return fetch(request)
           .then((response) => {
-            // Si hay internet, guardamos una copia fresca en caché y la retornamos
-            cache.put(request, response.clone());
+            // Guardamos copia fresca solo si la respuesta es válida
+            if(response.status === 200) {
+              cache.put(request, response.clone());
+              trimCache(CACHE_DYNAMIC_NAME, 30); // Limpiamos si hay demasiadas peticiones API guardadas
+            }
             return response;
           })
           .catch(() => {
-            // Si no hay internet, devolvemos lo que haya en caché
-            return cache.match(request);
+            return cache.match(request); // Devuelve JSON viejo si no hay red
           });
       })
     );
     return;
   }
 
-  // C. Estrategia para Archivos Estáticos (CSS, JS, Imágenes): Cache First, luego Network
+  // C. Estrategia para Imágenes (Cache First con Fallback Genérico)
+  // Las imágenes de redes sociales cambian poco (avatares), priorizamos velocidad.
+  if (request.destination === 'image') {
+    event.respondWith(
+      caches.open(CACHE_IMG_NAME).then((cache) => {
+        return cache.match(request).then((response) => {
+          if (response) return response; // Si está en caché, retornamos
+
+          // Si no, vamos a la red
+          return fetch(request).then((networkResponse) => {
+            cache.put(request, networkResponse.clone()); // Guardamos la nueva imagen
+            trimCache(CACHE_IMG_NAME, 60); // Controlamos no llenar el disco
+            return networkResponse;
+          }).catch(() => {
+            // D. Fallback si falla la imagen y no está en caché (Offline total)
+            // Aquí retornas tu avatar por defecto precacheado
+            return caches.match('/assets/default-avatar.png'); 
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // E. Estrategia por defecto para archivos estáticos (Stale-While-Revalidate modificado o Cache First)
+  // Para JS, CSS y HTML que no son el App Shell inicial
   event.respondWith(
     caches.match(request).then((response) => {
       if (response) {
-        return response; // Si está en caché, úsalo (súper rápido)
+        return response;
       }
-      // Si no está en caché, búscalo en la red
-      return fetch(request).then((networkResponse) => {
-        // Opcional: Podrías guardar dinámicamente nuevas imágenes aquí
-        return networkResponse;
-      }).catch(() => {
-        // D. Fallback para navegación (Si el usuario recarga offline y no hay caché)
-        if (request.headers.get('accept').includes('text/html')) {
-          return caches.match('/offline.html'); // Página de respaldo (debes crearla)
-        }
-      });
+      return fetch(request)
+        .then((res) => {
+          return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
+            cache.put(request, res.clone());
+            return res;
+          });
+        })
+        .catch(() => {
+          // Fallback para navegación HTML (si el usuario recarga en una ruta interna)
+          if (request.headers.get('accept').includes('text/html')) {
+            return caches.match('/offline.html');
+          }
+        });
     })
   );
 });

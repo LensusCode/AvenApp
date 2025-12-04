@@ -6,7 +6,7 @@ const path = require('path');
 const { createClient } = require("@libsql/client"); 
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const fs = require('fs'); // Se mantiene para utilidades, pero ya no para almacenamiento
+const fs = require('fs'); 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
@@ -18,6 +18,14 @@ const { v2: cloudinary } = require('cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const app = express();
+
+// =======================================================
+// SOLUCIÓN AL ERROR DE RENDER (Trust Proxy)
+// =======================================================
+app.set('trust proxy', 1); 
+// Esto permite a Express leer la IP real del usuario a través 
+// del proxy de Render, necesario para 'express-rate-limit'.
+
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -37,14 +45,12 @@ cloudinary.config({
 const imageStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'social-network/images', // Carpeta en tu Cloudinary
+        folder: 'social-network/images', 
         allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
-        // transformation: [{ width: 1000, crop: "limit" }] // Opcional: limitar tamaño al subir
     }
 });
 
 // 2. Storage para AUDIOS
-// Nota: Cloudinary trata los audios como 'video' en resource_type
 const audioStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -65,7 +71,6 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"], 
             scriptSrcAttr: ["'unsafe-inline'"], 
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-            // AQUI AGREGAMOS res.cloudinary.com
             imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com"], 
             mediaSrc: ["'self'", "blob:", "data:", "https://res.cloudinary.com"], 
             connectSrc: ["'self'", "https://*.giphy.com", "ws:", "wss:", "data:", "https://*.turso.io"], 
@@ -84,6 +89,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
 // --- RATE LIMITING ---
+// Ahora funcionará correctamente gracias a 'trust proxy'
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 20, 
@@ -196,6 +202,8 @@ async function initDatabase() {
         await addColumnSafe('users', 'is_premium INTEGER DEFAULT 0');
         await addColumnSafe('users', 'display_name TEXT');
         await addColumnSafe('users', 'bio TEXT');
+        await addColumnSafe('messages', 'is_pinned INTEGER DEFAULT 0');
+        await addColumnSafe('messages', 'is_edited INTEGER DEFAULT 0');
 
         console.log("✅ Base de datos verificada.");
     } catch (error) { console.error("❌ Error DB Init:", error); }
@@ -318,16 +326,11 @@ app.put('/api/profile/update', authenticateToken, (req, res) => {
 // --- RUTAS DE SUBIDA (MODIFICADAS PARA CLOUDINARY) ---
 
 // 1. SUBIDA DE AVATAR
-// Usamos uploadImage (Cloudinary). req.file.path contiene la URL segura.
 app.post('/api/upload-avatar', authenticateToken, uploadImage.single('avatar'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No se subió imagen' });
 
     try {
-        // Manipulación de URL de Cloudinary para asegurar recorte (Face detection)
-        // Insertamos transformaciones en la URL si no se hicieron al subir
         let avatarUrl = req.file.path;
-        
-        // Truco opcional: Forzar recorte 500x500 centrado en cara vía URL
         const splitUrl = avatarUrl.split('/upload/');
         if (splitUrl.length === 2) {
             avatarUrl = `${splitUrl[0]}/upload/w_500,h_500,c_fill,g_face/${splitUrl[1]}`;
@@ -347,14 +350,12 @@ app.post('/api/upload-avatar', authenticateToken, uploadImage.single('avatar'), 
 // 2. SUBIDA DE IMAGEN CHAT
 app.post('/api/upload-chat-image', authenticateToken, uploadImage.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No se subió imagen' });
-    // Cloudinary ya nos da la URL HTTPS
     res.json({ imageUrl: req.file.path });
 });
 
 // 3. SUBIDA DE AUDIO
 app.post('/api/upload-audio', authenticateToken, uploadAudio.single('audio'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No se subió audio' });
-    // req.file.path es la URL del recurso (tratado como video en Cloudinary)
     res.json({ audioUrl: req.file.path });
 });
 
@@ -541,6 +542,118 @@ io.on('connection', (socket) => {
                 }
             });
         }
+    });
+
+    socket.on('pin message', ({ messageId, toUserId, type }) => {
+        // 1. Primero, desfijar cualquier mensaje anterior en este chat (lógica Telegram: solo 1 a la vez)
+        // Nota: Asumimos chat 1 a 1.
+        
+        const myId = socket.data.userId;
+        
+        // Query para resetear todos los pines entre estos dos usuarios
+        const resetSql = `UPDATE messages SET is_pinned = 0 WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)`;
+        
+        db.run(resetSql, [myId, toUserId, toUserId, myId], (err) => {
+            if (err) return;
+
+            // 2. Si hay un ID (Fijar nuevo), actualizamos ese mensaje
+            if (messageId) {
+                db.run(`UPDATE messages SET is_pinned = 1 WHERE id = ?`, [messageId], (err2) => {
+                    if (!err2) {
+                        // Obtener contenido para enviar al cliente
+                        db.get(`SELECT content, type, caption FROM messages WHERE id = ?`, [messageId], (err3, row) => {
+                            if (row) {
+                                // Desencriptar si usas tu función decrypt()
+                                const cleanContent = decrypt(row.content); // Asegúrate de tener acceso a decrypt aquí
+                                const payload = { 
+                                    messageId, 
+                                    content: row.type === 'text' ? cleanContent : (row.caption ? decrypt(row.caption) : 'Archivo adjunto'), 
+                                    type: row.type 
+                                };
+                                
+                                // Emitir a ambos
+                                socket.emit('chat pinned update', payload);
+                                socket.to(`user_${toUserId}`).emit('chat pinned update', payload);
+                            }
+                        });
+                    }
+                });
+            } else {
+                // 3. Si messageId es null, es DESFIJAR todo
+                const payload = { messageId: null };
+                socket.emit('chat pinned update', payload);
+                socket.to(`user_${toUserId}`).emit('chat pinned update', payload);
+            }
+        });
+    });
+    app.get('/api/pinned-message/:otherId', authenticateToken, (req, res) => {
+    const myId = req.user.id;
+    const otherId = req.params.otherId;
+
+    // Buscamos un mensaje que esté fijado (is_pinned = 1) entre estos dos usuarios
+    const sql = `
+        SELECT id, content, type, caption 
+        FROM messages 
+        WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))
+        AND is_pinned = 1 
+        LIMIT 1
+    `;
+
+    db.get(sql, [myId, otherId, otherId, myId], (err, row) => {
+        if (err) return res.status(500).json({ error: 'DB Error' });
+        
+        if (row) {
+            // Desencriptamos si es necesario (usando tu función decrypt existente)
+            const cleanContent = decrypt(row.content);
+            const cleanCaption = row.caption ? decrypt(row.caption) : null;
+            
+            res.json({ 
+                found: true, 
+                messageId: row.id,
+                content: row.type === 'text' ? cleanContent : (cleanCaption || 'Archivo adjunto'),
+                type: row.type
+            });
+        } else {
+            res.json({ found: false });
+        }
+    });
+});
+
+socket.on('edit message', ({ messageId, newContent, toUserId }) => {
+        const myId = socket.data.userId;
+
+        // 1. Verificar propiedad y tiempo (Seguridad en Servidor)
+        db.get(`SELECT from_user_id, timestamp FROM messages WHERE id = ?`, [messageId], (err, row) => {
+            if (err || !row) return;
+
+            // Solo el dueño edita
+            if (row.from_user_id !== myId) return;
+
+            // Verificar 24 horas
+            const msgTime = new Date(row.timestamp).getTime(); // Asegúrate de que timestamp sea compatible con Date
+            const now = Date.now();
+            const hoursDiff = (now - msgTime) / (1000 * 60 * 60);
+
+            if (hoursDiff > 24) return; // Rechazar si pasó el tiempo
+
+            // 2. Encriptar nuevo contenido
+            const encryptedContent = encrypt(newContent);
+
+            // 3. Actualizar DB
+            db.run(`UPDATE messages SET content = ?, is_edited = 1 WHERE id = ?`, [encryptedContent, messageId], (err) => {
+                if (!err) {
+                    // 4. Emitir evento
+                    const payload = {
+                        messageId,
+                        newContent: newContent, // Enviamos texto plano al cliente
+                        isEdited: 1
+                    };
+                    
+                    socket.emit('message updated', payload);
+                    socket.to(`user_${toUserId}`).emit('message updated', payload);
+                }
+            });
+        });
     });
 
     socket.on('typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('typing', { fromUserId: userId, username: socket.data.username }));
