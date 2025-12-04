@@ -1150,7 +1150,16 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
 
-    
+
+    let layoutClass = 'layout-col'; 
+
+    if (msgType === 'text') {
+        // Si el texto es corto, no tiene saltos de línea Y NO es una respuesta (reply)
+        // Las respuestas suelen verse mejor en columna por el ancho del bloque citado
+        if (content.length < 32 && !content.includes('\n') && !replyData) {
+            layoutClass = 'layout-row';
+        }
+    }
 
     // Generar contenido del mensaje (Tu lógica original intacta)
     let bodyHtml = '';
@@ -1206,8 +1215,7 @@ const meta = msgType !== 'audio' ? `<div class="meta-row">${editedHtml}<span cla
     li.innerHTML = `
         <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
         
-        <!-- AQUI AGREGAMOS LA CLASE stickerBubbleClass -->
-        <div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''} ${stickerBubbleClass}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>
+        <div class="message-content-wrapper message ${ownerType} ${isDeleted?'deleted-msg':''} ${msgType==='image'?'msg-image-wrapper':''} ${stickerBubbleClass} ${layoutClass}" id="msg-${msgId}" ${isDeleted?'style="border:1px dashed #ef4444;opacity:0.7"':''}>
             ${deletedLabel}${quoteHtml}${bodyHtml}${meta}
         </div>`;
     
@@ -2482,45 +2490,49 @@ document.querySelectorAll('.sticker-nav-btn').forEach(btn => {
 const btnStickers = document.getElementById('btnStickers');
 
 // 1. ABRIR/CERRAR STICKERS
-btnStickers.addEventListener('click', () => {
-    // Si está cerrado, lo abrimos
-    if (!stickerPanel.classList.contains('open')) {
-        // CERRAR TECLADO NATIVO (Importante para que no compitan)
-        inputMsg.blur();
-        
-        // Mostrar panel
-        stickerPanel.classList.remove('hidden');
-        
-        // Pequeño timeout para permitir que el navegador quite el display:none antes de animar height
-        setTimeout(() => {
-            stickerPanel.classList.add('open');
-            scrollToBottom(true); // Scrollear chat al fondo
-        }, 10);
-        
-        // Cargar stickers si es la primera vez
+btnStickers.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isOpen = stickerPanel.classList.contains('open');
+
+    if (isOpen) {
+        // CERRAR
+        closeStickerPanel();
+        inputMsg.focus(); // Volver al teclado
+    } else {
+        // ABRIR
+        stickerPanel.classList.remove('hidden'); // Quitar display:none
+        inputMsg.blur(); // Ocultar teclado nativo
+
+        // Pequeño timeout para la animación
+        requestAnimationFrame(() => {
+            stickerPanel.classList.add('open'); // Activar altura
+            
+            // CRUCIAL: Esperar a que la transición termine o empiece para scrollear
+            setTimeout(() => {
+                scrollToBottom(true); 
+            }, 100); 
+        });
+
+        // Cargar contenido si es necesario
         if (currentStickerTab === 'giphy') loadStickers();
         else loadFavoritesFromServer();
-        
-    } else {
-        // Si ya está abierto, lo cerramos
-        closeStickerPanel();
     }
 });
 
-// 2. CERRAR STICKERS AL ESCRIBIR (Comportamiento nativo)
+// Cerrar si se toca el input
 inputMsg.addEventListener('focus', () => {
     if (stickerPanel.classList.contains('open')) {
         closeStickerPanel();
     }
 });
 
-// Función helper para cerrar
 function closeStickerPanel() {
     stickerPanel.classList.remove('open');
-    // Esperar la animación CSS (0.3s) antes de ocultar completamente
     setTimeout(() => {
         stickerPanel.classList.add('hidden');
-    }, 300);
+    }, 300); // Mismo tiempo que la transición CSS
 }
 
 // 3. Listener para clicks fuera

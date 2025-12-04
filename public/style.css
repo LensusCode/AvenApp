@@ -428,6 +428,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    position: relative;
     overflow: hidden;
     backdrop-filter: blur(12px);
 }
@@ -585,6 +586,7 @@ body {
     padding: 10px 15px 15px;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    z-index: 20;
     padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
 }
 
@@ -1107,13 +1109,43 @@ body {
 }
 
 .message-content-wrapper {
-    display: flex;
-    flex-direction: column;
-    max-width: 75%;
     position: relative;
+    max-width: 75%;
     transition: transform .2s cubic-bezier(.2, .8, .2, 1);
     will-change: transform;
-    touch-action: pan-y; /* Permite scroll vertical, JS captura horizontal */
+    touch-action: pan-y;
+    
+    /* Configuración Flexbox Base */
+    display: flex;
+}
+
+/* 1. MENSAJES CORTOS (< 32 caracteres) */
+/* Se alinean en fila: Texto a la izquierda, Hora a la derecha */
+.message-content-wrapper.layout-row {
+    flex-direction: row;
+    align-items: flex-end; /* Alinea la hora abajo con el texto */
+    gap: 8px;              /* Espacio entre el texto y la hora */
+    flex-wrap: wrap;       /* Por seguridad, si el ancho de pantalla es muy pequeño */
+}
+
+/* 2. MENSAJES LARGOS (>= 32 caracteres) o con saltos de línea */
+/* Se apilan: Texto arriba, Hora abajo a la derecha */
+.message-content-wrapper.layout-col {
+    flex-direction: column;
+}
+
+/* Ajuste de la hora (Meta) */
+.message .meta {
+    display: block;
+    font-size: 10px;
+    opacity: .7;
+    /* En modo columna, queremos que se vaya a la derecha */
+    text-align: right; 
+    
+    /* En modo fila, evitamos que se encoja */
+    flex-shrink: 0;
+    line-height: 1.5; /* Ajuste para alinear visualmente con el texto */
+    margin-bottom: -2px; /* Pequeño ajuste visual */
 }
 
 .message-row.me {
@@ -3382,7 +3414,7 @@ body.theme-space .sidebar {
         right: 15px;
     }
     .sticker-panel {
-        position: fixed; /* Fijo a la pantalla */
+        position: relative; /* Fijo a la pantalla */
         bottom: 0;
         left: 0;
         width: 100%;       /* Ancho completo */
