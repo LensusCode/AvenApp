@@ -1122,16 +1122,40 @@ body {
 /* 1. MENSAJES CORTOS (< 32 caracteres) */
 /* Se alinean en fila: Texto a la izquierda, Hora a la derecha */
 .message-content-wrapper.layout-row {
+    display: flex;
     flex-direction: row;
-    align-items: flex-end; /* Alinea la hora abajo con el texto */
-    gap: 8px;              /* Espacio entre el texto y la hora */
-    flex-wrap: wrap;       /* Por seguridad, si el ancho de pantalla es muy pequeño */
+    align-items: flex-end; /* Alinea la hora con la base del texto */
+    gap: 8px;
+    position: relative;
+    max-width: 75%;
+    
+    /* --- EL CAMBIO IMPORTANTE --- */
+    flex-wrap: nowrap;     /* Evita que la hora caiga abajo */
+    /* --------------------------- */
+    
+    transition: transform .2s cubic-bezier(.2, .8, .2, 1);
+    will-change: transform;
+    touch-action: pan-y;
 }
 
-/* 2. MENSAJES LARGOS (>= 32 caracteres) o con saltos de línea */
-/* Se apilan: Texto arriba, Hora abajo a la derecha */
+/* 2. Aseguramos que la hora no se deforme ni ocupe espacio de más */
+.message-content-wrapper.layout-row .meta {
+    flex-shrink: 0;        /* Evita que la hora se aplaste si el texto es largo */
+    margin-bottom: 0;      /* Alineación perfecta */
+    white-space: nowrap;   /* Mantiene la hora en una sola línea (ej: 10:00 p.m.) */
+    line-height: 1;
+    padding-bottom: 3px;   /* Ajuste visual fino para alinear con letras como g, j, p */
+}
+
+/* El estilo de columna se mantiene igual */
 .message-content-wrapper.layout-col {
+    display: flex;
     flex-direction: column;
+    max-width: 75%;
+    position: relative;
+    transition: transform .2s cubic-bezier(.2, .8, .2, 1);
+    will-change: transform;
+    touch-action: pan-y;
 }
 
 /* Ajuste de la hora (Meta) */
