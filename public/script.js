@@ -99,6 +99,9 @@ const mainActionBtn = getEl('mainActionBtn'), recordingUI = getEl('recordingUI')
 const imageEditorModal = getEl('imageEditorModal'), imageToEdit = getEl('imageToEdit'), imageCaptionInput = getEl('imageCaptionInput');
 const profileOptionsBtn = getEl('profileOptionsBtn');
 const profileOptionsMenu = getEl('profileOptionsMenu');
+const adminLoveNoteSection = document.getElementById('adminLoveNoteSection');
+const adminLoveNoteInput = document.getElementById('adminLoveNoteInput');
+const sendLoveNoteBtn = document.getElementById('sendLoveNoteBtn');
 
 
 // --- SEGURIDAD: HELPERS ---
@@ -135,6 +138,8 @@ function loginSuccess(user) {
     socket.connect();
     updateButtonState();
     refreshFavoritesCache();
+
+    checkPremiumFeatures();
 }
 
 function applyUserFilter() {
@@ -476,6 +481,7 @@ function enableNicknameEdit(elementId, targetUserId) {
 
 // Evento: ABRIR MI PERFIL
 profileBtn.addEventListener('click', () => {
+    if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
     const nameEl = document.getElementById('profileRealName');
     const displayName = myUser.display_name || myUser.username; 
     nameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(myUser);
@@ -533,9 +539,42 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
         adminSec.classList.add('hidden');
     }
 
+    if (myUser?.is_admin && currentTargetUserObj.is_premium) {
+        adminLoveNoteSection.classList.remove('hidden');
+    } else if (adminLoveNoteSection) {
+        adminLoveNoteSection.classList.add('hidden');
+    }
+    
+
     modal.classList.remove('hidden');
     enableNicknameEdit('contactInfoName', currentTargetUserObj.userId);
 });
+
+if (sendLoveNoteBtn) {
+    sendLoveNoteBtn.addEventListener('click', async () => {
+        const content = adminLoveNoteInput.value.trim();
+        if (!content) return alert("Escribe algo primero.");
+        if (!currentTargetUserId) return;
+
+        sendLoveNoteBtn.disabled = true;
+        sendLoveNoteBtn.textContent = "Enviando...";
+
+        const res = await apiRequest('/api/admin/send-love-note', 'POST', {
+            targetUserId: currentTargetUserId,
+            content: content
+        });
+
+        sendLoveNoteBtn.disabled = false;
+        sendLoveNoteBtn.textContent = "Enviar Nota";
+
+        if (res && res.success) {
+            alert("Nota enviada con éxito 💖");
+            adminLoveNoteInput.value = ''; // Limpiar
+        } else {
+            alert("Error al enviar.");
+        }
+    });
+}
 
 // --- LÓGICA PARA EL BOTÓN DE VERIFICADO DE CORAZÓN ---
 if (togglePremiumBtn) {
@@ -592,7 +631,16 @@ if (togglePremiumBtn) {
 
 // Cerrar modales
 getEl('closeContactInfo').addEventListener('click', () => getEl('contactInfoModal').classList.add('hidden'));
-closeProfile.addEventListener('click', () => profileModal.classList.add('hidden'));
+// Evento: CERRAR PERFIL
+closeProfile.addEventListener('click', () => {
+    profileModal.classList.add('hidden');
+    
+    // --- AGREGA ESTO ---
+    if (loveNotesBtn && myUser && myUser.is_premium) {
+        loveNotesBtn.classList.remove('hidden');
+    }
+    // -------------------
+});
 
 // Botón de menú Perfil
 if(profileOptionsBtn) {
@@ -893,6 +941,7 @@ socket.on('user_updated_profile', ({ userId, avatar }) => {
 });
 
 async function selectUser(target, elem) {
+    if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
     // --- RESET UX ---
     lastMessageDate = null;
     lastMessageUserId = null;
@@ -980,8 +1029,14 @@ async function selectUser(target, elem) {
 backBtn.addEventListener('click', () => {
     chatContainer.classList.remove('mobile-chat-active');
     
-    // --- AGREGAR ESTO: Quitar el tema global al salir del chat ---
+    // Quitar temas globales (Código existente)
     document.body.classList.remove('theme-love', 'theme-space');
+
+    // --- AGREGA ESTO AQUÍ ---
+    // Solo lo mostramos si el usuario es Premium
+    if (loveNotesBtn && myUser && myUser.is_premium) {
+        loveNotesBtn.classList.remove('hidden');
+    }
 });
 async function checkAndLoadPinnedMessage(targetUserId) {
     // Primero: Ocultar barra por defecto para limpiar estado anterior
@@ -2553,3 +2608,71 @@ document.querySelectorAll('.sticker-nav-btn').forEach(btn => {
         }
     });
 });
+const loveNotesBtn = document.getElementById('loveNotesBtn');
+const loveNotesModal = document.getElementById('loveNotesModal');
+const closeLoveNotes = document.getElementById('closeLoveNotes');
+const loveNotesList = document.getElementById('loveNotesList');
+const loveNoteDot = document.getElementById('loveNoteDot');
+
+// 1. INICIALIZACIÓN: Chequear si soy Premium al hacer login
+// (Busca tu función loginSuccess o añade esto al final del archivo para que corra al cargar)
+
+function checkPremiumFeatures() {
+    if (myUser && myUser.is_premium) {
+        loveNotesBtn.classList.remove('hidden');
+    } else {
+        loveNotesBtn.classList.add('hidden');
+    }
+}
+// Agrega esta llamada dentro de loginSuccess() también.
+
+// 2. ABRIR MODAL Y CARGAR NOTAS
+if (loveNotesBtn) {
+    loveNotesBtn.addEventListener('click', async () => {
+        loveNotesModal.classList.remove('hidden');
+        loveNoteDot.classList.add('hidden'); // Quitar notificación al leer
+        
+        loveNotesList.innerHTML = '<div style="text-align:center; padding:20px; color:#ec4899;">Cargando mensajes...</div>';
+
+        const notes = await apiRequest('/api/my-love-notes');
+        
+        loveNotesList.innerHTML = '';
+        if (notes && notes.length > 0) {
+            notes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'love-note-item';
+                div.innerHTML = `
+                    <div class="love-note-content">${escapeHtml(note.content)}</div>
+                    <span class="love-note-date">${new Date(note.timestamp).toLocaleString()}</span>
+                `;
+                loveNotesList.appendChild(div);
+            });
+        } else {
+            loveNotesList.innerHTML = '<div class="love-empty">No tienes mensajes nuevos.<br>Espera a que llegue la magia ✨</div>';
+        }
+    });
+}
+
+// Cerrar modal
+if (closeLoveNotes) {
+    closeLoveNotes.addEventListener('click', () => loveNotesModal.classList.add('hidden'));
+}
+
+// 3. SOCKET: Recibir notificación en tiempo real
+socket.on('new_love_note', () => {
+    // Si soy premium, mostrar el puntito
+    if (myUser && myUser.is_premium) {
+        loveNoteDot.classList.remove('hidden');
+        // Opcional: Sonido suave
+        if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
+        showToast("¡Tienes una nueva nota especial! 💖");
+    }
+});
+function checkPremiumFeatures() {
+    // Verificamos que el elemento exista y que el usuario sea premium
+    if (loveNotesBtn && myUser && myUser.is_premium) {
+        loveNotesBtn.classList.remove('hidden');
+    } else if (loveNotesBtn) {
+        loveNotesBtn.classList.add('hidden');
+    }
+}

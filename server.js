@@ -191,6 +191,7 @@ async function initDatabase() {
         await client.execute(`CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user_id INTEGER, to_user_id INTEGER, content TEXT, type TEXT DEFAULT 'text', reply_to_id INTEGER, is_deleted INTEGER DEFAULT 0, caption TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         await client.execute(`CREATE TABLE IF NOT EXISTS nicknames (user_id INTEGER, target_user_id INTEGER, nickname TEXT, PRIMARY KEY (user_id, target_user_id))`);
         await client.execute(`CREATE TABLE IF NOT EXISTS favorite_stickers (user_id INTEGER, sticker_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sticker_url))`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS love_notes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         await client.execute(`CREATE TABLE IF NOT EXISTS hidden_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, message_id INTEGER, UNIQUE(user_id, message_id))`);
 
         const addColumnSafe = async (table, columnDef) => {
@@ -204,6 +205,7 @@ async function initDatabase() {
         await addColumnSafe('users', 'bio TEXT');
         await addColumnSafe('messages', 'is_pinned INTEGER DEFAULT 0');
         await addColumnSafe('messages', 'is_edited INTEGER DEFAULT 0');
+        
 
         console.log("✅ Base de datos verificada.");
     } catch (error) { console.error("❌ Error DB Init:", error); }
@@ -372,6 +374,51 @@ app.post('/api/admin/toggle-premium', authenticateToken, (req, res) => {
     db.run(`UPDATE users SET is_premium = 1 - IFNULL(is_premium, 0) WHERE id = ?`, [req.body.targetUserId], function(err) {
         if (err) return res.status(500).json({ error: 'Error DB' });
         emitUsers(); res.json({ success: true });
+    });
+});
+
+// --- RUTAS LOVE NOTES (PREMIUM) ---
+
+// 1. ADMIN: Enviar nota a un usuario específico
+app.post('/api/admin/send-love-note', authenticateToken, (req, res) => {
+    if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
+    const { targetUserId, content } = req.body;
+    
+    if (!content || !content.trim()) return res.status(400).json({ error: 'Mensaje vacío' });
+
+    // Encriptamos la nota para privacidad (usando tu función encrypt existente)
+    const encryptedNote = encrypt(content);
+
+    db.run(`INSERT INTO love_notes (user_id, content) VALUES (?, ?)`, [targetUserId, encryptedNote], function(err) {
+        if (err) return res.status(500).json({ error: 'Error DB' });
+        
+        // Notificar al usuario en tiempo real si está conectado
+        io.to(`user_${targetUserId}`).emit('new_love_note');
+        res.json({ success: true });
+    });
+});
+
+// 2. USUARIO: Leer sus notas
+// 2. USUARIO: Leer sus notas (Con auto-borrado de 24h)
+app.get('/api/my-love-notes', authenticateToken, (req, res) => {
+    
+    // PASO 1: Borrar notas viejas (más de 24 horas)
+    // SQLite usa datetime('now', '-1 day') para calcular la fecha de hace 24h
+    db.run(`DELETE FROM love_notes WHERE timestamp <= datetime('now', '-1 day')`, [], (err) => {
+        if (err) console.error("Error limpiando notas antiguas:", err);
+
+        // PASO 2: Buscar las notas restantes del usuario
+        db.all(`SELECT id, content, timestamp FROM love_notes WHERE user_id = ? ORDER BY id DESC`, [req.user.id], (err, rows) => {
+            if (err) return res.status(500).json({ error: 'Error DB' });
+            
+            // Desencriptar y enviar
+            const notes = rows.map(r => ({
+                id: r.id,
+                content: decrypt(r.content),
+                timestamp: r.timestamp
+            }));
+            res.json(notes);
+        });
     });
 });
 
@@ -660,6 +707,12 @@ socket.on('edit message', ({ messageId, newContent, toUserId }) => {
     socket.on('stop typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('stop typing', { fromUserId: userId }));
     socket.on('disconnect', () => { emitUsers(); });
 });
+
+setInterval(() => {
+    db.run(`DELETE FROM love_notes WHERE timestamp <= datetime('now', '-1 day')`, [], (err) => {
+        if (!err) console.log("🧹 Limpieza automática de Love Notes completada.");
+    });
+}, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => { console.log(`Servidor seguro en http://localhost:${PORT}`); });

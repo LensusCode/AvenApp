@@ -204,6 +204,12 @@
     <button id="togglePremiumBtn" class="btn" style="width:100%; margin-top:10px; background:#ec4899; color:white; padding:12px;">
         Verificado Love (Corazón)
     </button>
+    <!-- Dentro de #adminActionsSection en #contactInfoModal -->
+<div id="adminLoveNoteSection" class="hidden" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+    <label style="color:#ec4899; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Enviar Nota Love 💖</label>
+    <textarea id="adminLoveNoteInput" placeholder="Escribe un mensaje bonito..." style="width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; min-height:60px;"></textarea>
+    <button id="sendLoveNoteBtn" class="btn" style="width:100%; margin-top:5px; background:transparent; border:1px solid #ec4899; color:#ec4899;">Enviar Nota</button>
+</div>
 </div>
 
         </div>
@@ -625,6 +631,32 @@
         </div>
     </div>
 </div>
+
+<!-- BOTÓN FLOTANTE LOVE NOTES (Solo Premium) -->
+<button id="loveNotesBtn" class="love-notes-float-btn hidden" title="Tus notas especiales">
+    <!-- Corazón (Solo borde) -->
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+    </svg>
+    <div id="loveNoteDot" class="love-dot hidden"></div>
+</button>
+
+<!-- MODAL DE NOTAS (Para el Usuario Premium) -->
+<div id="loveNotesModal" class="profile-modal hidden">
+    <div class="profile-card modern-profile love-notes-card">
+        <div class="profile-nav-header">
+            <button id="closeLoveNotes" class="nav-icon-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <span class="nav-title" style="color:#ec4899;">Notas Especiales 💖</span>
+            <div style="width:40px;"></div>
+        </div>
+        <div id="loveNotesList" class="love-notes-list">
+            <!-- Las notas se inyectarán aquí -->
+        </div>
+    </div>
+</div>
+
 
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="script.js" defer></script>
