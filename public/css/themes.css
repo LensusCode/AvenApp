@@ -1,0 +1,156 @@
+/* ================================================== 
+   DEFINICIÓN DE TEMAS REALES (VARIABLES CSS) 
+   ================================================== */
+
+/* TEMA: AMOR (Todo Rosado) */
+.chat-main.theme-love {
+    background-color: #380e20 !important;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+}
+
+/* Burbujas del usuario (ME) en modo amor */
+.theme-love .message.me {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3) !important;
+}
+
+/* Burbujas del otro (OTHER) en modo amor */
+.theme-love .message.other {
+    background: #501528 !important;
+    border: 1px solid rgba(236, 72, 153, 0.2) !important;
+}
+
+/* TEMA: ESPACIO */
+.chat-main.theme-space {
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+}
+
+.main-column.theme-love .chat-main {
+    background-color: #380e20 !important;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+}
+
+/* 2. Header (Barra superior) */
+.main-column.theme-love .chat-header {
+    background: rgba(56, 14, 32, 0.85) !important;
+    border-bottom: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+.main-column.theme-love .chat-header .name {
+    color: #fbcfe8;
+}
+
+/* 3. Composer (Barra de escritura) */
+.main-column.theme-love .chat-input-wrapper {
+    background: rgba(80, 20, 40, 0.6) !important;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.main-column.theme-love .chat-input-wrapper:focus-within {
+    border-color: #ec4899;
+}
+
+/* 4. Botón de Enviar / Micrófono */
+.main-column.theme-love .send-btn {
+    background: #ec4899 !important;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+}
+
+.main-column.theme-love .send-btn:hover {
+    background: #db2777 !important;
+}
+
+/* 5. Burbujas de chat */
+.main-column.theme-love .message.me {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+}
+
+.main-column.theme-love .message.other {
+    background: #501528 !important;
+    border: 1px solid rgba(236, 72, 153, 0.1) !important;
+}
+
+
+/* ---------------- TEMA: ESPACIO (AZUL) ---------------- */
+
+/* 1. Fondo */
+.main-column.theme-space .chat-main {
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+}
+
+/* 2. Header */
+.main-column.theme-space .chat-header {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.main-column.theme-space .chat-header .name {
+    color: #c7d2fe;
+}
+
+/* 3. Composer */
+.main-column.theme-space .chat-input-wrapper {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* 4. Botón Enviar */
+.main-column.theme-space .send-btn {
+    background: #6366f1 !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+body.theme-love {
+    background-color: #380e20 !important;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(219, 39, 119, 0.15) 0px, transparent 50%) !important;
+    transition: background 0.3s ease;
+}
+
+body.theme-space {
+    background-color: #0f172a !important;
+    background-image: linear-gradient(to bottom, #0f172a, #1e1b4b) !important;
+    transition: background 0.3s ease;
+}
+
+body.theme-love .sidebar {
+    background: rgba(56, 14, 32, 0.6) !important;
+    border-right: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+body.theme-space .sidebar {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-right: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.main-column.theme-love .pinned-message-bar {
+    background: rgba(56, 14, 32, 0.95) !important;
+    border-bottom: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.main-column.theme-love .pinned-bar-line {
+    background-color: #ec4899 !important;
+}
+
+.main-column.theme-love .pinned-label {
+    color: #fbcfe8 !important;
+}
+
+/* TEMA: ESPACIO (Space) */
+.main-column.theme-space .pinned-message-bar {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.main-column.theme-space .pinned-bar-line {
+    background-color: #6366f1 !important;
+}
+
+.main-column.theme-space .pinned-label {
+    color: #c7d2fe !important;
+}

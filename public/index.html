@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0a">
     <title>AvenApp</title>
     <link rel="stylesheet" href="style.css">
-    
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
@@ -23,13 +25,16 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 </head>
+
 <body>
 
     <div class="chat-container">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="header-left"><h3>AvenApp</h3></div>
+                <div class="header-left">
+                    <h3>AvenApp</h3>
+                </div>
                 <div class="header-right">
                     <button id="profileBtn" class="profile-btn hidden" title="Perfil">
                         <div id="myAvatar" class="my-avatar"></div>
@@ -44,177 +49,224 @@
 
         <!-- MI PERFIL MODAL -->
         <!-- MI PERFIL MODAL (DISEÑO MEJORADO) -->
-<div id="profileModal" class="profile-modal hidden" aria-hidden="true">
-    <div class="profile-card modern-profile">
-        
-        <!-- Barra superior: Flecha atrás y Título -->
-        <div class="profile-nav-header">
-            <button id="closeProfile" class="nav-icon-btn">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
-            <span class="nav-title">Perfil</span>
-            <button id="profileOptionsBtn" class="nav-icon-btn">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
-            </button>
-            <!-- Menú desplegable opciones (Logout) -->
-            <div id="profileOptionsMenu" class="profile-options-menu hidden">
-                <button id="profileLogout">Cerrar sesión</button>
+        <div id="profileModal" class="profile-modal hidden" aria-hidden="true">
+            <div class="profile-card modern-profile">
+
+                <!-- Barra superior: Flecha atrás y Título -->
+                <div class="profile-nav-header">
+                    <button id="closeProfile" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </button>
+                    <span class="nav-title">Perfil</span>
+                    <button id="profileOptionsBtn" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z">
+                            </path>
+                        </svg>
+                    </button>
+                    <!-- Menú desplegable opciones (Logout) -->
+                    <div id="profileOptionsMenu" class="profile-options-menu hidden">
+                        <button id="profileLogout">Cerrar sesión</button>
+                    </div>
+                </div>
+
+                <!-- Avatar Central -->
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large" id="profilePreviewAvatar">
+                        <label for="avatarInput" class="upload-overlay">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                </path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </label>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" hidden />
+                </div>
+
+                <!-- Lista de Datos -->
+                <div class="profile-details-list">
+
+                    <div class="detail-item">
+                        <label class="detail-label">Nombre</label>
+                        <div class="detail-value big-text" id="profileRealName">Cargando...</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <label class="detail-label">Usuario</label>
+                        <div class="detail-value link-text" id="profileHandle">@usuario</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <label class="detail-label">Biografía</label>
+                        <div class="detail-value bio-text" id="profileBio">
+                            Sin biografía.
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
 
-        <!-- Avatar Central -->
-        <div class="profile-avatar-section">
-            <div class="profile-avatar-large" id="profilePreviewAvatar">
-                <label for="avatarInput" class="upload-overlay">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
+        <div id="imageEditorModal" class="image-editor-modal hidden">
+
+            <!-- 1. Cabecera Principal (Solo visible en modo vista) -->
+            <div id="mainHeader" class="editor-header">
+                <button id="closeEditorBtn" class="nav-icon-btn" title="Cerrar">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
-                </label>
-            </div>
-            <input type="file" id="avatarInput" accept="image/*" hidden />
-        </div>
-
-        <!-- Lista de Datos -->
-        <div class="profile-details-list">
-            
-            <div class="detail-item">
-                <label class="detail-label">Nombre</label>
-                <div class="detail-value big-text" id="profileRealName">Cargando...</div>
-            </div>
-
-            <div class="detail-item">
-                <label class="detail-label">Usuario</label>
-                <div class="detail-value link-text" id="profileHandle">@usuario</div>
-            </div>
-
-            <div class="detail-item">
-                <label class="detail-label">Biografía</label>
-                <div class="detail-value bio-text" id="profileBio">
-                    Sin biografía.
+                </button>
+                <div class="editor-header-tools">
+                    <!-- El botón para ENTRAR al modo recorte -->
+                    <button id="enterCropModeBtn" class="nav-icon-btn" title="Editar / Recortar">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z">
+                            </path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
+            <!-- 2. Canvas Central -->
+            <div class="editor-canvas-container">
+                <img id="imageToEdit" src="" alt="Edit Preview">
+            </div>
+
+            <!-- 3. Footer Principal (Comentario y Enviar) -->
+            <div id="mainFooter" class="editor-footer">
+                <div class="caption-input-container">
+                    <input type="text" id="imageCaptionInput" placeholder="Añade un comentario..." autocomplete="off">
+                </div>
+                <button id="sendImageBtn" class="editor-send-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 4. Footer de Recorte (Oculto por defecto) -->
+            <div id="cropFooter" class="editor-footer hidden"
+                style="justify-content: space-between; background: #000; padding: 20px 30px;">
+                <!-- Cancelar -->
+                <button id="cancelCropBtn"
+                    style="background:none; border:none; color:#fff; font-size:15px; font-weight:500;">Cancelar</button>
+
+                <div style="display:flex; gap: 20px;">
+                    <!-- Flip (Espejo) -->
+                    <button id="flipBtn" class="nav-icon-btn" title="Voltear horizontal">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z" />
+                        </svg>
+                    </button>
+
+                    <!-- Rotar -->
+                    <button id="rotateBtn" class="nav-icon-btn" title="Rotar 90°">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- OK -->
+                <button id="okCropBtn"
+                    style="background:none; border:none; color:#fff; font-size:15px; font-weight:bold;">OK</button>
+            </div>
         </div>
-    </div>
-</div>
-
-        <div id="imageEditorModal" class="image-editor-modal hidden">
-    
-    <!-- 1. Cabecera Principal (Solo visible en modo vista) -->
-    <div id="mainHeader" class="editor-header">
-        <button id="closeEditorBtn" class="nav-icon-btn" title="Cerrar">
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-        <div class="editor-header-tools">
-            <!-- El botón para ENTRAR al modo recorte -->
-            <button id="enterCropModeBtn" class="nav-icon-btn" title="Editar / Recortar">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"></path></svg>
-            </button>
-        </div>
-    </div>
-
-    <!-- 2. Canvas Central -->
-    <div class="editor-canvas-container">
-        <img id="imageToEdit" src="" alt="Edit Preview">
-    </div>
-
-    <!-- 3. Footer Principal (Comentario y Enviar) -->
-    <div id="mainFooter" class="editor-footer">
-        <div class="caption-input-container">
-            <input type="text" id="imageCaptionInput" placeholder="Añade un comentario..." autocomplete="off">
-        </div>
-        <button id="sendImageBtn" class="editor-send-btn">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-        </button>
-    </div>
-
-    <!-- 4. Footer de Recorte (Oculto por defecto) -->
-    <div id="cropFooter" class="editor-footer hidden" style="justify-content: space-between; background: #000; padding: 20px 30px;">
-        <!-- Cancelar -->
-        <button id="cancelCropBtn" style="background:none; border:none; color:#fff; font-size:15px; font-weight:500;">Cancelar</button>
-        
-        <div style="display:flex; gap: 20px;">
-            <!-- Flip (Espejo) -->
-            <button id="flipBtn" class="nav-icon-btn" title="Voltear horizontal">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"/></svg>
-            </button>
-
-            <!-- Rotar -->
-            <button id="rotateBtn" class="nav-icon-btn" title="Rotar 90°">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z"></path></svg>
-            </button>
-        </div>
-
-        <!-- OK -->
-        <button id="okCropBtn" style="background:none; border:none; color:#fff; font-size:15px; font-weight:bold;">OK</button>
-    </div>
-</div>
 
         <!-- INFO CONTACTO MODAL -->
         <div id="contactInfoModal" class="profile-modal hidden">
-    <div class="profile-card modern-profile">
-        
-        <!-- Header -->
-        <div class="profile-nav-header">
-            <button id="closeContactInfo" class="nav-icon-btn">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
-            <span class="nav-title">Info. del contacto</span>
-            <div style="width: 40px;"></div> <!-- Espaciador para centrar título -->
-        </div>
+            <div class="profile-card modern-profile">
 
-        <!-- Avatar -->
-        <div class="profile-avatar-section">
-            <div class="profile-avatar-large" id="contactInfoAvatar" style="border: none;"></div>
-        </div>
+                <!-- Header -->
+                <div class="profile-nav-header">
+                    <button id="closeContactInfo" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </button>
+                    <span class="nav-title">Info. del contacto</span>
+                    <div style="width: 40px;"></div> <!-- Espaciador para centrar título -->
+                </div>
 
-        <!-- Lista de Detalles -->
-        <div class="profile-details-list">
-            
-            <!-- Nombre (Al hacer click aquí se editará el Apodo) -->
-            <div class="detail-item">
-                <label class="detail-label">Nombre</label>
-                <div id="contactInfoName" class="detail-value big-text">Cargando...</div>
-                <p style="font-size: 11px; color: #666; margin-top: 5px;">Toca para asignar un apodo personal.</p>
-            </div>
+                <!-- Avatar -->
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large" id="contactInfoAvatar" style="border: none;"></div>
+                </div>
 
-            <div class="detail-item">
-                <label class="detail-label">Usuario</label>
-                <div id="contactRealUsername" class="detail-value link-text">@usuario</div>
-            </div>
+                <!-- Lista de Detalles -->
+                <div class="profile-details-list">
 
-            <div class="detail-item">
-                <label class="detail-label">Biografía</label>
-                <div id="contactInfoBio" class="detail-value bio-text">
-                    Sin biografía.
+                    <!-- Nombre (Al hacer click aquí se editará el Apodo) -->
+                    <div class="detail-item">
+                        <label class="detail-label">Nombre</label>
+                        <div id="contactInfoName" class="detail-value big-text">Cargando...</div>
+                        <p style="font-size: 11px; color: #666; margin-top: 5px;">Toca para asignar un apodo personal.
+                        </p>
+                    </div>
+
+                    <div class="detail-item">
+                        <label class="detail-label">Usuario</label>
+                        <div id="contactRealUsername" class="detail-value link-text">@usuario</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <label class="detail-label">Biografía</label>
+                        <div id="contactInfoBio" class="detail-value bio-text">
+                            Sin biografía.
+                        </div>
+                    </div>
+
+                    <!-- Zona Admin -->
+                    <div id="adminActionsSection" class="detail-item hidden"
+                        style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 20px;">
+                        <label style="color:#ef4444; font-weight:bold;">Zona Admin</label>
+
+                        <!-- Botón existente (Verificado Azul) -->
+                        <button id="toggleVerifyBtn" class="btn"
+                            style="width:100%; margin-top:10px; background:#3b82f6; color:white; padding:12px;">
+                            Verificar Usuario (Azul)
+                        </button>
+
+                        <!-- NUEVO BOTÓN (Verificado Corazón) -->
+                        <button id="togglePremiumBtn" class="btn"
+                            style="width:100%; margin-top:10px; background:#ec4899; color:white; padding:12px;">
+                            Verificado Love (Corazón)
+                        </button>
+                        <!-- Dentro de #adminActionsSection en #contactInfoModal -->
+                        <div id="adminLoveNoteSection" class="hidden"
+                            style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                            <label
+                                style="color:#ec4899; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Enviar
+                                Nota Love 💖</label>
+                            <textarea id="adminLoveNoteInput" placeholder="Escribe un mensaje bonito..."
+                                style="width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; min-height:60px;"></textarea>
+                            <button id="sendLoveNoteBtn" class="btn"
+                                style="width:100%; margin-top:5px; background:transparent; border:1px solid #ec4899; color:#ec4899;">Enviar
+                                Nota</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-
-            <!-- Zona Admin -->
-            <div id="adminActionsSection" class="detail-item hidden" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 20px;">
-    <label style="color:#ef4444; font-weight:bold;">Zona Admin</label>
-    
-    <!-- Botón existente (Verificado Azul) -->
-    <button id="toggleVerifyBtn" class="btn" style="width:100%; margin-top:10px; background:#3b82f6; color:white; padding:12px;">
-        Verificar Usuario (Azul)
-    </button>
-
-    <!-- NUEVO BOTÓN (Verificado Corazón) -->
-    <button id="togglePremiumBtn" class="btn" style="width:100%; margin-top:10px; background:#ec4899; color:white; padding:12px;">
-        Verificado Love (Corazón)
-    </button>
-    <!-- Dentro de #adminActionsSection en #contactInfoModal -->
-<div id="adminLoveNoteSection" class="hidden" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-    <label style="color:#ec4899; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Enviar Nota Love 💖</label>
-    <textarea id="adminLoveNoteInput" placeholder="Escribe un mensaje bonito..." style="width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; min-height:60px;"></textarea>
-    <button id="sendLoveNoteBtn" class="btn" style="width:100%; margin-top:5px; background:transparent; border:1px solid #ec4899; color:#ec4899;">Enviar Nota</button>
-</div>
-</div>
-
         </div>
-    </div>
-</div>
 
         <!-- Confirmación Logout -->
         <div id="confirmModal" class="confirm-modal hidden">
@@ -229,205 +281,274 @@
 
         <!-- Confirmación Borrado -->
         <!-- Modal de Confirmación de Borrado Mejorado -->
-<div id="deleteConfirmModal" class="confirm-modal hidden">
-    <!-- Fondo para cerrar al tocar fuera -->
-    <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
+        <div id="deleteConfirmModal" class="confirm-modal hidden">
+            <!-- Fondo para cerrar al tocar fuera -->
+            <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
 
-    <div class="confirm-card delete-options-card">
-        <h3>¿Eliminar mensaje?</h3>
-        <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
-            Elige cómo quieres borrar este mensaje.
-        </p>
-        
-        <div class="delete-actions-stack">
-            <!-- Botón Eliminar para todos (Rojo) -->
-            <button id="btnDeleteEveryone" class="delete-action-btn danger">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                Eliminar para todos
-            </button>
+            <div class="confirm-card delete-options-card">
+                <h3>¿Eliminar mensaje?</h3>
+                <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
+                    Elige cómo quieres borrar este mensaje.
+                </p>
 
-            <!-- Botón Eliminar para mí -->
-            <button id="btnDeleteMe" class="delete-action-btn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
-                Eliminar para mí
-            </button>
+                <div class="delete-actions-stack">
+                    <!-- Botón Eliminar para todos (Rojo) -->
+                    <button id="btnDeleteEveryone" class="delete-action-btn danger">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                        Eliminar para todos
+                    </button>
 
-            <!-- Botón Cancelar -->
-            <button onclick="closeDeleteModal()" class="delete-action-btn cancel">
-                Cancelar
-            </button>
+                    <!-- Botón Eliminar para mí -->
+                    <button id="btnDeleteMe" class="delete-action-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M20 12H4" />
+                        </svg>
+                        Eliminar para mí
+                    </button>
+
+                    <!-- Botón Cancelar -->
+                    <button onclick="closeDeleteModal()" class="delete-action-btn cancel">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
         <div id="verificationSuccessModal" class="profile-modal hidden">
-    <div class="profile-card" style="text-align: center; max-width: 320px;">
-        <div class="verified-anim-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6" />
-                <path fill="#fff" d="M10.5 15.5L7.5 12.5L8.5 11.5L10.5 13.5L15.5 8.5L16.5 9.5L10.5 15.5Z"/>
-            </svg>
+            <div class="profile-card" style="text-align: center; max-width: 320px;">
+                <div class="verified-anim-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z"
+                            fill="#3b82f6" />
+                        <path fill="#fff" d="M10.5 15.5L7.5 12.5L8.5 11.5L10.5 13.5L15.5 8.5L16.5 9.5L10.5 15.5Z" />
+                    </svg>
+                </div>
+                <h2 style="margin-top: 15px; color: #fff;">¡Felicidades!</h2>
+                <p style="color: #a1a1aa; margin-bottom: 25px;">Tu cuenta ha sido verificada correctamente. Ahora tienes
+                    la insignia oficial.</p>
+                <button id="acceptVerifiedBtn" class="btn"
+                    style="background: #3b82f6; width: 100%; color: white; padding: 12px;">Aceptar</button>
+            </div>
         </div>
-        <h2 style="margin-top: 15px; color: #fff;">¡Felicidades!</h2>
-        <p style="color: #a1a1aa; margin-bottom: 25px;">Tu cuenta ha sido verificada correctamente. Ahora tienes la insignia oficial.</p>
-        <button id="acceptVerifiedBtn" class="btn" style="background: #3b82f6; width: 100%; color: white; padding: 12px;">Aceptar</button>
-    </div>
-</div>
 
         <div id="stickerOptionsModal" class="sticker-options-modal hidden">
-    <div class="sticker-options-content">
-        <!-- Línea decorativa superior -->
-        <div class="modal-drag-handle"></div>
-        
-        <!-- Vista previa del sticker -->
-        <div class="sticker-preview-container">
-            <img id="stickerModalPreview" src="" alt="Sticker Preview">
-        </div>
+            <div class="sticker-options-content">
+                <!-- Línea decorativa superior -->
+                <div class="modal-drag-handle"></div>
 
-        <!-- Lista de acciones -->
-        <div class="sticker-actions-list">
-            <button id="btnStickerFavAction" class="sticker-action-btn">
-                <span id="stickerFavIcon">☆</span>
-                <span id="stickerFavText">Añadir a favoritos</span>
-            </button>
-            <button id="btnStickerClose" class="sticker-action-btn secondary">
-                <span>✕</span>
-                <span>Cerrar</span>
-            </button>
+                <!-- Vista previa del sticker -->
+                <div class="sticker-preview-container">
+                    <img id="stickerModalPreview" src="" alt="Sticker Preview">
+                </div>
+
+                <!-- Lista de acciones -->
+                <div class="sticker-actions-list">
+                    <button id="btnStickerFavAction" class="sticker-action-btn">
+                        <span id="stickerFavIcon">☆</span>
+                        <span id="stickerFavText">Añadir a favoritos</span>
+                    </button>
+                    <button id="btnStickerClose" class="sticker-action-btn secondary">
+                        <span>✕</span>
+                        <span>Cerrar</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Fondo oscuro para cerrar al tocar fuera -->
+            <div class="modal-backdrop" id="stickerModalBackdrop"></div>
         </div>
-    </div>
-    <!-- Fondo oscuro para cerrar al tocar fuera -->
-    <div class="modal-backdrop" id="stickerModalBackdrop"></div>
-</div>
 
         <!-- Menú Contextual -->
         <!-- Menú Contextual Mejorado -->
-<div id="msgContextMenu" class="context-menu hidden">
-    <!-- El fondo invisible para cerrar al tocar fuera -->
-    <div class="context-menu-backdrop" onclick="closeContextMenu()"></div>
-    
-    <div class="context-menu-content">
-        <!-- Botón Responder -->
-        <button id="ctxReplyBtn" class="ctx-item">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
-            <span>Responder</span>
-        </button>
+        <div id="msgContextMenu" class="context-menu hidden">
+            <!-- El fondo invisible para cerrar al tocar fuera -->
+            <div class="context-menu-backdrop" onclick="closeContextMenu()"></div>
 
-        <!-- Botón Copiar -->
-        <button id="ctxCopyBtn" class="ctx-item">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            <span>Copiar</span>
-        </button>
+            <div class="context-menu-content">
+                <!-- Botón Responder -->
+                <button id="ctxReplyBtn" class="ctx-item">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 14 4 9 9 4"></polyline>
+                        <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                    </svg>
+                    <span>Responder</span>
+                </button>
 
-        <button id="ctxPinBtn" class="ctx-item">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="17" x2="12" y2="22"></line>
-                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
-            </svg>
-            <span>Fijar mensaje</span>
-        </button>
+                <!-- Botón Copiar -->
+                <button id="ctxCopyBtn" class="ctx-item">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Copiar</span>
+                </button>
 
-        <!-- Botón Editar (Visual) -->
-        <button id="ctxEditBtn" class="ctx-item">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            <span>Editar</span>
-        </button>
+                <button id="ctxPinBtn" class="ctx-item">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="17" x2="12" y2="22"></line>
+                        <path
+                            d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z">
+                        </path>
+                    </svg>
+                    <span>Fijar mensaje</span>
+                </button>
 
-        <!-- Separador opcional -->
-        <div style="height:1px; background:rgba(255,255,255,0.1); margin: 4px 0;"></div>
+                <!-- Botón Editar (Visual) -->
+                <button id="ctxEditBtn" class="ctx-item">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>Editar</span>
+                </button>
 
-        <!-- Botón Eliminar -->
-        <button id="ctxDeleteBtn" class="ctx-item danger">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            <span>Eliminar</span>
-        </button>
-    </div>
-</div>
+                <!-- Separador opcional -->
+                <div style="height:1px; background:rgba(255,255,255,0.1); margin: 4px 0;"></div>
+
+                <!-- Botón Eliminar -->
+                <button id="ctxDeleteBtn" class="ctx-item danger">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Eliminar</span>
+                </button>
+            </div>
+        </div>
 
         <!-- Panel Chat -->
         <section class="main-column">
             <!-- EN index.html -->
 
-<header class="chat-header hidden">
-    <div style="display:flex; align-items:center; flex: 1; min-width: 0;">
-        <button id="backBtn" class="back-btn" type="button">
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-        </button>
-        
-        <!-- Info del contacto -->
-        <div class="avatar-wrapper" id="headerAvatarBtn" style="cursor: pointer; display: flex; align-items: center; flex: 1; overflow: hidden;">
-            <div class="avatar" id="currentChatAvatar"></div>
-            <div class="title" style="min-width: 0;">
-                <div class="name" id="chatTitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre</div>
-                <div class="typing-indicator hidden" id="typingIndicator">
-                    <span id="typingText" style="font-weight: normal; font-size: 12px;">escribiendo...</span>
+            <header class="chat-header hidden">
+                <div style="display:flex; align-items:center; flex: 1; min-width: 0;">
+                    <button id="backBtn" class="back-btn" type="button">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </button>
+
+                    <!-- Info del contacto -->
+                    <div class="avatar-wrapper" id="headerAvatarBtn"
+                        style="cursor: pointer; display: flex; align-items: center; flex: 1; overflow: hidden;">
+                        <div class="avatar" id="currentChatAvatar"></div>
+                        <div class="title" style="min-width: 0;">
+                            <div class="name" id="chatTitle"
+                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre</div>
+                            <div class="typing-indicator hidden" id="typingIndicator">
+                                <span id="typingText"
+                                    style="font-weight: normal; font-size: 12px;">escribiendo...</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- BARRA DE BÚSQUEDA EN CHAT (Oculta por defecto) -->
+                <!-- BARRA DE BÚSQUEDA EN CHAT -->
+                <div id="chatSearchBar" class="chat-search-bar hidden">
+                    <input type="text" id="chatSearchInput" placeholder="Buscar..." autocomplete="off" />
+
+                    <div class="search-nav-controls">
+                        <span id="searchCount" class="search-count-text"></span>
+                        <button id="searchUpBtn" class="nav-icon-btn small" title="Anterior">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="18 15 12 9 6 15"></polyline>
+                            </svg>
+                        </button>
+                        <button id="searchDownBtn" class="nav-icon-btn small" title="Siguiente">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button id="closeChatSearch" class="icon-btn-small" style="margin-left: 10px;">✕</button>
+                </div>
+
+                <!-- BOTÓN DE MENÚ (TRES PUNTOS) -->
+                <div class="chat-header-actions">
+                    <button id="chatMenuBtn" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <!-- MENÚ DESPLEGABLE -->
+                    <div id="chatOptionsMenu" class="chat-options-menu hidden">
+                        <button id="optSearch" class="chat-opt-item">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            Buscar
+                        </button>
+
+                        <button id="optWallpaper" class="chat-opt-item">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            Cambiar fondo
+                        </button>
+                        <input type="file" id="wallpaperInput" accept="image/*" hidden />
+
+                        <button id="optClearChat" class="chat-opt-item">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path>
+                                <line x1="18" y1="9" x2="12" y2="15"></line>
+                                <line x1="12" y1="9" x2="18" y2="15"></line>
+                            </svg>
+                            Vaciar chat
+                        </button>
+
+                        <button id="optDeleteChat" class="chat-opt-item danger">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                            Eliminar chat
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+
+            <div id="pinnedMessageBar" class="pinned-message-bar hidden">
+                <div class="pinned-bar-content" id="pinnedBarContent">
+                    <div class="pinned-bar-line"></div> <!-- Línea azul vertical -->
+                    <div class="pinned-info">
+                        <span class="pinned-label">Mensaje fijado</span>
+                        <span id="pinnedMessageText" class="pinned-preview">Cargando...</span>
+                    </div>
+                </div>
+                <button id="unpinBtn" class="pinned-close-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
-        </div>
-    </div>
-
-    <!-- BARRA DE BÚSQUEDA EN CHAT (Oculta por defecto) -->
-    <!-- BARRA DE BÚSQUEDA EN CHAT -->
-<div id="chatSearchBar" class="chat-search-bar hidden">
-    <input type="text" id="chatSearchInput" placeholder="Buscar..." autocomplete="off" />
-    
-    <div class="search-nav-controls">
-        <span id="searchCount" class="search-count-text"></span>
-        <button id="searchUpBtn" class="nav-icon-btn small" title="Anterior">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        </button>
-        <button id="searchDownBtn" class="nav-icon-btn small" title="Siguiente">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </button>
-    </div>
-
-    <button id="closeChatSearch" class="icon-btn-small" style="margin-left: 10px;">✕</button>
-</div>
-
-    <!-- BOTÓN DE MENÚ (TRES PUNTOS) -->
-    <div class="chat-header-actions">
-        <button id="chatMenuBtn" class="nav-icon-btn">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
-        </button>
-
-        <!-- MENÚ DESPLEGABLE -->
-        <div id="chatOptionsMenu" class="chat-options-menu hidden">
-            <button id="optSearch" class="chat-opt-item">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                Buscar
-            </button>
-            
-            <button id="optWallpaper" class="chat-opt-item">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                Cambiar fondo
-            </button>
-            <input type="file" id="wallpaperInput" accept="image/*" hidden />
-
-            <button id="optClearChat" class="chat-opt-item">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
-                Vaciar chat
-            </button>
-
-            <button id="optDeleteChat" class="chat-opt-item danger">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                Eliminar chat
-            </button>
-        </div>
-    </div>
-</header>
-
-
-<div id="pinnedMessageBar" class="pinned-message-bar hidden">
-    <div class="pinned-bar-content" id="pinnedBarContent">
-        <div class="pinned-bar-line"></div> <!-- Línea azul vertical -->
-        <div class="pinned-info">
-            <span class="pinned-label">Mensaje fijado</span>
-            <span id="pinnedMessageText" class="pinned-preview">Cargando...</span>
-        </div>
-    </div>
-    <button id="unpinBtn" class="pinned-close-btn">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-    </button>
-</div>
 
             <main class="chat-main">
                 <div id="emptyState" class="empty-state">Selecciona un contacto</div>
@@ -435,227 +556,855 @@
             </main>
 
             <button id="scrollToBottomBtn" class="scroll-bottom-btn hidden" aria-label="Ir al final">
-    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-</button>
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <polyline points="19 12 12 19 5 12"></polyline>
+                </svg>
+            </button>
 
             <!-- PANEL DE STICKERS (NUEVO) -->
             <!-- PANEL DE STICKERS (REDISEÑADO) -->
 
 
-<form id="form" class="composer hidden">
-    <div class="composer-inner">
-        
-        <div id="inputStack" class="input-stack">
-            <!-- Preview del Reply (Sin cambios) -->
-            <div id="replyPreview" class="reply-preview hidden">
-                <div class="reply-content-container">
-                    <div class="reply-bar-color"></div>
-                    <div class="reply-info">
-                        <span id="replyToName" class="reply-to-name">Nombre</span>
-                        <span id="replyToText" class="reply-to-text">Mensaje</span>
+            <form id="form" class="composer hidden">
+                <div class="composer-inner">
+
+                    <div id="inputStack" class="input-stack">
+                        <!-- Preview del Reply (Sin cambios) -->
+                        <div id="replyPreview" class="reply-preview hidden">
+                            <div class="reply-content-container">
+                                <div class="reply-bar-color"></div>
+                                <div class="reply-info">
+                                    <span id="replyToName" class="reply-to-name">Nombre</span>
+                                    <span id="replyToText" class="reply-to-text">Mensaje</span>
+                                </div>
+                                <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
+                            </div>
+                            <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
+                        </div>
+
+                        <div id="editPreview" class="reply-preview hidden">
+                            <div class="reply-content-container" style="border-left: none; align-items: center;">
+                                <!-- Icono Lápiz Azul -->
+                                <div style="margin-right: 12px; color: #3b82f6;">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                        <path
+                                            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <div class="reply-info">
+                                    <span class="reply-to-name" style="color: #3b82f6;">Editar mensaje</span>
+                                    <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
+                                </div>
+                            </div>
+                            <button type="button" id="closeEditBtn" class="close-reply">✕</button>
+                        </div>
+
+                        <!-- NUEVO WRAPPER: Contiene Sticker + Input + Imagen -->
+                        <div class="chat-input-wrapper">
+
+                            <!-- Botón Stickers (Izquierda) -->
+                            <button type="button" id="btnStickers" class="inner-action-btn" aria-label="Stickers">
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                </svg>
+                            </button>
+
+                            <!-- INPUT TEXTO -->
+                            <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
+
+                            <!-- Botón Clip/Imagen (Derecha) -->
+                            <button type="button" id="btnImage" class="inner-action-btn" aria-label="Adjuntar">
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                                    </path>
+                                </svg>
+                            </button>
+                            <input type="file" id="chatImageInput" accept="image/*" hidden />
+
+                        </div>
+                        <!-- Fin Wrapper -->
+
+                        <!-- UI GRABACIÓN (Sin cambios) -->
+                        <div id="recordingUI" class="recording-ui hidden">
+                            <div class="recording-indicator">
+                                <div class="red-dot"></div>
+                                <span id="recordingTimer">0:00</span>
+                            </div>
+                            <button type="button" id="cancelRecordingBtn" class="cancel-rec-btn">Cancelar</button>
+                        </div>
                     </div>
-                    <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
+
+                    <!-- BOTÓN DE ACCIÓN PRINCIPAL (Micrófono/Enviar) - Fuera de la píldora -->
+                    <button type="button" id="mainActionBtn" class="send-btn" aria-label="Acción">
+                        <!-- El icono se insertará vía JS -->
+                    </button>
                 </div>
-                <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
-            </div>
+            </form>
 
-            <div id="editPreview" class="reply-preview hidden">
-    <div class="reply-content-container" style="border-left: none; align-items: center;">
-        <!-- Icono Lápiz Azul -->
-        <div style="margin-right: 12px; color: #3b82f6;">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>
-        </div>
-        <div class="reply-info">
-            <span class="reply-to-name" style="color: #3b82f6;">Editar mensaje</span>
-            <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
-        </div>
-    </div>
-    <button type="button" id="closeEditBtn" class="close-reply">✕</button>
-</div>
+            <div id="stickerPanel" class="sticker-panel hidden">
+                <!-- Contenido de Stickers (Buscador y Grid) -->
+                <div class="sticker-content-area">
+                    <!-- Pestañas internas de stickers (Giphy / Favoritos) -->
+                    <div class="sticker-tabs">
+                        <button id="tabGiphy" class="sticker-tab active">Explorar</button>
+                        <button id="tabFavs" class="sticker-tab">Favoritos ⭐</button>
+                    </div>
 
-            <!-- NUEVO WRAPPER: Contiene Sticker + Input + Imagen -->
-            <div class="chat-input-wrapper">
-                
-                <!-- Botón Stickers (Izquierda) -->
-                <button type="button" id="btnStickers" class="inner-action-btn" aria-label="Stickers">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                    </svg>
-                </button>
+                    <div class="sticker-header" id="stickerHeaderSearch">
+                        <input type="text" id="stickerSearch" placeholder="Buscar en Giphy..." />
+                    </div>
 
-                <!-- INPUT TEXTO -->
-                <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
-
-                <!-- Botón Clip/Imagen (Derecha) -->
-                <button type="button" id="btnImage" class="inner-action-btn" aria-label="Adjuntar">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                    </svg>
-                </button>
-                <input type="file" id="chatImageInput" accept="image/*" hidden />
-                
-            </div>
-            <!-- Fin Wrapper -->
-
-            <!-- UI GRABACIÓN (Sin cambios) -->
-            <div id="recordingUI" class="recording-ui hidden">
-                <div class="recording-indicator">
-                    <div class="red-dot"></div>
-                    <span id="recordingTimer">0:00</span>
+                    <div id="stickerResults" class="sticker-grid">
+                        <div class="loading-stickers">Cargando...</div>
+                    </div>
                 </div>
-                <button type="button" id="cancelRecordingBtn" class="cancel-rec-btn">Cancelar</button>
+
+                <!-- NUEVA BARRA DE NAVEGACIÓN INFERIOR (Emoji, GIF, Sticker) -->
+                <div class="sticker-bottom-nav">
+                    <!-- Botón Emojis (No funcional) -->
+                    <button class="sticker-nav-btn inactive-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+
+                    <!-- Botón GIF (No funcional) -->
+                    <button class="sticker-nav-btn inactive-btn" style="font-weight: 800; font-size: 13px;">
+                        GIF
+                    </button>
+
+                    <!-- Botón Stickers (Activo y Funcional) -->
+                    <button class="sticker-nav-btn active-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M18.5 2h-13C3.6 2 2 3.6 2 5.5v13C2 20.4 3.6 22 5.5 22h13c1.9 0 3.5-1.6 3.5-3.5v-13C22 3.6 20.4 2 18.5 2zM5.5 4h13c.8 0 1.5.7 1.5 1.5v9.8l-3.3-3.3c-.4-.4-1.1-.4-1.5 0l-1.9 1.9-4.1-4.1c-.4-.4-1.1-.4-1.5 0L5 12.6V5.5c0-.8.7-1.5.5-1.5z">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <!-- BOTÓN DE ACCIÓN PRINCIPAL (Micrófono/Enviar) - Fuera de la píldora -->
-        <button type="button" id="mainActionBtn" class="send-btn" aria-label="Acción">
-            <!-- El icono se insertará vía JS -->
-        </button>
-    </div>
-</form>  
-
-<div id="stickerPanel" class="sticker-panel hidden">
-    <!-- Contenido de Stickers (Buscador y Grid) -->
-    <div class="sticker-content-area">
-        <!-- Pestañas internas de stickers (Giphy / Favoritos) -->
-        <div class="sticker-tabs">
-            <button id="tabGiphy" class="sticker-tab active">Explorar</button>
-            <button id="tabFavs" class="sticker-tab">Favoritos ⭐</button>
-        </div>
-
-        <div class="sticker-header" id="stickerHeaderSearch">
-            <input type="text" id="stickerSearch" placeholder="Buscar en Giphy..." />
-        </div>
-        
-        <div id="stickerResults" class="sticker-grid">
-            <div class="loading-stickers">Cargando...</div>
-        </div>
-    </div>
-
-    <!-- NUEVA BARRA DE NAVEGACIÓN INFERIOR (Emoji, GIF, Sticker) -->
-    <div class="sticker-bottom-nav">
-        <!-- Botón Emojis (No funcional) -->
-        <button class="sticker-nav-btn inactive-btn">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-        </button>
-
-        <!-- Botón GIF (No funcional) -->
-        <button class="sticker-nav-btn inactive-btn" style="font-weight: 800; font-size: 13px;">
-            GIF
-        </button>
-
-        <!-- Botón Stickers (Activo y Funcional) -->
-        <button class="sticker-nav-btn active-btn">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M18.5 2h-13C3.6 2 2 3.6 2 5.5v13C2 20.4 3.6 22 5.5 22h13c1.9 0 3.5-1.6 3.5-3.5v-13C22 3.6 20.4 2 18.5 2zM5.5 4h13c.8 0 1.5.7 1.5 1.5v9.8l-3.3-3.3c-.4-.4-1.1-.4-1.5 0l-1.9 1.9-4.1-4.1c-.4-.4-1.1-.4-1.5 0L5 12.6V5.5c0-.8.7-1.5.5-1.5z"></path></svg>
-        </button>
-    </div>
-</div>
-
-</section>
+        </section>
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
 
+
+    <!-- MODAL: PERFIL DEL CANAL (VISUALIZACIÓN) -->
+    <!-- MODAL: PERFIL DEL CANAL (VISUALIZACIÓN) -->
+    <!-- MODAL: PERFIL DEL CANAL (VISUALIZACIÓN) -->
+    <!-- MODAL: PERFIL DEL CANAL (VISUALIZACIÓN) -->
+    <div id="channelProfileModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+
+            <!-- Navbar -->
+            <div class="profile-nav-header">
+                <button id="closeChannelProfile" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Info. del canal</span>
+
+                <div style="display:flex; gap:10px; position: relative;">
+                    <!-- Botón EDITAR (Solo visible para el creador) -->
+                    <button id="btnEditChannel" class="nav-icon-btn hidden">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Botón MENÚ (Tres puntos) -->
+                    <button id="btnChannelMenu" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path
+                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <!-- MENÚ DESPLEGABLE (Oculto por defecto) -->
+                    <div id="channelOptionsMenu" class="chat-options-menu hidden"
+                        style="top: 45px; right: 0; width: 180px;">
+                        <button id="optChannelMute" class="chat-opt-item">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            Silenciar
+                        </button>
+                        <button id="optChannelLeave" class="chat-opt-item danger">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Principal -->
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-large" id="channelProfileAvatar" style="border: none;"></div>
+            </div>
+
+            <div style="text-align:center; margin-bottom: 20px;">
+                <h2 id="channelProfileName" style="margin:0; font-size: 22px; color: #fff;">Nombre</h2>
+                <p id="channelProfileStatus" style="color: #666; font-size: 14px; margin: 5px 0;">canal privado</p>
+            </div>
+
+            <!-- Botones de Acción (FILA ACTUALIZADA) -->
+            <div class="channel-action-row">
+                <!-- 1. SILENCIAR (Izquierda) -->
+                <div class="action-btn-item" id="btnActionMute">
+                    <button class="action-circle-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                    </button>
+                    <span>Silenciar</span>
+                </div>
+
+                <!-- 2. COMPARTIR (Centro) -->
+                <div class="action-btn-item" id="btnActionShare">
+                    <button class="action-circle-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                    </button>
+                    <span>Compartir</span>
+                </div>
+
+                <!-- 3. SALIR (Derecha) -->
+                <div class="action-btn-item" id="btnActionLeave">
+                    <button class="action-circle-btn" style="color: #ef4444;"> <!-- Color rojo para indicar salida -->
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                    <span>Salir</span>
+                </div>
+            </div>
+
+            <!-- Lista de Detalles -->
+            <div class="profile-details-list">
+                <div class="detail-item">
+                    <label class="detail-label">Descripción</label>
+                    <div id="channelProfileBio" class="detail-value bio-text"></div>
+                </div>
+
+                <div id="channelLinkSection" class="detail-item hidden">
+                    <label class="detail-label">Enlace de invitación</label>
+                    <div id="channelPublicLink" class="detail-value link-text" style="color: #3b82f6; cursor: pointer;">
+                        ap.me/ejemplo</div>
+                </div>
+
+                <div id="channelSubSection" class="detail-item"
+                    style="flex-direction: row; justify-content: space-between; align-items: center; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div
+                            style="background: rgba(255,255,255,0.08); padding: 8px; border-radius: 50%; color: #a1a1aa; display: flex;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <span class="detail-label"
+                            style="color: #fff; font-size: 16px; font-weight: 500;">Suscriptores</span>
+                    </div>
+                    <span id="channelSubCount" class="detail-value"
+                        style="color: var(--accent); font-weight: bold;">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR CANAL -->
+    <!-- MODAL 1: MENÚ DE EDICIÓN PRINCIPAL -->
+    <!-- MODAL 1: MENÚ DE EDICIÓN PRINCIPAL -->
+    <div id="channelEditModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+            <div class="profile-nav-header">
+                <button id="closeChannelEdit" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Editar</span>
+                <button id="saveChannelInfoBtn" class="nav-icon-btn" style="color: var(--accent);">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Avatar y Nombre (Diseño limpio) -->
+            <div class="channel-edit-header">
+                <div class="profile-avatar-large" id="editChannelAvatarPreview" style="width: 80px; height: 80px;">
+                    <label for="editChannelAvatarInput" class="upload-overlay">
+                        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                            </path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </label>
+                </div>
+                <input type="file" id="editChannelAvatarInput" accept="image/*" hidden />
+
+                <div class="channel-edit-inputs">
+                    <div class="input-group-line">
+                        <input type="text" id="editChannelName" placeholder="Nombre del canal" autocomplete="off">
+                        <span class="focus-border"></span>
+                    </div>
+                    <div class="input-group-line">
+                        <input type="text" id="editChannelBio" placeholder="Descripción (Opcional)" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Opciones -->
+            <div class="settings-list">
+                <!-- Tipo de Canal -->
+                <div class="setting-item" id="btnOpenChannelType">
+                    <!-- CAMBIO: Megáfono SVG -->
+                    <div class="setting-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    </div>
+                    <div class="setting-info">
+                        <div class="setting-label">Tipo de canal</div>
+                        <div class="setting-value" id="lblChannelType">Privado</div>
+                    </div>
+                </div>
+
+                <div class="setting-divider"></div>
+
+                <!-- Suscriptores -->
+                <div class="setting-item" id="btnOpenSubscribers">
+                    <!-- CAMBIO: Usuarios SVG -->
+                    <div class="setting-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div class="setting-info">
+                        <div class="setting-label">Suscriptores</div>
+                        <div class="setting-value" id="lblSubCount">0</div>
+                    </div>
+                </div>
+
+                <div class="setting-divider"></div>
+
+                <!-- Expulsados -->
+                <div class="setting-item" id="btnOpenBanned">
+                    <!-- CAMBIO: Prohibido SVG -->
+                    <div class="setting-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                    </div>
+                    <div class="setting-info">
+                        <div class="setting-label">Usuarios expulsados</div>
+                        <div class="setting-value" id="lblBannedCount">0</div>
+                    </div>
+                </div>
+
+                <div class="setting-divider"></div>
+
+                <div class="setting-item" style="justify-content: flex-start; gap: 15px;">
+                    <!-- Icono Papelera opcional para eliminar -->
+                    <div class="setting-icon" style="color: #ef4444;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </div>
+                    <div style="color: #ef4444;">Eliminar canal</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: TIPO DE CANAL -->
+    <div id="channelTypeModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+            <div class="profile-nav-header">
+                <button id="closeChannelType" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Tipo de canal</span>
+                <button id="saveChannelTypeBtn" class="nav-icon-btn" style="color: var(--accent);">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div style="padding: 20px;">
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="editChannelType" value="private">
+                        <div class="radio-content">
+                            <b>Canal privado</b>
+                            <p>Sólo se puede entrar a canales privados a través de un enlace de invitación.</p>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="editChannelType" value="public">
+                        <div class="radio-content">
+                            <b>Canal público</b>
+                            <p>Cualquiera puede unirse a canales públicos tras encontrarlos en la búsqueda.</p>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+                </div>
+
+                <!-- Sección Enlace Público -->
+                <div id="editPublicLinkSection" class="hidden public-link-section">
+                    <label class="public-link-label">Enlace público</label>
+
+                    <div class="link-input-group">
+                        <span class="static-prefix">ap.me/</span>
+                        <input type="text" id="editChannelLinkInput" placeholder="enlace" autocomplete="off"
+                            spellcheck="false">
+                    </div>
+
+                    <p id="editLinkStatus" class="link-status-msg"></p>
+                </div>
+
+                <!-- Sección Enlace Privado -->
+                <!-- Sección Enlace Privado (Diseño Telegram) -->
+                <div id="editPrivateLinkSection" class="hidden public-link-section">
+                    <label class="public-link-label">Enlace de invitación</label>
+
+                    <div class="link-input-group">
+                        <!-- Input de solo lectura para el enlace -->
+                        <input type="text" id="editGeneratedLink" value="Cargando..." readonly>
+
+                        <!-- Botón de Copiar (Icono) -->
+                        <button id="btnCopyPrivateLink" class="copy-link-btn" title="Copiar enlace">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <p class="link-status-msg">Los usuarios pueden unirse con este enlace.</p>
+
+                    <!-- Botón Gestionar Enlaces (Estilo texto simple) -->
+                    <div style="margin-top: 20px;">
+                        <button class="btn-text-manage">Gestionar enlaces de invitación</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="channelAddMembersModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+            <!-- Header -->
+            <div class="profile-nav-header">
+                <button id="closeAddMembers" class="nav-icon-btn">
+                    <!-- Flecha atrás -->
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Añadir suscriptores</span>
+
+                <!-- Botón de Confirmar (Palomita) - Oculto por defecto -->
+                <button id="confirmAddMembersBtn" class="nav-icon-btn hidden" style="color: var(--accent);">
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Buscador -->
+            <div class="search-wrap" style="padding-top: 10px;">
+                <input id="searchNewMembers" placeholder="Buscar contactos..." autocomplete="off" />
+            </div>
+
+            <!-- Lista de contactos disponibles -->
+            <div style="flex: 1; overflow-y: auto; padding: 10px;">
+                <ul id="addMembersList" class="users-list"></ul>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL 3: SUSCRIPTORES -->
+    <div id="channelSubsModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+            <div class="profile-nav-header">
+                <button id="closeChannelSubs" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Suscriptores</span>
+                <button id="searchSubsBtn" class="nav-icon-btn"><svg viewBox="0 0 24 24" width="20" height="20"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg></button>
+            </div>
+
+            <div style="padding: 10px;">
+                <div class="action-row" id="btnAddSubscribers">
+                    <!-- CAMBIO: User Plus SVG -->
+                    <div class="icon-box add-user">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="23" y1="11" x2="17" y2="11"></line>
+                        </svg>
+                    </div>
+                    <span>Añadir suscriptores</span>
+                </div>
+                <div class="action-row" id="btnInviteViaLink">
+                    <!-- CAMBIO: Link SVG -->
+                    <div class="icon-box link">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </div>
+                    <span>Invitar con un enlace</span>
+                </div>
+
+                <div class="section-divider">Suscriptores</div>
+                <ul id="subsList" class="simple-user-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: USUARIOS EXPULSADOS -->
+    <div id="channelBannedModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile">
+            <div class="profile-nav-header">
+                <button id="closeChannelBanned" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title">Usuarios expulsados</span>
+            </div>
+            <div style="padding: 10px;">
+                <p style="color:#666; font-size:13px; padding:10px;">Los usuarios expulsados no pueden volver a unirse
+                    al canal mediante enlaces de invitación.</p>
+                <ul id="bannedList" class="simple-user-list"></ul>
+            </div>
+        </div>
+    </div>
+
     <div id="themeModal" class="theme-modal hidden">
-    <div class="theme-sheet">
-        <div class="theme-header-row">
-            <button id="closeThemeBtn" class="nav-icon-btn">✕</button>
-            <h3>Elige un tema</h3>
-            <div style="width: 40px;"></div> <!-- Espaciador para centrar -->
-        </div>
-
-        <div class="themes-scroller">
-            <!-- Opción 1: Sin tema (Default) -->
-            <div class="theme-option" onclick="selectTheme('default')">
-                <div class="theme-preview default-preview">
-                    <div class="mini-bubble-left"></div>
-                    <div class="mini-bubble-right"></div>
-                </div>
-                <span>Predeterminado</span>
+        <div class="theme-sheet">
+            <div class="theme-header-row">
+                <button id="closeThemeBtn" class="nav-icon-btn">✕</button>
+                <h3>Elige un tema</h3>
+                <div style="width: 40px;"></div> <!-- Espaciador para centrar -->
             </div>
 
-            <!-- Opción 2: Tema Amor (Rosado) -->
-            <div class="theme-option" onclick="selectTheme('love')">
-                <div class="theme-preview love-preview">
-                    <div class="mini-bubble-left"></div>
-                    <div class="mini-bubble-right"></div>
+            <div class="themes-scroller">
+                <!-- Opción 1: Sin tema (Default) -->
+                <div class="theme-option" onclick="selectTheme('default')">
+                    <div class="theme-preview default-preview">
+                        <div class="mini-bubble-left"></div>
+                        <div class="mini-bubble-right"></div>
+                    </div>
+                    <span>Predeterminado</span>
                 </div>
-                <span>Amor</span>
+
+                <!-- Opción 2: Tema Amor (Rosado) -->
+                <div class="theme-option" onclick="selectTheme('love')">
+                    <div class="theme-preview love-preview">
+                        <div class="mini-bubble-left"></div>
+                        <div class="mini-bubble-right"></div>
+                    </div>
+                    <span>Amor</span>
+                </div>
+
+                <!-- Opción 3: Tema Espacio (Degradado Azul/Morado) -->
+                <div class="theme-option" onclick="selectTheme('space')">
+                    <div class="theme-preview space-preview">
+                        <div class="mini-bubble-left"></div>
+                        <div class="mini-bubble-right"></div>
+                    </div>
+                    <span>Espacio</span>
+                </div>
             </div>
 
-            <!-- Opción 3: Tema Espacio (Degradado Azul/Morado) -->
-            <div class="theme-option" onclick="selectTheme('space')">
-                <div class="theme-preview space-preview">
-                    <div class="mini-bubble-left"></div>
-                    <div class="mini-bubble-right"></div>
-                </div>
-                <span>Espacio</span>
+            <div class="theme-footer">
+                <button id="btnGalleryTheme" class="btn-gallery-link">
+                    Elegir un fondo desde galería
+                </button>
             </div>
         </div>
+    </div>
+    <div id="pinConfirmModal" class="confirm-modal hidden">
+        <div class="modal-backdrop" onclick="closePinModal()"></div>
+        <div class="confirm-card delete-options-card">
+            <h3>¿Fijar mensaje?</h3>
+            <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
+                Elige cómo quieres fijar este mensaje en el chat.
+            </p>
 
-        <div class="theme-footer">
-            <button id="btnGalleryTheme" class="btn-gallery-link">
-                Elegir un fondo desde galería
-            </button>
+            <div class="delete-actions-stack">
+                <!-- Botón Fijar para todos -->
+                <button id="btnPinEveryone" class="delete-action-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Fijar para todos
+                </button>
+
+                <!-- Botón Fijar para mí -->
+                <button id="btnPinMe" class="delete-action-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 12H4" />
+                    </svg>
+                    Fijar para mí
+                </button>
+
+                <!-- Botón Cancelar -->
+                <button onclick="closePinModal()" class="delete-action-btn cancel">
+                    Cancelar
+                </button>
+            </div>
         </div>
     </div>
-</div>
-<div id="pinConfirmModal" class="confirm-modal hidden">
-    <div class="modal-backdrop" onclick="closePinModal()"></div>
-    <div class="confirm-card delete-options-card">
-        <h3>¿Fijar mensaje?</h3>
-        <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 20px;">
-            Elige cómo quieres fijar este mensaje en el chat.
-        </p>
-        
-        <div class="delete-actions-stack">
-            <!-- Botón Fijar para todos -->
-            <button id="btnPinEveryone" class="delete-action-btn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                Fijar para todos
-            </button>
 
-            <!-- Botón Fijar para mí -->
-            <button id="btnPinMe" class="delete-action-btn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4"/></svg>
-                Fijar para mí
-            </button>
+    <!-- BOTÓN FLOTANTE LOVE NOTES (Solo Premium) -->
+    <button id="loveNotesBtn" class="love-notes-float-btn hidden" title="Tus notas especiales">
+        <!-- Corazón (Solo borde) -->
+        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+            </path>
+        </svg>
+        <div id="loveNoteDot" class="love-dot hidden"></div>
+    </button>
 
-            <!-- Botón Cancelar -->
-            <button onclick="closePinModal()" class="delete-action-btn cancel">
-                Cancelar
-            </button>
+    <!-- MODAL DE NOTAS (Para el Usuario Premium) -->
+    <div id="loveNotesModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile love-notes-card">
+            <div class="profile-nav-header">
+                <button id="closeLoveNotes" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <span class="nav-title" style="color:#ec4899;">Notas Especiales 💖</span>
+                <div style="width:40px;"></div>
+            </div>
+            <div id="loveNotesList" class="love-notes-list">
+                <!-- Las notas se inyectarán aquí -->
+            </div>
         </div>
     </div>
-</div>
 
-<!-- BOTÓN FLOTANTE LOVE NOTES (Solo Premium) -->
-<button id="loveNotesBtn" class="love-notes-float-btn hidden" title="Tus notas especiales">
-    <!-- Corazón (Solo borde) -->
-    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-    </svg>
-    <div id="loveNoteDot" class="love-dot hidden"></div>
-</button>
+    <!-- BOTÓN FLOTANTE NUEVO CHAT -->
+    <div class="fab-container">
+        <button id="fabNewChat" class="fab-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+        </button>
+    </div>
 
-<!-- MODAL DE NOTAS (Para el Usuario Premium) -->
-<div id="loveNotesModal" class="profile-modal hidden">
-    <div class="profile-card modern-profile love-notes-card">
-        <div class="profile-nav-header">
-            <button id="closeLoveNotes" class="nav-icon-btn">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
-            <span class="nav-title" style="color:#ec4899;">Notas Especiales 💖</span>
-            <div style="width:40px;"></div>
-        </div>
-        <div id="loveNotesList" class="love-notes-list">
-            <!-- Las notas se inyectarán aquí -->
+    <!-- MODAL DE FLUJO DE CREACIÓN -->
+    <!-- REEMPLAZA EL DIV id="creationModal" COMPLETO CON ESTO -->
+    <div id="creationModal" class="profile-modal hidden">
+        <div class="profile-card creation-card">
+
+            <!-- HEADER -->
+            <div class="profile-nav-header">
+                <button id="closeCreation" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <span id="creationTitle" class="nav-title">Nuevo Chat</span>
+
+                <!-- Botón Siguiente (Paso 1) -->
+                <button id="creationNextBtn" class="nav-icon-btn hidden"
+                    style="color:var(--accent); font-weight:bold; font-size:14px;">Sig.</button>
+
+                <!-- NUEVO: Botón Check (Palomita) para pasos finales -->
+                <button id="creationCheckBtn" class="nav-icon-btn hidden" style="color:var(--accent);">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- CONTENIDO -->
+            <div id="creationContent" class="creation-body" style="overflow-y:auto; flex:1;">
+
+                <!-- VISTA 0: INICIO -->
+                <div id="viewStart" class="creation-view">
+                    <div class="new-action-row" id="btnCreateChannel">
+                        <div class="icon-circle"><svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg></div>
+                        <span>Nuevo Canal</span>
+                    </div>
+                    <div class="section-label">Contactos</div>
+                    <ul id="creationContactList" class="users-list"></ul>
+                </div>
+
+                <!-- VISTA 1: MIEMBROS -->
+                <div id="viewSelectMembers" class="creation-view hidden">
+                    <div class="search-wrap">
+                        <input id="searchMembers" placeholder="Buscar personas..." />
+                    </div>
+                    <ul id="memberSelectionList" class="users-list selection-mode"></ul>
+                </div>
+
+                <!-- VISTA 2: INFO CANAL -->
+                <div id="viewChannelInfo" class="creation-view hidden" style="padding: 20px;">
+                    <div class="profile-avatar-section">
+                        <div class="profile-avatar-large" id="channelAvatarPreview">
+                            <label for="channelAvatarInput" class="upload-overlay">
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none">
+                                    <path
+                                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                    </path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                            </label>
+                        </div>
+                        <input type="file" id="channelAvatarInput" accept="image/*" hidden />
+                    </div>
+                    <div class="detail-item" style="border-bottom: 1px solid #333;">
+                        <input type="text" id="channelNameInput" placeholder="Nombre del canal" class="simple-input"
+                            style="font-size:18px; font-weight:bold; background:transparent; border:none; padding-left:0;">
+                    </div>
+                    <div class="detail-item" style="border-bottom: none;">
+                        <input type="text" id="channelBioInput" placeholder="Descripción (opcional)"
+                            class="simple-input" style="background:transparent; border:none; padding-left:0;">
+                    </div>
+                </div>
+
+                <!-- VISTA 3: TIPO DE CANAL (TELEGRAM STYLE) -->
+                <div id="viewChannelType" class="creation-view hidden">
+                    <div style="padding: 20px 0;">
+                        <div class="section-label" style="padding-left:20px;">Tipo de canal</div>
+
+                        <label class="channel-type-option">
+                            <input type="radio" name="channelType" value="public" checked>
+                            <div class="type-info">
+                                <div class="type-title">Canal público</div>
+                                <div class="type-desc">Cualquiera puede encontrar el canal en la búsqueda.</div>
+                            </div>
+                            <div class="check-indicator"></div>
+                        </label>
+
+                        <label class="channel-type-option">
+                            <input type="radio" name="channelType" value="private">
+                            <div class="type-info">
+                                <div class="type-title">Canal privado</div>
+                                <div class="type-desc">Solo se puede entrar mediante invitación.</div>
+                            </div>
+                            <div class="check-indicator"></div>
+                        </label>
+                    </div>
+
+                    <div id="publicLinkSection" style="padding: 0 20px;">
+                        <div class="section-label" style="padding-left:0; margin-top:10px;">Enlace permanente</div>
+                        <div class="link-input-wrapper">
+                            <span class="prefix">t.me/</span>
+                            <input type="text" id="channelLinkInput" placeholder="Enlace" autocomplete="off">
+                        </div>
+                        <p id="linkStatusText" style="color:#666; font-size:13px; margin-top:10px;">Comprueba la
+                            disponibilidad.</p>
+                    </div>
+
+                    <div id="privateLinkSection" class="hidden" style="padding: 0 20px;">
+                        <div class="section-label" style="padding-left:0; margin-top:10px;">Enlace de invitación</div>
+                        <div class="link-input-wrapper readonly">
+                            <span id="generatedPrivateLink">Generando...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
-</div>
 
 
     <script src="/socket.io/socket.io.js" defer></script>
@@ -667,4 +1416,5 @@
         }
     </script>
 </body>
+
 </html>
