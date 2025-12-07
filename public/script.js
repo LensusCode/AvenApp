@@ -2062,9 +2062,14 @@ function toggleSearchNav(show) {
 function clearSearchHighlights() {
     document.querySelectorAll('.highlight-text').forEach(mark => {
         const parent = mark.parentNode;
-        parent.textContent = parent.textContent; // Eliminar HTML tags (spans) y dejar texto plano
-        parent.normalize(); // Unir nodos de texto fragmentados
+
+        // --- ✅ AGREGA ESTA VERIFICACIÓN ---
+        if (parent) {
+            parent.textContent = parent.textContent; // Eliminar HTML tags (spans) y dejar texto plano
+            parent.normalize(); // Unir nodos de texto fragmentados
+        }
     });
+
     // Limpiar clases de flash
     document.querySelectorAll('.message-flash').forEach(m => m.classList.remove('message-flash'));
 }
@@ -2991,8 +2996,6 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
     else if (currentTargetUserObj) {
         // Tu código existente para abrir contactInfoModal
         const modal = getEl('contactInfoModal');
-        appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, null, 0, msg.caption);
-        scrollToBottom(true);
         modal.classList.remove('hidden');
     }
 });

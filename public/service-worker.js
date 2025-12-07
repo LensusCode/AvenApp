@@ -1,6 +1,6 @@
-const CACHE_STATIC_NAME = 'aven-static-v1.0.36';
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.36';
-const CACHE_IMG_NAME = 'aven-images-v1.0.36'; // Caché exclusiva para imágenes pesadas
+const CACHE_STATIC_NAME = 'aven-static-v1.0.371';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.371';
+const CACHE_IMG_NAME = 'aven-images-v1.0.371'; // Caché exclusiva para imágenes pesadas
 const CACHE_LIMIT = 50; // Límite de ítems en la caché dinámica
 
 const urlsToCache = [
@@ -44,9 +44,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(keyList.map((key) => {
-        if (key !== CACHE_STATIC_NAME && 
-            key !== CACHE_DYNAMIC_NAME && 
-            key !== CACHE_IMG_NAME) {
+        if (key !== CACHE_STATIC_NAME &&
+          key !== CACHE_DYNAMIC_NAME &&
+          key !== CACHE_IMG_NAME) {
           console.log('[Service Worker] Limpiando caché antigua:', key);
           return caches.delete(key);
         }
@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
         return fetch(request)
           .then((response) => {
             // Guardamos copia fresca solo si la respuesta es válida
-            if(response.status === 200) {
+            if (response.status === 200) {
               cache.put(request, response.clone());
               trimCache(CACHE_DYNAMIC_NAME, 30); // Limpiamos si hay demasiadas peticiones API guardadas
             }
@@ -104,7 +104,7 @@ self.addEventListener('fetch', (event) => {
           }).catch(() => {
             // D. Fallback si falla la imagen y no está en caché (Offline total)
             // Aquí retornas tu avatar por defecto precacheado
-            return caches.match('/assets/default-avatar.png'); 
+            return caches.match('/assets/default-avatar.png');
           });
         });
       })
