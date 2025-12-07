@@ -1,7 +1,7 @@
 const CACHE_STATIC_NAME = 'aven-static-v1.0.371';
 const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.371';
-const CACHE_IMG_NAME = 'aven-images-v1.0.371'; // Caché exclusiva para imágenes pesadas
-const CACHE_LIMIT = 50; // Límite de ítems en la caché dinámica
+const CACHE_IMG_NAME = 'aven-images-v1.0.371';
+const CACHE_LIMIT = 50;
 
 const urlsToCache = [
   '/',
@@ -10,8 +10,8 @@ const urlsToCache = [
   '/script.js',
   '/manifest.json',
   '/offline.html',
-  '/profile.png', // IMPORTANTE: Una imagen por defecto si falla la carga
-  '/profile.png'   // Imagen para posts que no cargan
+  '/profile.png',
+  '/profile.png'
 ];
 
 // --- FUNCIONES AUXILIARES ---

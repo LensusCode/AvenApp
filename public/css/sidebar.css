@@ -1,83 +1,79 @@
 /* ---------- SIDEBAR ---------- */
 .sidebar {
-    width: 380px;
-    border-right: 1px solid var(--border);
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--panel-bg);
     display: flex;
     flex-direction: column;
-    background: var(--sidebar-bg);
-    flex-shrink: 0;
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
 }
 
 .sidebar-header {
-    height: 70px;
-    padding: 0 20px;
+    padding: 20px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
 }
 
 .sidebar-header h3 {
     margin: 0;
     font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
 }
 
 .search-wrap {
-    margin: 0 15px 15px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    background: var(--input-bg);
-    border-radius: var(--radius-md);
-    padding: 0 12px;
-    border: 1px solid transparent;
-    transition: all 0.2s var(--ease-out);
+    padding: 0 20px 10px;
 }
 
-.search-wrap:focus-within {
-    border-color: var(--accent);
-    background: rgba(255,255,255,0.08);
-}
-
-.search-icon {
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-}
-
-.search-wrap input {
+.search-wrap input,
+.simple-input {
     width: 100%;
-    border: none;
-    background: transparent;
-    padding: 12px 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
     color: #fff;
-    font-size: 14px;
-    outline: none;
+    transition: border-color .3s, box-shadow .3s, transform .2s;
+}
+
+.search-wrap input:focus,
+.simple-input:focus {
+    outline: 0;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(99, 102, 241, .25);
+    transform: translateY(-2px);
 }
 
 .users-list {
-    flex: 1;
-    overflow-y: auto;
     list-style: none;
-    padding: 0;
+    padding: 10px;
     margin: 0;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
+
 
 .user-item {
     display: flex;
     align-items: center;
-    padding: 12px 20px;
+    gap: 12px;
+    padding: 10px;
     cursor: pointer;
-    transition: background 0.2s ease;
-    border-bottom: 1px solid transparent;
+    border-radius: 10px;
+    transition: background .2s;
+    touch-action: pan-y;
 }
 
 .user-item:hover {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, .05);
 }
 
 .user-item.active {
-    background: rgba(99, 102, 241, 0.1);
-    border-left: 3px solid var(--accent);
+    background: rgba(99, 102, 241, .15);
+    border: 1px solid rgba(99, 102, 241, .3);
 }

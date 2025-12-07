@@ -67,7 +67,7 @@ const getBadgeHtml = (u) => {
 let currentTargetUserId = null, currentTargetUserObj = null;
 let messageIdToDelete = null;
 let deleteActionType = 'single';
-let currentContextMessageId = null; // NUEVA VARIABLE PARA EL MENÚ CONTEXTUAL
+let currentContextMessageId = null;
 let myNicknames = {}, allUsersCache = [];
 let currentReplyId = null, mediaRecorder = null, audioChunks = [], recordingInterval = null;
 let isRecording = false, shouldSendAudio = true;
@@ -112,7 +112,7 @@ const escapeHtml = (text) => {
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 };
 
-// 2. [MEJORA SEGURIDAD] Validar URL
+// 2. Validar URL
 const isValidUrl = (string) => {
     if (!string) return false;
     if (string.startsWith('/') || string.startsWith('./')) return true;
@@ -221,7 +221,7 @@ getEl('enterCropModeBtn').addEventListener('click', () => {
 
 // --- 4. ACCIONES DEL MODO RECORTE ---
 
-// Botón ROTAR (Con tu lógica de girar todo)
+// Botón ROTAR
 getEl('rotateBtn').addEventListener('click', () => {
     if (!cropper) return;
 
@@ -249,16 +249,16 @@ getEl('rotateBtn').addEventListener('click', () => {
     setTimeout(() => container.classList.remove('animating-rotation'), 300);
 });
 
-// Botón FLIP (Nuevo)
+// Botón FLIP
 getEl('flipBtn').addEventListener('click', () => {
     if (!cropper) return;
     currentScaleX = -currentScaleX; // Invertir estado
     cropper.scaleX(currentScaleX);  // Aplicar flip horizontal
 });
 
-// Botón CANCELAR (Salir sin guardar cambios de recorte)
+// Botón CANCELAR
 getEl('cancelCropBtn').addEventListener('click', () => {
-    // Destruir cropper (esto visualmente resetea la imagen a como estaba antes de entrar)
+    // Destruir cropper
     if (cropper) { cropper.destroy(); cropper = null; }
 
     // Volver a la UI Principal
@@ -267,7 +267,7 @@ getEl('cancelCropBtn').addEventListener('click', () => {
     getEl('mainFooter').classList.remove('hidden');
 });
 
-// Botón OK (Aplicar recorte y volver)
+// Boton OK (Aplicar recorte y volver)
 getEl('okCropBtn').addEventListener('click', () => {
     if (!cropper) return;
 
@@ -325,37 +325,30 @@ getEl('sendImageBtn').addEventListener('click', async () => {
 socket.on('chat history cleared', ({ chatId }) => {
     console.log("Evento recibido para limpiar chat con ID:", chatId);
 
-    // 1. Verificamos si tengo abierto un chat
-    // 2. Verificamos si el chat abierto es el mismo que se acaba de vaciar
     if (currentTargetUserId && parseInt(currentTargetUserId) === parseInt(chatId)) {
 
-        // --- AQUÍ OCURRE LA MAGIA SIN RECARGAR ---
         const messagesList = document.getElementById('messages');
 
-        // Efecto visual de desvanecimiento antes de borrar (Opcional, se ve pro)
         messagesList.style.opacity = '0';
         messagesList.style.transition = 'opacity 0.3s ease';
 
         setTimeout(() => {
-            // Borrar todo el HTML de la lista de mensajes
             messagesList.innerHTML = '';
 
-            // Añadir mensaje de sistema
             const li = document.createElement('li');
             li.style.cssText = 'text-align:center; color:#666; margin:20px; font-size:12px; font-weight:500; list-style:none; opacity:0; animation: fadeIn 0.5s forwards;';
             li.textContent = 'El historial del chat ha sido vaciado.';
             messagesList.appendChild(li);
 
-            // Restaurar opacidad
             messagesList.style.opacity = '1';
 
-            // Ocultar botón de scroll si existía
             const scrollBtn = document.getElementById('scrollToBottomBtn');
             if (scrollBtn) scrollBtn.classList.add('hidden');
 
-        }, 300); // Espera 300ms a que termine la transición
+        }, 300);
     }
 });
+
 // --- PERFIL Y EDICIÓN ---
 
 socket.on('nicknames', (map) => {
@@ -425,7 +418,6 @@ function enableInlineEdit(elementId, dbField, prefix = '') {
                 newEl.textContent = prefix + val;
                 newEl.style.color = "";
             }
-            // CORRECCIÓN: Badge solo en Nombre
             if (dbField === 'display_name') newEl.insertAdjacentHTML('beforeend', getBadgeHtml(myUser));
             newEl.classList.add('editable-field');
         };
@@ -435,7 +427,7 @@ function enableInlineEdit(elementId, dbField, prefix = '') {
     });
 }
 
-// Función para editar APODO de CONTACTO (Envía a Socket)
+// Función para editar APODO de CONTACTO
 function enableNicknameEdit(elementId, targetUserId) {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -571,7 +563,7 @@ if (sendLoveNoteBtn) {
 
         if (res && res.success) {
             alert("Nota enviada con éxito 💖");
-            adminLoveNoteInput.value = ''; // Limpiar
+            adminLoveNoteInput.value = '';
         } else {
             alert("Error al enviar.");
         }
@@ -611,8 +603,6 @@ if (togglePremiumBtn) {
 
         // 3. Llamada a la API (Simulada o Real)
         try {
-            // Nota: Asegúrate de tener esta ruta en tu servidor o usa la misma lógica que verify
-            // Enviaremos una petición para cambiar el estado 'is_premium' en la base de datos
             const res = await apiRequest('/api/admin/toggle-premium', 'POST', {
                 targetUserId: currentTargetUserObj.userId
             });
@@ -631,18 +621,13 @@ if (togglePremiumBtn) {
     });
 }
 
-// Cerrar modales
 getEl('closeContactInfo').addEventListener('click', () => getEl('contactInfoModal').classList.add('hidden'));
-// Evento: CERRAR PERFIL
 closeProfile.addEventListener('click', () => {
     if (fabNewChat) fabNewChat.classList.remove('hidden');
     profileModal.classList.add('hidden');
-
-    // --- AGREGA ESTO ---
     if (loveNotesBtn && myUser && myUser.is_premium) {
         loveNotesBtn.classList.remove('hidden');
     }
-    // -------------------
 });
 
 // Botón de menú Perfil
@@ -837,14 +822,11 @@ getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSu
 socket.on('users', (users) => {
     allUsersCache = users;
 
-    // 1. Si tengo abierto el chat/perfil de alguien, actualizar sus datos en tiempo real
     if (currentTargetUserId && !currentTargetUserObj?.isChannel) {
         const updated = users.find(u => u.userId === currentTargetUserId);
         if (updated) {
             currentTargetUserObj = updated;
             updateChatHeaderInfo(updated);
-
-            // Actualizar botones de admin si es necesario
             if (myUser.is_admin) {
                 const verifyBtn = document.getElementById('toggleVerifyBtn');
                 if (verifyBtn) verifyBtn.textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
@@ -867,10 +849,6 @@ socket.on('users', (users) => {
         myUser.avatar = me.avatar;
         localStorage.setItem('chatUser', JSON.stringify(myUser));
     }
-
-    // --- CORRECCIÓN AQUÍ ---
-    // En lugar de llamar a renderUserList, llamamos a la función mixta
-    // para asegurarnos de que los canales no se borren.
     renderMixedSidebar();
 });
 
@@ -955,14 +933,11 @@ async function selectUser(target, elem) {
     const savedDraft = localStorage.getItem(`draft_${target.userId}`) || '';
     inputMsg.value = savedDraft;
 
-    // Ajustar altura del input automáticamente según el texto cargado
     inputMsg.style.height = 'auto';
     inputMsg.style.height = (inputMsg.scrollHeight > 45 ? inputMsg.scrollHeight : 45) + 'px';
 
-    // Actualizar el botón (para que muestre "Enviar" si hay texto guardado)
     updateButtonState();
 
-    // Reset inputs
     inputMsg.style.height = '45px';
 
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
@@ -988,7 +963,7 @@ async function selectUser(target, elem) {
             appendMessageUI(
                 msg.content,
                 msg.from_user_id === myUser.id ? 'me' : 'other',
-                fixedDate,  // <--- Usamos la fecha corregida aquí
+                fixedDate,
                 msg.id,
                 msg.type,
                 rd,
@@ -997,10 +972,7 @@ async function selectUser(target, elem) {
                 msg.is_edited
             );
         });
-        // Scroll inmediato al cargar
         scrollToBottom(false);
-
-        // "Truco": Hacerlo de nuevo un poco después por si cargaron imágenes
         setTimeout(() => scrollToBottom(false), 200);
 
     } else {
@@ -1016,30 +988,25 @@ backBtn.addEventListener('click', () => {
 
     if (fabNewChat) fabNewChat.classList.remove('hidden');
 
-    // --- AGREGA ESTO AQUÍ ---
-    // Solo lo mostramos si el usuario es Premium
     if (loveNotesBtn && myUser && myUser.is_premium) {
         loveNotesBtn.classList.remove('hidden');
     }
 });
 async function checkAndLoadPinnedMessage(targetUserId) {
-    // Primero: Ocultar barra por defecto para limpiar estado anterior
     hidePinnedBar();
 
-    // A. Verificar "Fijado para mí" (LocalStorage)
     const localPinData = localStorage.getItem(`pinned_local_${myUser.id}_${targetUserId}`);
     if (localPinData) {
         try {
             const { messageId, content, type } = JSON.parse(localPinData);
             currentPinnedMessageId = messageId;
             showPinnedBar(content, type);
-            return; // Si hay local, tiene prioridad visual (o puedes decidir lo contrario)
+            return;
         } catch (e) {
             localStorage.removeItem(`pinned_local_${myUser.id}_${targetUserId}`);
         }
     }
 
-    // B. Verificar "Fijado para todos" (Base de Datos)
     try {
         const res = await apiRequest(`/api/pinned-message/${targetUserId}`);
         if (res && res.found) {
@@ -1075,12 +1042,11 @@ mainActionBtn.addEventListener('click', async (e) => {
 
         // Limpiar input y UI
         inputMsg.value = '';
-        inputMsg.style.height = '45px'; // Volver a altura original
+        inputMsg.style.height = '45px'; 
         inputMsg.focus();
         clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
 
-        // --- NUEVO: BORRAR EL BORRADOR GUARDADO ---
         localStorage.removeItem(`draft_${currentTargetUserId}`);
 
         updateButtonState();
@@ -1133,13 +1099,10 @@ function sendMessage(content, type, replyId = null) {
 socket.on('private message', (msg) => {
     if (currentTargetUserId === msg.fromUserId) {
 
-        // 1. DETECCIÓN EN EL CONTENEDOR PADRE
-        const scrollContainer = messagesList.parentNode; // <--- CLAVE
+        const scrollContainer = messagesList.parentNode; 
 
-        // Calculamos si el usuario está cerca del final (margen de 150px)
         const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
 
-        // 2. Preparar Reply Data (tu código original)
         let rd = null;
         if (msg.replyToId) {
             let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
@@ -1197,14 +1160,11 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     let layoutClass = 'layout-col';
 
     if (msgType === 'text') {
-        // Si el texto es corto, no tiene saltos de línea Y NO es una respuesta (reply)
-        // Las respuestas suelen verse mejor en columna por el ancho del bloque citado
         if (content.length < 32 && !content.includes('\n') && !replyData) {
             layoutClass = 'layout-row';
         }
     }
 
-    // Generar contenido del mensaje (Tu lógica original intacta)
     let bodyHtml = '';
     if (msgType === 'audio') {
         if (!isValidUrl(content)) return;
@@ -1259,13 +1219,10 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     // C. Ajuste de Bordes (Grouping)
     if (isSequence) {
-        // Obtenemos el mensaje anterior (que ahora es el penúltimo hijo)
-        // Nota: date-divider es un LI, así que nos aseguramos de no agrupar a través de una fecha
         const prevLi = li.previousElementSibling;
 
         if (prevLi && prevLi.classList.contains('message-row') && !prevLi.classList.contains('date-divider')) {
-            // Modificamos el anterior (ahora es "top" o "middle")
-            prevLi.classList.remove('seq-bottom'); // Por si era bottom
+            prevLi.classList.remove('seq-bottom');
             if (prevLi.classList.contains('seq-top')) {
                 prevLi.classList.add('seq-middle');
                 prevLi.classList.remove('seq-top');
@@ -1273,7 +1230,6 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
                 prevLi.classList.add('seq-top');
             }
 
-            // El actual es "bottom" por defecto al ser el último
             li.classList.add('seq-bottom');
         }
     }
@@ -1287,7 +1243,6 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     }
     const wrapper = li.querySelector('.message-content-wrapper');
 
-    // CORRECCIÓN: Agregamos el evento a TODOS los mensajes, no solo a los míos
     addLongPressEvent(wrapper, msgId);
 
     addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
@@ -1344,9 +1299,7 @@ function addLongPressEvent(el, msgId) {
     el.addEventListener('touchstart', start, { passive: true });
 }
 
-// ==========================================
-// MENÚ CONTEXTUAL MEJORADO (COPIAR, EDITAR, BORRAR)
-// ==========================================
+//  MENÚ CONTEXTUAL // 
 
 // Función global para cerrar el menú y limpiar estados
 window.closeContextMenu = () => {
@@ -1363,39 +1316,29 @@ function openContextMenu(x, y, msgId) {
     const menu = msgContextMenu.querySelector('.context-menu-content');
     msgContextMenu.classList.remove('hidden');
 
-    // 1. OBTENER ELEMENTOS
     const msgEl = document.getElementById(`row-${msgId}`);
     const msgDiv = document.getElementById(`msg-${msgId}`);
 
-    // 2. DEFINIR VARIABLES CLAVE
     const isMyMessage = msgDiv ? msgDiv.classList.contains('me') : false;
 
-    // --- NUEVO: Detectar si está eliminado ---
-    // Verificamos si tiene la clase visual de eliminado o el texto interno
     const isDeleted = msgDiv ? (msgDiv.classList.contains('deleted-msg') || msgDiv.querySelector('.deleted-label') !== null) : false;
-    // ----------------------------------------
 
     const isAdmin = myUser && myUser.is_admin;
 
-    // --- LÓGICA BOTÓN EDITAR (24 HORAS + NO ELIMINADO) ---
     const btnEdit = document.getElementById('ctxEditBtn');
     if (btnEdit) {
-        if (msgEl && isMyMessage && !isDeleted) { // <--- AGREGAMOS !isDeleted AQUÍ
-            // Obtener fecha guardada en el dataset
+        if (msgEl && isMyMessage && !isDeleted) {
             const msgTime = parseInt(msgEl.dataset.timestamp || 0);
             const now = Date.now();
 
-            // Calcular diferencia en horas
             const hoursDiff = (now - msgTime) / (1000 * 60 * 60);
 
-            // Mostrar SOLO si es mío, tiene menos de 24h Y NO ESTÁ ELIMINADO
             if (hoursDiff < 24) {
                 btnEdit.style.display = 'flex';
             } else {
                 btnEdit.style.display = 'none';
             }
         } else {
-            // Si no es mío o está borrado, ocultar editar
             btnEdit.style.display = 'none';
         }
     }
@@ -1440,8 +1383,6 @@ getEl('ctxReplyBtn').addEventListener('click', () => {
             type = 'sticker';
         }
 
-        // Usamos 'unknown' como ID temporal, o currentTargetUserId si es el otro
-        // Nota: Idealmente deberíamos guardar el authorId en el elemento HTML
         setReply(currentContextMessageId, content, type, 'unknown');
     }
     closeContextMenu();
@@ -1456,10 +1397,8 @@ getEl('ctxCopyBtn').addEventListener('click', async () => {
     if (msgEl) {
         let textToCopy = "";
 
-        // Clonamos para limpiar el HTML sin romper la vista
         const clone = msgEl.cloneNode(true);
 
-        // Quitamos elementos que no son el mensaje (hora, respuestas, etc)
         const unwanted = clone.querySelectorAll('.meta-row, .quoted-message, .deleted-label, .audio-meta-row');
         unwanted.forEach(el => el.remove());
 
@@ -1468,9 +1407,7 @@ getEl('ctxCopyBtn').addEventListener('click', async () => {
         try {
             await navigator.clipboard.writeText(textToCopy);
 
-            // --- AQUÍ LLAMAMOS A LA NOTIFICACIÓN ---
             showToast("Mensaje copiado");
-            // ---------------------------------------
 
         } catch (err) {
             console.error('Error al copiar:', err);
@@ -1480,26 +1417,19 @@ getEl('ctxCopyBtn').addEventListener('click', async () => {
     closeContextMenu();
 });
 
-// Editar (Visual por ahora)
-// Eliminar (Abre el Modal)
-// Listener del botón ELIMINAR en el menú contextual
 getEl('ctxDeleteBtn').addEventListener('click', () => {
     const idToSave = currentContextMessageId;
     closeContextMenu();
 
-    // Configurar contexto mensaje individual
     messageIdToDelete = idToSave;
     deleteActionType = 'single';
 
-    // Restaurar textos originales
     document.querySelector('#deleteConfirmModal h3').textContent = "¿Eliminar mensaje?";
     document.querySelector('#deleteConfirmModal p').textContent = "Elige cómo quieres borrar este mensaje.";
 
     getEl('deleteConfirmModal').classList.remove('hidden');
 });
-// ==========================================
-// LÓGICA DE BORRADO (MODAL MEJORADO)
-// ==========================================
+//  LÓGICA DE BORRADO //
 
 // Función helper para cerrar modal de borrado
 window.closeDeleteModal = () => {
@@ -1523,7 +1453,6 @@ getEl('btnDeleteEveryone').addEventListener('click', () => {
     if (!currentTargetUserId) return closeDeleteModal();
 
     if (deleteActionType === 'single' && messageIdToDelete) {
-        // CASO 1: Mensaje Individual
         socket.emit('delete message', {
             messageId: messageIdToDelete,
             toUserId: currentTargetUserId,
@@ -3032,14 +2961,13 @@ async function openChannelProfile() {
     let avatarUrl = channel.avatar || '/profile.png';
     avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
 
-    // 2. Verificar permisos de edición
     if (channel.owner_id === myUser.id) {
         editBtn.classList.remove('hidden');
     } else {
         editBtn.classList.add('hidden');
     }
 
-    // 3. Obtener contadores reales (API)
+
     let memberCount = 0;
     try {
         const res = await apiRequest(`/api/channels/info/${channel.id}`);
@@ -3048,42 +2976,31 @@ async function openChannelProfile() {
         console.log(e);
     }
 
-    // Texto de suscriptores (singular/plural)
     const subText = memberCount === 1 ? 'suscriptor' : 'suscriptores';
 
     // 4. LÓGICA DE VISUALIZACIÓN (PÚBLICO VS PRIVADO)
 
     if (channel.is_public) {
-        // --- MODO PÚBLICO ---
-        // A. Debajo del nombre muestra la cantidad de usuarios (Estilo Telegram)
-        statusEl.textContent = `${memberCount} ${subText}`;
-        statusEl.style.color = "#a1a1aa"; // Gris claro
 
-        // B. Muestra el Link en la lista
+        statusEl.textContent = `${memberCount} ${subText}`;
+        statusEl.style.color = "#a1a1aa";
         linkSection.classList.remove('hidden');
         const handle = channel.handle || 'enlace';
         publicLinkEl.textContent = `ap.me/${handle}`;
 
-        // Copiar al hacer click
         publicLinkEl.onclick = () => {
             navigator.clipboard.writeText(`ap.me/${handle}`);
             showToast("Enlace copiado al portapapeles");
         };
 
-        // C. Oculta el item de suscriptores de la lista (porque ya se muestra arriba)
-        // (O déjalo si quieres que se repita, pero dijiste "donde esta canal privado muestre la cantidad")
         subSection.classList.add('hidden');
 
     } else {
-        // --- MODO PRIVADO ---
-        // A. Debajo del nombre muestra "canal privado"
         statusEl.textContent = "canal privado";
-        statusEl.style.color = "#666"; // Gris oscuro
+        statusEl.style.color = "#666";
 
-        // B. Oculta el Link en la lista
         linkSection.classList.add('hidden');
 
-        // C. Muestra el item de suscriptores en la lista (como estaba antes)
         subSection.classList.remove('hidden');
         subCountEl.textContent = memberCount;
     }
@@ -3101,14 +3018,14 @@ if (btnCloseChannel) {
 }
 // 4. ABRIR MODAL EDITAR (Al click en el lápiz)
 btnEditChannel.addEventListener('click', () => {
-    channelProfileModal.classList.add('hidden'); // Cerrar el de info
+    channelProfileModal.classList.add('hidden');
 
     // Rellenar datos actuales
     const channel = currentTargetUserObj;
     editChannelName.value = channel.name;
     editChannelBio.value = channel.description || '';
     editChannelAvatarPreview.style.backgroundImage = `url('${channel.avatar || '/profile.png'}')`;
-    editChannelFile = null; // Resetear archivo
+    editChannelFile = null;
 
     channelEditModal.classList.remove('hidden');
 });
@@ -3170,27 +3087,17 @@ if (saveInfoBtn) {
             const res = await apiRequest('/api/channels/update', 'POST', fd);
 
             if (res && res.success) {
-                // Actualizar objeto localmente
                 currentEditChannel.name = res.name;
                 currentEditChannel.description = res.description;
                 if (res.avatar) currentEditChannel.avatar = res.avatar;
-
-                // Si es el chat que estamos viendo ahora, actualizar header
                 if (currentTargetUserObj && currentTargetUserObj.id === currentEditChannel.id) {
                     currentTargetUserObj = { ...currentTargetUserObj, ...currentEditChannel };
                     updateChatHeaderInfo(currentTargetUserObj);
                     const currentAvatarEl = document.getElementById('currentChatAvatar');
                     if (currentAvatarEl) currentAvatarEl.style.backgroundImage = `url('${res.avatar || currentTargetUserObj.avatar}')`;
                 }
-
-                // Recargar lista lateral
                 loadMyChannels();
-
-                // Cerrar modal
                 document.getElementById('channelEditModal').classList.add('hidden');
-
-                // Opcional: Volver a abrir el perfil para ver cambios
-                // openChannelProfile(); 
             } else {
                 alert(res.error || "Error al actualizar canal");
             }
@@ -3203,32 +3110,22 @@ if (saveInfoBtn) {
         }
     });
 }
-/* =======================================================
-   LÓGICA DEL HEADER (PERFIL CANAL vs USUARIO)
-   ======================================================= */
+/* LÓGICA DEL HEADER */
 
 const headerBtn = document.getElementById('headerAvatarBtn');
 
-// Usamos .onclick para SOBRESCRIBIR cualquier evento anterior.
-// Esto soluciona el problema de que se abran dos modales a la vez.
 headerBtn.onclick = (e) => {
     e.stopPropagation();
 
-    // --- CASO A: Es un CANAL ---
     if (currentChatType === 'channel' && currentTargetUserObj) {
-        // 1. Asegurar que el modal de usuario esté cerrado
         document.getElementById('contactInfoModal').classList.add('hidden');
 
-        // 2. Abrir perfil del canal
         openChannelProfile();
     }
 
-    // --- CASO B: Es un USUARIO (Chat Privado) ---
     else if (currentTargetUserObj) {
-        // 1. Asegurar que el modal de canal esté cerrado
         document.getElementById('channelProfileModal').classList.add('hidden');
 
-        // 2. Abrir Info de Contacto
         const modal = document.getElementById('contactInfoModal');
         const nameEl = document.getElementById('contactInfoName');
         const userEl = document.getElementById('contactRealUsername');
@@ -3236,7 +3133,6 @@ headerBtn.onclick = (e) => {
         const avatarEl = document.getElementById('contactInfoAvatar');
         const adminSec = document.getElementById('adminActionsSection');
 
-        // Rellenar datos
         const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
 
         nameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
@@ -3254,7 +3150,6 @@ headerBtn.onclick = (e) => {
         if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
         avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
 
-        // Lógica Admin (Botones de verificar/premium)
         if (myUser?.is_admin) {
             if (adminSec) adminSec.classList.remove('hidden');
 
@@ -3265,7 +3160,6 @@ headerBtn.onclick = (e) => {
             if (verifyBtn) verifyBtn.textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
             if (premiumBtn) premiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
 
-            // Mostrar sección de notas love si es premium
             if (loveNoteSec) {
                 if (currentTargetUserObj.is_premium) loveNoteSec.classList.remove('hidden');
                 else loveNoteSec.classList.add('hidden');
@@ -3274,23 +3168,19 @@ headerBtn.onclick = (e) => {
             if (adminSec) adminSec.classList.add('hidden');
         }
 
-        // Mostrar el modal
         modal.classList.remove('hidden');
 
-        // Habilitar edición de apodo si existe la función
         if (typeof enableNicknameEdit === 'function') {
             enableNicknameEdit('contactInfoName', currentTargetUserObj.userId);
         }
     }
 };
-/* ======================================================
-   LÓGICA DE CREACIÓN DE CANALES (CORREGIDA)
-   ====================================================== */
+/* LÓGICA DE CREACIÓN DE CANALES */
 
 // 1. VARIABLES GLOBALES
 let handleCheckTimeout = null;
 let isHandleValid = false;
-let channelAvatarFile = null; // <--- VARIABLE QUE FALTABA
+let channelAvatarFile = null;
 
 // 2. REFERENCIAS DOM
 const viewChannelType = document.getElementById('viewChannelType');
@@ -3313,10 +3203,9 @@ fabNewChat.addEventListener('click', () => {
 function resetCreationFlow() {
     creationStep = 0;
     selectedMembers.clear();
-    channelAvatarFile = null; // Resetear archivo
+    channelAvatarFile = null;
     isHandleValid = false;
 
-    // Limpiar inputs si existen
     if (channelNameInput) channelNameInput.value = '';
     if (channelLinkInput) channelLinkInput.value = '';
     const bioInput = document.getElementById('channelBioInput');
@@ -3356,19 +3245,18 @@ function goToStep(step) {
         if (creationTitle) creationTitle.textContent = "Añadir Miembros";
         viewSelectMembers.classList.remove('hidden');
         renderMemberSelection();
-        updateNextButton(); // Verificar si mostrar botón Siguiente
+        updateNextButton();
     }
     else if (step === 2) {
         if (creationTitle) creationTitle.textContent = "Nuevo Canal";
         viewChannelInfo.classList.remove('hidden');
         channelNameInput.focus();
-        // Mostrar Check si ya escribió nombre
         if (channelNameInput.value.trim().length > 0) creationCheckBtn.classList.remove('hidden');
     }
     else if (step === 3) {
         if (creationTitle) creationTitle.textContent = "Tipo de canal";
         viewChannelType.classList.remove('hidden');
-        validateChannelTypeStep(); // Verificar estado inicial
+        validateChannelTypeStep(); 
     }
 }
 
@@ -3388,11 +3276,9 @@ if (creationNextBtn) creationNextBtn.addEventListener('click', () => {
 
 if (creationCheckBtn) creationCheckBtn.addEventListener('click', () => {
     if (creationStep === 2) {
-        // De Info -> Tipo
         if (channelNameInput.value.trim()) goToStep(3);
     }
     else if (creationStep === 3) {
-        // De Tipo -> FIN
         submitCreateChannel();
     }
 });
@@ -3425,8 +3311,6 @@ document.getElementById('channelAvatarInput').addEventListener('change', (e) => 
 });
 
 // --- PASO 3: Tipo de Canal y Validación ---
-
-// Cambio de Radio Button (Público/Privado)
 radioInputs.forEach(radio => {
     radio.addEventListener('change', (e) => {
         if (e.target.value === 'public') {
@@ -3436,10 +3320,8 @@ radioInputs.forEach(radio => {
         } else {
             publicLinkSection.classList.add('hidden');
             privateLinkSection.classList.remove('hidden');
-            // Generar link privado falso visual
             const rnd = Math.random().toString(36).substring(7);
             document.getElementById('generatedPrivateLink').textContent = `t.me/+${rnd}`;
-            // Privado siempre permite avanzar
             creationCheckBtn.classList.remove('hidden');
         }
     });
@@ -3492,10 +3374,9 @@ function setLinkStatus(type, msg) {
     else if (type === 'success') { linkStatusText.style.color = "#4ade80"; }
 }
 
-// --- FUNCIÓN QUE FALTABA (validatePublicHandle) ---
 function validatePublicHandle() {
     const val = channelLinkInput.value.trim();
-    // Mostrar Check si es válido y largo suficiente
+
     if (val.length >= 5 && isHandleValid) {
         creationCheckBtn.classList.remove('hidden');
     } else {
@@ -3503,7 +3384,7 @@ function validatePublicHandle() {
     }
 }
 
-// --- FUNCIÓN QUE FALTABA (validateChannelTypeStep) ---
+
 function validateChannelTypeStep() {
     const type = document.querySelector('input[name="channelType"]:checked').value;
     if (type === 'private') {
@@ -3563,18 +3444,15 @@ async function submitCreateChannel() {
         creationCheckBtn.style.pointerEvents = "auto";
     }
 }
-/* ======================================================
-   LÓGICA AVANZADA DE EDICIÓN DE CANAL
-   ====================================================== */
+/* LÓGICA AVANZADA DE EDICIÓN DE CANAL */
 
 let currentEditChannel = null;
 
-// --- FUNCIÓN HELPER PARA CAMBIAR VISTA PÚBLICO/PRIVADO ---
 function toggleLinkSections(val) {
     const pubSection = document.getElementById('editPublicLinkSection');
     const privSection = document.getElementById('editPrivateLinkSection');
 
-    if (!pubSection || !privSection) return; // Seguridad por si no existen los elementos
+    if (!pubSection || !privSection) return;
 
     if (val === 'public') {
         pubSection.classList.remove('hidden');
@@ -3587,7 +3465,7 @@ function toggleLinkSections(val) {
 
 // 1. ABRIR EDICIÓN PRINCIPAL
 btnEditChannel.addEventListener('click', () => {
-    currentEditChannel = currentTargetUserObj; // Objeto del canal actual
+    currentEditChannel = currentTargetUserObj;
 
     // Rellenar datos
     document.getElementById('editChannelName').value = currentEditChannel.name;
@@ -3628,16 +3506,12 @@ document.getElementById('btnOpenChannelType').addEventListener('click', () => {
 
     // Lógica para mostrar los links
     if (isPublic) {
-        // Si es público, llenamos el input del handle
         document.getElementById('editChannelLinkInput').value = currentEditChannel.handle || '';
     }
 
-    // SIEMPRE preparamos el link privado visualmente (aunque esté oculto)
-    // Usamos el private_hash que viene del backend
     if (currentEditChannel.private_hash) {
         document.getElementById('editGeneratedLink').value = `ap.me/+${currentEditChannel.private_hash}`;
     } else if (!isPublic && currentEditChannel.invite_link) {
-        // Fallback: si es privado actualmente, usamos el link actual
         document.getElementById('editGeneratedLink').value = currentEditChannel.invite_link;
     } else {
         document.getElementById('editGeneratedLink').value = 'Generando...';
@@ -3650,7 +3524,6 @@ document.querySelectorAll('input[name="editChannelType"]').forEach(r => {
         const val = e.target.value;
         toggleLinkSections(val);
 
-        // Si selecciona Privado y tenemos el hash guardado localmente, lo mostramos
         if (val === 'private' && currentEditChannel.private_hash) {
             document.getElementById('editGeneratedLink').value = `ap.me/+${currentEditChannel.private_hash}`;
         }
@@ -3668,14 +3541,12 @@ document.getElementById('saveChannelTypeBtn').addEventListener('click', async ()
     const res = await apiRequest(`/api/channels/${currentEditChannel.id}/update-type`, 'POST', { isPublic, handle });
 
     if (res && res.success) {
-        // Actualizar local
         currentEditChannel.is_public = isPublic ? 1 : 0;
         currentEditChannel.handle = isPublic ? handle : null;
         if (res.newLink) currentEditChannel.invite_link = res.newLink;
 
         document.getElementById('lblChannelType').textContent = isPublic ? "Público" : "Privado";
 
-        // Volver atrás
         document.getElementById('channelTypeModal').classList.add('hidden');
         document.getElementById('channelEditModal').classList.remove('hidden');
     } else {
@@ -3726,8 +3597,8 @@ async function kickUser(uid) {
     if (!confirm("¿Expulsar usuario? No podrá volver a unirse.")) return;
     const res = await apiRequest(`/api/channels/${currentEditChannel.id}/kick`, 'POST', { userId: uid });
     if (res && res.success) {
-        loadSubscribersList(); // Recargar lista
-        refreshChannelCounts(currentEditChannel.id); // Actualizar contador en memoria
+        loadSubscribersList();
+        refreshChannelCounts(currentEditChannel.id);
     }
 }
 
@@ -3786,35 +3657,29 @@ document.getElementById('closeChannelBanned').addEventListener('click', () => {
     document.getElementById('channelBannedModal').classList.add('hidden');
     document.getElementById('channelEditModal').classList.remove('hidden');
 });
-// ===============================================
-// LÓGICA PARA AÑADIR SUSCRIPTORES AL CANAL
-// ===============================================
+// LÓGICA PARA AÑADIR SUSCRIPTORES AL CANAL //
 
 const channelAddMembersModal = document.getElementById('channelAddMembersModal');
-const btnAddSubscribers = document.getElementById('btnAddSubscribers'); // El botón en el modal de suscriptores
+const btnAddSubscribers = document.getElementById('btnAddSubscribers');
 const closeAddMembers = document.getElementById('closeAddMembers');
 const addMembersList = document.getElementById('addMembersList');
 const searchNewMembers = document.getElementById('searchNewMembers');
 const confirmAddMembersBtn = document.getElementById('confirmAddMembersBtn');
 
-let usersToAddToChannel = new Set(); // Almacena los IDs seleccionados
+let usersToAddToChannel = new Set();
 
 // 1. ABRIR EL MODAL DE SELECCIÓN
 if (btnAddSubscribers) {
     btnAddSubscribers.addEventListener('click', async () => {
-        // Ocultar el modal de lista de suscriptores actual
         document.getElementById('channelSubsModal').classList.add('hidden');
 
-        // Mostrar el nuevo modal
         channelAddMembersModal.classList.remove('hidden');
 
-        // Resetear
         usersToAddToChannel.clear();
         searchNewMembers.value = '';
         confirmAddMembersBtn.classList.add('hidden');
         addMembersList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">Cargando contactos...</li>';
 
-        // Cargar contactos disponibles (excluyendo los que ya son miembros)
         await renderAvailableContacts();
     });
 }
@@ -3823,15 +3688,12 @@ if (btnAddSubscribers) {
 if (closeAddMembers) {
     closeAddMembers.addEventListener('click', () => {
         channelAddMembersModal.classList.add('hidden');
-        // Volver a mostrar el modal de suscriptores
         document.getElementById('channelSubsModal').classList.remove('hidden');
     });
 }
 
 // 3. RENDERIZAR CONTACTOS DISPONIBLES
 async function renderAvailableContacts(filterText = '') {
-    // A. Obtener miembros actuales del canal para no mostrarlos
-    // (Asumimos que currentEditChannel tiene el ID correcto)
     if (!currentEditChannel) return;
 
     let currentMembersIds = [];
@@ -3844,13 +3706,9 @@ async function renderAvailableContacts(filterText = '') {
 
     addMembersList.innerHTML = '';
 
-    // B. Filtrar de la caché global de usuarios (allUsersCache)
     const candidates = allUsersCache.filter(u => {
-        // Excluirme a mí mismo
         if (u.userId === myUser.id) return false;
-        // Excluir los que ya son miembros
         if (currentMembersIds.includes(u.userId)) return false;
-        // Filtro de búsqueda texto
         const name = (myNicknames[u.userId] || u.username).toLowerCase();
         return name.includes(filterText.toLowerCase());
     });
@@ -3863,12 +3721,10 @@ async function renderAvailableContacts(filterText = '') {
     // C. Renderizar lista
     candidates.forEach(u => {
         const li = document.createElement('li');
-        // Usamos la misma clase 'user-item' para heredar el estilo base
         li.className = 'user-item';
 
-        // Si ya estaba seleccionado en esta sesión (por si usa el buscador), marcarlo
         if (usersToAddToChannel.has(u.userId)) {
-            li.classList.add('active'); // Clase CSS que pone el fondo morado/azul
+            li.classList.add('active');
         }
 
         const name = escapeHtml(myNicknames[u.userId] || u.username);
@@ -3884,14 +3740,13 @@ async function renderAvailableContacts(filterText = '') {
             <div class="selection-check" style="display:none;">✓</div> 
         `;
 
-        // D. Evento de Selección
         li.onclick = () => {
             if (usersToAddToChannel.has(u.userId)) {
                 usersToAddToChannel.delete(u.userId);
-                li.classList.remove('active'); // Quita el estilo de seleccionado
+                li.classList.remove('active');
             } else {
                 usersToAddToChannel.add(u.userId);
-                li.classList.add('active'); // Pone el estilo de seleccionado (mismo que chat)
+                li.classList.add('active');
             }
             toggleConfirmButton();
         };
@@ -3900,7 +3755,6 @@ async function renderAvailableContacts(filterText = '') {
     });
 }
 
-// 4. MOSTRAR/OCULTAR BOTÓN DE CONFIRMAR (LA PALOMITA)
 function toggleConfirmButton() {
     if (usersToAddToChannel.size > 0) {
         confirmAddMembersBtn.classList.remove('hidden');
@@ -3909,14 +3763,12 @@ function toggleConfirmButton() {
     }
 }
 
-// 5. EVENTO DE BÚSQUEDA
 if (searchNewMembers) {
     searchNewMembers.addEventListener('input', (e) => {
         renderAvailableContacts(e.target.value.trim());
     });
 }
 
-// 6. ENVIAR AL SERVIDOR (CLICK EN LA PALOMITA)
 if (confirmAddMembersBtn) {
     confirmAddMembersBtn.addEventListener('click', async () => {
         if (usersToAddToChannel.size === 0) return;
@@ -3935,10 +3787,9 @@ if (confirmAddMembersBtn) {
                 // Cerrar este modal
                 channelAddMembersModal.classList.add('hidden');
 
-                // Volver al modal de suscriptores y recargar la lista
                 document.getElementById('channelSubsModal').classList.remove('hidden');
-                loadSubscribersList(); // Función existente que recarga la lista
-                refreshChannelCounts(currentEditChannel.id); // Función existente que actualiza el número
+                loadSubscribersList(); 
+                refreshChannelCounts(currentEditChannel.id);
 
             } else {
                 alert("Error al añadir usuarios.");
@@ -3952,9 +3803,7 @@ if (confirmAddMembersBtn) {
         }
     });
 }
-/* ======================================================
-   LÓGICA ACTUALIZADA DE ACCIONES DEL CANAL
-   ====================================================== */
+/* LÓGICA ACTUALIZADA DE ACCIONES DEL CANAL */
 
 const btnChannelMenu = document.getElementById('btnChannelMenu');
 const channelOptionsMenu = document.getElementById('channelOptionsMenu');
@@ -3993,7 +3842,6 @@ if (btnActionShare) {
 function shareChannelLink() {
     if (!currentTargetUserObj) return;
 
-    // Obtener el link: si es público usa el handle, si es privado usa el invite_link (hash)
     let linkToShare = '';
 
     if (currentTargetUserObj.is_public && currentTargetUserObj.handle) {
@@ -4001,7 +3849,7 @@ function shareChannelLink() {
     } else if (currentTargetUserObj.private_hash) {
         linkToShare = `ap.me/+${currentTargetUserObj.private_hash}`;
     } else if (currentTargetUserObj.invite_link) {
-        linkToShare = currentTargetUserObj.invite_link; // Fallback
+        linkToShare = currentTargetUserObj.invite_link;
     } else {
         return showToast("No hay enlace disponible para este canal.");
     }
@@ -4015,24 +3863,20 @@ function shareChannelLink() {
 
 // 3. FUNCIÓN DE SALIR (Botón Circular Derecho y Menú)
 function triggerLeaveChannel() {
-    channelOptionsMenu.classList.add('hidden'); // Cerrar menú si estaba abierto
+    channelOptionsMenu.classList.add('hidden');
 
-    // Reutilizamos el modal de confirmación de borrado, pero cambiamos el texto y la acción
     deleteActionType = 'leave_channel';
 
-    // Cambiar textos del modal dinámicamente
     const modalTitle = document.querySelector('#deleteConfirmModal h3');
     const modalDesc = document.querySelector('#deleteConfirmModal p');
-    const btnAction = document.getElementById('btnDeleteEveryone'); // Usamos el botón rojo principal
+    const btnAction = document.getElementById('btnDeleteEveryone');
     const btnSecondary = document.getElementById('btnDeleteMe');
 
     if (modalTitle) modalTitle.textContent = "¿Salir del canal?";
     if (modalDesc) modalDesc.textContent = "¿Estás seguro de que quieres salir de este canal?";
 
-    // Ocultar botón secundario (solo necesitamos Confirmar Salida y Cancelar)
     if (btnSecondary) btnSecondary.classList.add('hidden');
 
-    // Configurar botón rojo
     if (btnAction) {
         btnAction.innerHTML = `
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -4041,31 +3885,20 @@ function triggerLeaveChannel() {
         btnAction.style.display = 'flex';
     }
 
-    // Abrir modal
     document.getElementById('deleteConfirmModal').classList.remove('hidden');
 }
 
-// Listener para botón circular
 if (btnActionLeave) {
     btnActionLeave.addEventListener('click', triggerLeaveChannel);
 }
-// Listener para opción del menú
 if (optChannelLeave) {
     optChannelLeave.addEventListener('click', triggerLeaveChannel);
 }
 
-// 4. LÓGICA DE CONFIRMACIÓN DE SALIDA (Actualizar el listener existente de btnDeleteEveryone)
-// Busca donde tienes: getEl('btnDeleteEveryone').addEventListener('click', ...) y reemplaza o actualiza el bloque:
-
 const originalDeleteEveryoneBtn = document.getElementById('btnDeleteEveryone');
-// Clonar para quitar listeners viejos y evitar duplicados si se ejecuta varias veces, 
-// O simplemente añade la condición dentro del listener existente.
-// Asumiré que editas el listener existente dentro de script.js:
 
 originalDeleteEveryoneBtn.addEventListener('click', async () => {
-    // ... tu lógica existente de borrar mensajes ...
 
-    // NUEVO CASO: SALIR DEL CANAL
     if (deleteActionType === 'leave_channel') {
         if (!currentTargetUserObj || !currentTargetUserObj.isChannel) return;
 
@@ -4094,15 +3927,12 @@ originalDeleteEveryoneBtn.addEventListener('click', async () => {
         }
     }
 
-    // IMPORTANTE: Restaurar el botón secundario al cerrar por si se usa para borrar mensajes luego
     const btnSecondary = document.getElementById('btnDeleteMe');
     if (btnSecondary) btnSecondary.classList.remove('hidden');
 });
 
-// 5. BOTÓN SILENCIAR (Visual por ahora)
 function toggleMuteUI() {
     channelOptionsMenu.classList.add('hidden');
-    // Aquí iría la llamada al backend para mutear
     showToast("Notificaciones silenciadas (Visual)");
 }
 if (btnActionMute) btnActionMute.addEventListener('click', toggleMuteUI);

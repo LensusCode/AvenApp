@@ -3,10 +3,10 @@
     height: 100vh;
     height: 100dvh;
     display: flex;
-    max-width: 1600px;
-    margin: 0 auto;
-    background: var(--bg);
+    max-width: 1400px;
+    overflow: hidden;
 }
+
 /* ---------- CHAT AREA ---------- */
 .main-column {
     flex: 1;
