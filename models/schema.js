@@ -21,11 +21,16 @@ async function initDatabase() {
 
         await client.execute(`CREATE TABLE IF NOT EXISTS channel_bans (channel_id INTEGER, user_id INTEGER, banned_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(channel_id, user_id))`);
 
+        await client.execute(`CREATE TABLE IF NOT EXISTS contacts (user_id INTEGER, contact_user_id INTEGER, added_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id, contact_user_id))`);
+
+        await addColumnSafe('users', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
         await addColumnSafe('users', 'is_admin INTEGER DEFAULT 0');
         await addColumnSafe('users', 'is_verified INTEGER DEFAULT 0');
         await addColumnSafe('users', 'is_premium INTEGER DEFAULT 0');
         await addColumnSafe('users', 'display_name TEXT');
         await addColumnSafe('users', 'bio TEXT');
+
+        await client.execute(`CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, reporter_id INTEGER, target_id INTEGER, type TEXT, reason TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 
         await addColumnSafe('messages', 'is_pinned INTEGER DEFAULT 0');
         await addColumnSafe('messages', 'is_edited INTEGER DEFAULT 0');
@@ -81,4 +86,51 @@ async function fixChannelTables() {
     } catch (e) { }
 }
 
-module.exports = { initDatabase, fixChannelTables };
+async function migrateExistingMessagesToContacts() {
+    console.log("🔄 Migrando usuarios con mensajes a contactos...");
+
+    try {
+        // Obtener todos los pares de usuarios que han intercambiado mensajes
+        const result = await client.execute(`
+            SELECT DISTINCT 
+                from_user_id as user1, 
+                to_user_id as user2 
+            FROM messages 
+            WHERE to_user_id IS NOT NULL
+        `);
+
+        const pairs = new Set();
+
+        for (const row of result.rows) {
+            const user1 = row.user1;
+            const user2 = row.user2;
+
+            // Agregar ambas direcciones (A->B y B->A)
+            if (user1 && user2) {
+                pairs.add(`${user1}-${user2}`);
+                pairs.add(`${user2}-${user1}`);
+            }
+        }
+
+        // Insertar contactos
+        let count = 0;
+        for (const pair of pairs) {
+            const [userId, contactId] = pair.split('-').map(Number);
+            try {
+                await client.execute({
+                    sql: "INSERT OR IGNORE INTO contacts (user_id, contact_user_id) VALUES (?, ?)",
+                    args: [userId, contactId]
+                });
+                count++;
+            } catch (e) {
+                // Ignorar duplicados
+            }
+        }
+
+        console.log(`✅ Migración completada: ${count} relaciones de contacto creadas.`);
+    } catch (e) {
+        console.error("❌ Error en migración de contactos:", e.message);
+    }
+}
+
+module.exports = { initDatabase, fixChannelTables, migrateExistingMessagesToContacts };

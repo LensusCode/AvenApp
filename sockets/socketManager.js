@@ -241,27 +241,52 @@ const getIo = () => {
 
 function emitUsers() {
     if (!io) return;
-    db.all(`SELECT id, username, display_name, bio, avatar, is_verified, is_admin, is_premium FROM users`, (err, rows) => {
-        if (err) return;
-        const onlineUserIds = new Set();
-        if (io.of("/")) {
-            for (let [id, socket] of io.of("/").sockets) {
-                if (socket.data.userId) onlineUserIds.add(socket.data.userId);
-            }
+
+    // Obtener todos los usuarios online
+    const onlineUserIds = new Set();
+    if (io.of("/")) {
+        for (let [id, socket] of io.of("/").sockets) {
+            if (socket.data.userId) onlineUserIds.add(socket.data.userId);
         }
-        const users = rows.map(row => ({
-            userId: row.id,
-            username: row.username,
-            display_name: row.display_name,
-            bio: row.bio,
-            avatar: row.avatar || '/profile.png',
-            online: onlineUserIds.has(row.id),
-            is_verified: row.is_verified,
-            is_admin: row.is_admin,
-            is_premium: row.is_premium
-        }));
-        io.emit('users', users);
-    });
+    }
+
+    // Para cada socket conectado, enviar solo sus contactos
+    if (io.of("/")) {
+        for (let [id, socket] of io.of("/").sockets) {
+            const userId = socket.data.userId;
+            if (!userId) continue;
+
+            // Obtener contactos de este usuario
+            db.all(
+                `SELECT u.id, u.username, u.display_name, u.bio, u.avatar, u.is_verified, u.is_admin, u.is_premium
+                 FROM contacts c
+                 JOIN users u ON c.contact_user_id = u.id
+                 WHERE c.user_id = ?`,
+                [userId],
+                (err, rows) => {
+                    if (err) {
+                        console.error('Error getting contacts for user:', userId, err);
+                        return;
+                    }
+
+                    const contacts = rows.map(row => ({
+                        userId: row.id,
+                        username: row.username,
+                        display_name: row.display_name,
+                        bio: row.bio,
+                        avatar: row.avatar || '/profile.png',
+                        online: onlineUserIds.has(row.id),
+                        is_verified: row.is_verified,
+                        is_admin: row.is_admin,
+                        is_premium: row.is_premium
+                    }));
+
+                    // Emitir solo a este socket
+                    socket.emit('users', contacts);
+                }
+            );
+        }
+    }
 }
 
 module.exports = { initSocket, getIo, emitUsers };

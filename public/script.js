@@ -143,19 +143,11 @@ function loginSuccess(user) {
     loadMyChannels();
 }
 
-function applyUserFilter() {
-    const term = getEl('searchUsers').value.toLowerCase().trim();
-    if (!term) return renderUserList(allUsersCache);
-    const filtered = allUsersCache.filter(u =>
-        u.userId !== myUser.id &&
-        (u.username.toLowerCase().includes(term) || (myNicknames[u.userId] || '').toLowerCase().includes(term))
-    );
-    renderUserList(filtered);
-}
+
 
 // --- EDITOR DE IMAGEN ---
-let currentEditFile = null; // El archivo original seleccionado
-let currentScaleX = 1;      // Para controlar el Flip
+let currentEditFile = null;
+let currentScaleX = 1;
 
 // --- 1. ABRIR EDITOR (Vista Previa) ---
 chatImageInput.addEventListener('change', (e) => {
@@ -1042,7 +1034,7 @@ mainActionBtn.addEventListener('click', async (e) => {
 
         // Limpiar input y UI
         inputMsg.value = '';
-        inputMsg.style.height = '45px'; 
+        inputMsg.style.height = '45px';
         inputMsg.focus();
         clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
@@ -1099,7 +1091,7 @@ function sendMessage(content, type, replyId = null) {
 socket.on('private message', (msg) => {
     if (currentTargetUserId === msg.fromUserId) {
 
-        const scrollContainer = messagesList.parentNode; 
+        const scrollContainer = messagesList.parentNode;
 
         const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
 
@@ -1179,11 +1171,11 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         const safeCaption = caption ? escapeHtml(caption) : '';
         const captionHtml = caption ? `<div style="padding: 8px 4px 4px; color: #fff; font-size: 14px; overflow-wrap: anywhere; word-break: break-word; white-space: pre-wrap; line-height: 1.4;">${safeCaption}</div>` : '';
         const safeSrc = isValidUrl(content) ? escapeHtml(content) : '';
-        if (safeSrc) bodyHtml = `<div class="chat-image-container skeleton-wrapper image-skeleton"><img src="${safeSrc}" class="chat-image hidden-media" loading="lazy" onclick="viewFullImage(this.src)" onload="this.classList.remove('hidden-media');this.classList.add('visible-media');this.parentElement.classList.remove('image-skeleton','skeleton-wrapper');"></div>${captionHtml}`;
+        if (safeSrc) bodyHtml = `<div class="chat-image-container skeleton-wrapper image-skeleton"><img src="${safeSrc}" class="chat-image hidden-media" loading="lazy"></div>${captionHtml}`;
         else bodyHtml = `<div style="color:red; font-size:12px;">[Imagen inválida]</div>`;
     } else if (msgType === 'sticker') {
         const safeSrc = isValidUrl(content) ? escapeHtml(content) : '';
-        if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}" onload="this.classList.remove('hidden-media');this.classList.add('visible-media');this.parentElement.classList.remove('sticker-skeleton','skeleton-wrapper');"></div>`;
+        if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}"></div>`;
         else bodyHtml = `<div style="color:red; font-size:12px;">[Sticker inválido]</div>`;
     } else {
         bodyHtml = `<span>${escapeHtml(content)}</span>`;
@@ -1240,6 +1232,19 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     // Listeners
     if (msgType === 'sticker' && isValidUrl(content)) {
         li.querySelector('.sticker-img').addEventListener('click', (e) => { e.stopPropagation(); myFavorites.size ? openStickerOptions(content) : refreshFavoritesCache().then(() => openStickerOptions(content)); });
+    }
+
+    // CSP FIX: Handle Image Click and Load
+    const mediaImg = li.querySelector('.chat-image, .sticker-img');
+    if (mediaImg) {
+        mediaImg.addEventListener('load', function () {
+            this.classList.remove('hidden-media');
+            this.classList.add('visible-media');
+            this.parentElement.classList.remove('image-skeleton', 'skeleton-wrapper', 'sticker-skeleton');
+        });
+        if (msgType === 'image') {
+            mediaImg.addEventListener('click', () => viewFullImage(mediaImg.src));
+        }
     }
     const wrapper = li.querySelector('.message-content-wrapper');
 
@@ -1307,6 +1312,7 @@ window.closeContextMenu = () => {
     currentContextMessageId = null;
     messageIdToDelete = null;
 };
+getEl('contextMenuBackdrop')?.addEventListener('click', closeContextMenu);
 
 // Función para abrir el menú
 function openContextMenu(x, y, msgId) {
@@ -1435,6 +1441,8 @@ getEl('ctxDeleteBtn').addEventListener('click', () => {
 window.closeDeleteModal = () => {
     getEl('deleteConfirmModal').classList.add('hidden');
 };
+getEl('deleteModalBackdrop')?.addEventListener('click', closeDeleteModal);
+getEl('btnCancelDelete')?.addEventListener('click', closeDeleteModal);
 
 // Función visual para quitar mensaje de la UI suavemente
 function removeMessageFromUI(msgId) {
@@ -2538,14 +2546,9 @@ const loveNoteDot = document.getElementById('loveNoteDot');
 // 1. INICIALIZACIÓN: Chequear si soy Premium al hacer login
 // (Busca tu función loginSuccess o añade esto al final del archivo para que corra al cargar)
 
-function checkPremiumFeatures() {
-    if (myUser && myUser.is_premium) {
-        loveNotesBtn.classList.remove('hidden');
-    } else {
-        loveNotesBtn.classList.add('hidden');
-    }
-}
-// Agrega esta llamada dentro de loginSuccess() también.
+// 1. INICIALIZACIÓN: Chequear si soy Premium al hacer login
+// (La función checkPremiumFeatures está definida más abajo)
+
 
 // 2. ABRIR MODAL Y CARGAR NOTAS
 if (loveNotesBtn) {
@@ -3256,7 +3259,7 @@ function goToStep(step) {
     else if (step === 3) {
         if (creationTitle) creationTitle.textContent = "Tipo de canal";
         viewChannelType.classList.remove('hidden');
-        validateChannelTypeStep(); 
+        validateChannelTypeStep();
     }
 }
 
@@ -3788,7 +3791,7 @@ if (confirmAddMembersBtn) {
                 channelAddMembersModal.classList.add('hidden');
 
                 document.getElementById('channelSubsModal').classList.remove('hidden');
-                loadSubscribersList(); 
+                loadSubscribersList();
                 refreshChannelCounts(currentEditChannel.id);
 
             } else {
@@ -3937,3 +3940,172 @@ function toggleMuteUI() {
 }
 if (btnActionMute) btnActionMute.addEventListener('click', toggleMuteUI);
 if (optChannelMute) optChannelMute.addEventListener('click', toggleMuteUI);
+
+// La funcionalidad se ha movido al "Buscador Universal" en el sidebar.
+// El modal `searchContactModal` ya no se usa.
+
+// ==========================================
+// 9. FILTRO DE USUARIOS (Búsqueda Local + Global Automática)
+// ==========================================
+let globalSearchTimeout;
+
+function applyUserFilter() {
+    const term = getEl('searchUsers').value.trim();
+    const termLower = term.toLowerCase();
+
+    // 1. Si no hay término, limpiar y mostrar lista base (todos los cached o vacio)
+    if (!term) {
+        clearTimeout(globalSearchTimeout);
+        renderUserList(allUsersCache);
+        return;
+    }
+
+    // 2. Filtrar localmente
+    const localResults = allUsersCache.filter(u =>
+        u.userId !== myUser.id &&
+        (u.username.toLowerCase().includes(termLower) || (myNicknames[u.userId] || '').toLowerCase().includes(termLower))
+    );
+
+    // 3. Renderizar resultados locales de inmediato
+    renderCombinedResults(localResults, [], true);
+
+    // 4. Búsqueda Global Automática (Debounce 300ms)
+    clearTimeout(globalSearchTimeout);
+
+    if (term.length >= 2) {
+        globalSearchTimeout = setTimeout(async () => {
+            try {
+                const globalResults = await apiRequest(`/api/contacts/search?q=${encodeURIComponent(term)}`);
+
+                // Filtrar globales que ya son locales
+                const filteredGlobal = (globalResults || []).filter(g =>
+                    !allUsersCache.some(local => local.userId === g.id) && g.id !== myUser.id
+                );
+
+                renderCombinedResults(localResults, filteredGlobal, false);
+
+            } catch (e) {
+                console.error("Error búsqueda global", e);
+            }
+        }, 300);
+    }
+}
+
+// Helper: Renderizar Combinado
+function renderCombinedResults(localUsers, globalUsers, loadingGlobal) {
+    usersList.innerHTML = '';
+
+    // A. Renderizar Locales
+    if (localUsers.length > 0) {
+        localUsers.forEach(u => usersList.appendChild(createUserItem(u, false)));
+    } else if (globalUsers.length === 0 && !loadingGlobal) {
+        // Nada en local ni global
+        usersList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No se encontraron resultados</li>';
+        return;
+    }
+
+    // B. Separador (Solo si hay ambos)
+    if (localUsers.length > 0 && globalUsers.length > 0) {
+        const sep = document.createElement('li');
+        sep.className = 'search-divider';
+        sep.textContent = 'Resultados Globales';
+        usersList.appendChild(sep);
+    }
+
+    // C. Renderizar Globales
+    globalUsers.forEach(u => {
+        usersList.appendChild(createGlobalUserItem(u));
+    });
+
+    // D. Indicador de carga
+    if (loadingGlobal) {
+        const loadingLi = document.createElement('li');
+        loadingLi.style.cssText = 'text-align:center; padding:15px; color:#888; font-size:13px; font-style:italic;';
+        loadingLi.textContent = localUsers.length > 0 ? 'Buscando más en global...' : 'Buscando en directorio global...';
+        usersList.appendChild(loadingLi);
+    }
+}
+
+function createUserItem(u) {
+    const li = document.createElement('li');
+    li.className = `user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
+    li.dataset.uid = u.userId;
+
+    // Nombre
+    const name = myNicknames[u.userId] || u.username;
+
+    // Avatar
+    let avatarUrl = u.avatar || '/profile.png';
+    if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
+
+    li.innerHTML = `
+        <div class="u-avatar" style="background-image:url('${escapeHtml(avatarUrl)}')"></div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${escapeHtml(name)}${getBadgeHtml(u)}
+            </div>
+            <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">
+                ${u.online ? 'En línea' : 'Desconectado'}
+            </div>
+        </div>
+    `;
+    li.onclick = () => selectUser(u, li);
+    return li;
+}
+
+function createGlobalUserItem(user) {
+    const li = document.createElement('li');
+    li.className = 'user-item';
+
+    const avatarUrl = (user.avatar && isValidUrl(user.avatar)) ? user.avatar : '/profile.png';
+    const displayName = user.display_name || user.username;
+
+    li.innerHTML = `
+        <div class="u-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${escapeHtml(displayName)}${getBadgeHtml(user)}
+            </div>
+            <div style="font-size:12px; color:#a1a1aa;">@${escapeHtml(user.username)}</div>
+        </div>
+        <button class="btn" style="background:#3b82f6; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; margin-left:8px;">
+            Agregar
+        </button>
+    `;
+
+    // Click en botón agregar
+    const addBtn = li.querySelector('button');
+    addBtn.onclick = async (e) => {
+        e.stopPropagation();
+        addBtn.disabled = true;
+        addBtn.textContent = '...';
+
+        const res = await apiRequest('/api/contacts/add', 'POST', { contactUserId: user.id });
+
+        if (res && res.success) {
+            showToast(`${displayName} agregado`);
+            addBtn.textContent = '✓';
+            addBtn.style.background = '#4ade80';
+        } else {
+            addBtn.disabled = false;
+            addBtn.textContent = 'Agregar';
+            showToast('Error al agregar');
+        }
+    };
+
+    return li;
+}
+
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js'));
+}
+
+// Theme and Pin Modal Listeners
+getEl('themeDefault')?.addEventListener('click', () => selectTheme('default'));
+getEl('themeLove')?.addEventListener('click', () => selectTheme('love'));
+getEl('themeSpace')?.addEventListener('click', () => selectTheme('space'));
+
+window.closePinModal = () => { getEl('pinConfirmModal').classList.add('hidden'); };
+getEl('pinModalBackdrop')?.addEventListener('click', closePinModal);
+getEl('btnCancelPin')?.addEventListener('click', closePinModal);

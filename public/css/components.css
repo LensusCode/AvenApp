@@ -151,7 +151,7 @@
     border: 0;
     cursor: pointer;
     transition: transform .2s, background .2s;
-    color: var(--muted);
+    color: var(--text);
     touch-action: manipulation;
 }
 

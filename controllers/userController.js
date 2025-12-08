@@ -64,6 +64,19 @@ exports.togglePremium = (req, res) => {
     });
 };
 
+exports.sendLoveNote = (req, res) => {
+    // req.user is admin
+    if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
+    const { targetUserId, content } = req.body;
+    if (!targetUserId || !content) return res.status(400).json({ error: 'Datos incompletos' });
+
+    db.run(`INSERT INTO love_notes (user_id, content) VALUES (?, ?)`, [targetUserId, content], function (err) {
+        if (err) return res.status(500).json({ error: 'Error al enviar nota' });
+        // Optional: Notify user via socket?
+        res.json({ success: true, id: this.lastID });
+    });
+};
+
 exports.getAllUsers = (req, res) => {
     if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
 

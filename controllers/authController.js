@@ -5,28 +5,39 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
     const { username, password, firstName, lastName } = req.body;
     if (!username || !password || !firstName || !lastName) return res.status(400).json({ error: 'Datos incompletos' });
     if (password.length < 8) return res.status(400).json({ error: 'Contraseña corta' });
     if (username.length > 20) return res.status(400).json({ error: 'Usuario largo' });
 
-    const hash = bcrypt.hashSync(password, 10);
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        const fullName = `${firstName.trim()} ${lastName.trim()}`;
+        const createdAt = new Date().toISOString();
 
-    db.run(`INSERT INTO users (username, password, avatar, display_name) VALUES (?, ?, ?, ?)`,
-        [username, hash, '/profile.png', fullName], function (err) {
-            if (err) return res.status(400).json({ error: 'Usuario existe' });
-            res.json({ id: this.lastID });
-        });
+        db.run(`INSERT INTO users (username, password, avatar, display_name, created_at) VALUES (?, ?, ?, ?, ?)`,
+            [username, hash, '/profile.png', fullName, createdAt], function (err) {
+                if (err) return res.status(400).json({ error: 'Usuario existe' });
+                res.json({ id: this.lastID });
+            });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Error interno' });
+    }
 };
 
 exports.login = (req, res) => {
     const { username, password } = req.body;
     const SUPER_ADMIN_ENV = process.env.SUPER_ADMIN_USER;
 
-    db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, row) => {
-        if (err || !row || !bcrypt.compareSync(password, row.password)) {
+    db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, row) => {
+        if (err || !row) {
+            return res.status(400).json({ error: 'Credenciales incorrectas' });
+        }
+
+        const match = await bcrypt.compare(password, row.password);
+        if (!match) {
             return res.status(400).json({ error: 'Credenciales incorrectas' });
         }
 
