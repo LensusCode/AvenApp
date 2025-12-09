@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>AvenApp</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/chat-selection.css">
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
@@ -38,6 +39,43 @@
                 <div class="header-right">
                     <button id="profileBtn" class="profile-btn hidden" title="Perfil">
                         <div id="myAvatar" class="my-avatar"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- BARRA DE SELECCIÓN DE CHAT (Oculta por defecto) -->
+            <div id="chatSelectionBar" class="chat-selection-bar hidden">
+                <div class="selection-left">
+                    <button id="closeSelectionBtn" class="nav-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                    <span id="selectionCount" class="selection-count">1</span>
+                </div>
+                <div class="selection-actions">
+                    <button id="selectionPinBtn" class="nav-icon-btn" title="Fijar chat">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z" />
+                        </svg>
+                    </button>
+                    <button id="selectionMuteBtn" class="nav-icon-btn" title="Silenciar">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button id="selectionDeleteBtn" class="nav-icon-btn danger" title="Eliminar">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
                     </button>
                 </div>
             </div>

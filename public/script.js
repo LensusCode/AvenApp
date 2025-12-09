@@ -75,6 +75,11 @@ let currentStickerTab = 'giphy', myFavorites = new Set();
 let cropper = null, searchTimeout, currentStickerUrlInModal = null;
 let currentChatType = 'private';
 
+// --- CHAT SELECTION STATE ---
+let isChatSelectionMode = false;
+let selectedChatIds = new Set();
+let ignoreNextClick = false;
+
 let isEditing = false;
 let currentEditingId = null;
 const editPreview = document.getElementById('editPreview');
@@ -102,6 +107,14 @@ const profileOptionsMenu = getEl('profileOptionsMenu');
 const adminLoveNoteSection = document.getElementById('adminLoveNoteSection');
 const adminLoveNoteInput = document.getElementById('adminLoveNoteInput');
 const sendLoveNoteBtn = document.getElementById('sendLoveNoteBtn');
+
+// --- SELECTION BAR DOM ELEMENTS ---
+const chatSelectionBar = getEl('chatSelectionBar');
+const selectionCount = getEl('selectionCount');
+const closeSelectionBtn = getEl('closeSelectionBtn');
+const selectionPinBtn = getEl('selectionPinBtn');
+const selectionMuteBtn = getEl('selectionMuteBtn');
+const selectionDeleteBtn = getEl('selectionDeleteBtn');
 
 
 // --- SEGURIDAD: HELPERS ---
@@ -4181,7 +4194,7 @@ function applyUserFilter() {
     // 1. Si no hay término, limpiar y mostrar lista base (todos los cached o vacio)
     if (!term) {
         clearTimeout(globalSearchTimeout);
-        renderUserList(allUsersCache);
+        renderMixedSidebar();
         return;
     }
 
@@ -4401,3 +4414,125 @@ getEl('themeSpace')?.addEventListener('click', () => selectTheme('space'));
 window.closePinModal = () => { getEl('pinConfirmModal').classList.add('hidden'); };
 getEl('pinModalBackdrop')?.addEventListener('click', closePinModal);
 getEl('btnCancelPin')?.addEventListener('click', closePinModal);
+
+// --- CHAT SELECTION LOGIC ---
+
+function addSelectionLongPress(el, userId) {
+    let timer;
+    const start = () => {
+        timer = setTimeout(() => {
+            if (!isChatSelectionMode) {
+                enableChatSelectionMode(userId);
+                // Vibración si disponible
+                if (navigator.vibrate) navigator.vibrate(50);
+            }
+        }, 500);
+    };
+    const cancel = () => clearTimeout(timer);
+
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchend', cancel);
+    el.addEventListener('touchmove', cancel);
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', cancel);
+    el.addEventListener('mouseleave', cancel);
+}
+
+function enableChatSelectionMode(initialUserId) {
+    isChatSelectionMode = true;
+    ignoreNextClick = true;
+    selectedChatIds.clear();
+
+    // Mostrar barra
+    chatSelectionBar.classList.remove('hidden');
+
+    // Seleccionar el inicial
+    if (initialUserId) {
+        toggleChatSelection(initialUserId);
+    }
+}
+
+function disableChatSelectionMode() {
+    isChatSelectionMode = false;
+    selectedChatIds.clear();
+    chatSelectionBar.classList.add('hidden');
+
+    // Limpiar visualmente
+    document.querySelectorAll('.user-item').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+
+function toggleChatSelection(userId, liElement = null) {
+    // Buscar elemento si no se pasa
+    if (!liElement) {
+        liElement = document.querySelector(`.user-item[data-uid="${userId}"]`);
+    }
+
+    if (selectedChatIds.has(userId)) {
+        selectedChatIds.delete(userId);
+        if (liElement) liElement.classList.remove('selected');
+    } else {
+        selectedChatIds.add(userId);
+        if (liElement) liElement.classList.add('selected');
+    }
+
+    // Actualizar contador
+    if (selectionCount) selectionCount.textContent = selectedChatIds.size;
+
+    // Si no quedan seleccionados, salir del modo
+    if (selectedChatIds.size === 0) {
+        disableChatSelectionMode();
+    }
+}
+
+// Event Listeners para la barra
+if (closeSelectionBtn) {
+    closeSelectionBtn.addEventListener('click', disableChatSelectionMode);
+}
+
+if (selectionPinBtn) {
+    selectionPinBtn.addEventListener('click', () => {
+        if (selectedChatIds.size > 0) {
+            // Simulación de éxito
+            showToast ? showToast(`${selectedChatIds.size} chats fijados`) : alert(`${selectedChatIds.size} chats fijados`);
+        }
+        disableChatSelectionMode();
+    });
+}
+
+if (selectionMuteBtn) {
+    selectionMuteBtn.addEventListener('click', () => {
+        selectedChatIds.forEach(id => {
+            const el = document.querySelector(`.user-item[data-uid="${id}"]`);
+            if (el) {
+                let muteIcon = el.querySelector('.mute-indicator');
+                if (muteIcon) {
+                    muteIcon.remove();
+                } else {
+                    const nameDiv = el.querySelector('div[style*="font-weight:600"]');
+                    if (nameDiv) {
+                        const icon = document.createElement('span');
+                        icon.className = 'mute-indicator';
+                        icon.innerHTML = ' 🔇';
+                        icon.style.fontSize = '12px';
+                        nameDiv.appendChild(icon);
+                    }
+                }
+            }
+        });
+        disableChatSelectionMode();
+    });
+}
+
+if (selectionDeleteBtn) {
+    selectionDeleteBtn.addEventListener('click', () => {
+        if (confirm(`¿Eliminar ${selectedChatIds.size} chats seleccionados?`)) {
+            selectedChatIds.forEach(id => {
+                const el = document.querySelector(`.user-item[data-uid="${id}"]`);
+                if (el) el.remove();
+            });
+            disableChatSelectionMode();
+        }
+    });
+}
