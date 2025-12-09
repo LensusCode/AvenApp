@@ -16,6 +16,10 @@ router.get('/:id/banned', authenticateToken, channelController.getBannedUsers);
 router.post('/:id/update-type', authenticateToken, channelController.updateChannelType);
 router.post('/:id/kick', authenticateToken, channelController.kickUser);
 router.post('/:id/unban', authenticateToken, channelController.unbanUser);
+router.post('/:id/unban', authenticateToken, channelController.unbanUser);
 router.post('/check-handle', authenticateToken, channelController.checkHandle);
+router.get('/search', authenticateToken, channelController.searchChannels);
+router.get('/preview/:identifier', authenticateToken, channelController.getChannelPreview);
+router.post('/:id/join', authenticateToken, channelController.joinChannel);
 
 module.exports = router;

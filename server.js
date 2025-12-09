@@ -59,7 +59,7 @@ const server = http.createServer(app);
     app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
     // API Routes
-    app.use('/api', authRoutes);
+    app.use('/api', authRoutes); // Auth Routes
     app.use('/api', userRoutes);
     app.use('/api/admin', require('./routes/adminRoutes')); // New Admin Routes
     app.use('/api/channels', channelRoutes);
@@ -72,6 +72,18 @@ const server = http.createServer(app);
     });
     app.get('/login', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    });
+
+    // Deep Linking
+    app.get([
+        /^\/\+[a-f0-9]+$/i,       // Private invite: /+hash
+        /^\/[a-zA-Z0-9_]{3,}$/    // Public handle: /handle
+    ], (req, res) => {
+        // Exclude reserved paths just in case regex is too broad (though regex above is decent)
+        if (req.path.startsWith('/api') || req.path.startsWith('/admin') || req.path === '/login' || req.path === '/ping') {
+            return res.status(404).send('Not found');
+        }
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
 
     // Socket.io

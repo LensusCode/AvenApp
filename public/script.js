@@ -47,12 +47,9 @@ const ICONS = {
     blueBadge: `<span class="verified-badge" title="Verificado" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     purpleBadge: `<span class="verified-badge" title="Administrador" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#7c3aed"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     pinkBadge: `<span class="verified-badge" title="Verificado Amor" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle; filter: drop-shadow(0 2px 3px rgba(236, 72, 153, 0.5));"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><!-- Fondo Corazón Rosado con bordes suaves --><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ec4899"/><!-- Paloma blanca centrada --><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff" transform="scale(0.8) translate(3, 3)"/></svg></span>`,
-    send: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
-    mic: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
-    play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
-    pause: `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`,
-    replyImage: `<svg viewBox="0 0 24 24" height="20" width="18" fill="none"><path d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21H5ZM5 19H19V5H5V19ZM7 17H17C17.2 17 17.35 16.9083 17.45 16.725C17.55 16.5417 17.5333 16.3667 17.4 16.2L14.65 12.525C14.55 12.3917 14.4167 12.325 14.25 12.325C14.0833 12.325 13.95 12.3917 13.85 12.525L11.25 16L9.4 13.525C9.3 13.3917 9.16667 13.325 9 13.325C8.83333 13.325 8.7 13.3917 8.6 13.525L6.6 16.2C6.46667 16.3667 6.45 16.5417 6.55 16.725C6.65 16.9083 6.8 17 7 17Z" fill="currentColor"></path></svg> Foto`,
-    replyAudio: `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`
+    close: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    sparkles: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z"></path></svg>`,
+    check: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
 };
 
 const getBadgeHtml = (u) => {
@@ -519,7 +516,7 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
     if (myUser?.is_admin) {
         adminSec.classList.remove('hidden');
         getEl('toggleVerifyBtn').textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
-        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+        togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
     }
     else {
         adminSec.classList.add('hidden');
@@ -554,7 +551,7 @@ if (sendLoveNoteBtn) {
         sendLoveNoteBtn.textContent = "Enviar Nota";
 
         if (res && res.success) {
-            alert("Nota enviada con éxito 💖");
+            alert("Nota enviada con éxito");
             adminLoveNoteInput.value = '';
         } else {
             alert("Error al enviar.");
@@ -575,7 +572,7 @@ if (togglePremiumBtn) {
         currentTargetUserObj.is_premium = !currentTargetUserObj.is_premium;
 
         // A. Actualizar texto del botón inmediatamente
-        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+        togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
 
         // B. Actualizar el nombre en el Modal (Info Contacto) para ver el icono nuevo
         const modalNameEl = document.getElementById('contactInfoName');
@@ -607,7 +604,7 @@ if (togglePremiumBtn) {
             // Revertir cambios si falló
             currentTargetUserObj.is_premium = previousState;
             updateChatHeaderInfo(currentTargetUserObj);
-            togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+            togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
             alert("No se pudo actualizar el verificado de corazón.");
         }
     });
@@ -729,7 +726,7 @@ function renderStickersGrid(items) {
         img.onclick = () => { sendSticker(item.url); stickerPanel.classList.add('hidden'); };
         const btn = document.createElement('button');
         btn.className = `fav-action-btn ${myFavorites.has(item.url) ? 'is-fav' : ''}`;
-        btn.innerHTML = '★';
+        btn.innerHTML = ICONS.starFilled;
         btn.onclick = (e) => { e.stopPropagation(); toggleFavoriteSticker(item.url, btn, wrap); };
         wrap.append(img, btn);
         stickerResults.appendChild(wrap);
@@ -759,7 +756,7 @@ const toggleStickerModal = (show, url = null) => {
         currentStickerUrlInModal = url;
         getEl('stickerModalPreview').src = escapeHtml(url);
         const isFav = myFavorites.has(url);
-        getEl('stickerFavIcon').textContent = isFav ? '★' : '☆';
+        getEl('stickerFavIcon').innerHTML = isFav ? ICONS.starFilled : ICONS.star;
         getEl('stickerFavText').textContent = isFav ? 'Eliminar de favoritos' : 'Añadir a favoritos';
         getEl('btnStickerFavAction').classList.toggle('is-favorite', isFav);
     } else currentStickerUrlInModal = null;
@@ -824,7 +821,7 @@ socket.on('users', (users) => {
                 if (verifyBtn) verifyBtn.textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
 
                 const premBtn = document.getElementById('togglePremiumBtn');
-                if (premBtn) premBtn.textContent = updated.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
+                if (premBtn) premBtn.innerHTML = updated.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
             }
         }
     }
@@ -1100,7 +1097,7 @@ socket.on('private message', (msg) => {
             let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
             let rText = msg.reply_content;
             if (msg.reply_type === 'image') rText = ICONS.replyImage;
-            else if (msg.reply_type === 'sticker') rText = "✨ Sticker";
+            else if (msg.reply_type === 'sticker') rText = ICONS.sparkles + " Sticker";
             else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz";
             rd = { username: rName, content: rText, type: msg.reply_type };
         }
@@ -1124,13 +1121,72 @@ socket.on('message deleted', ({ messageId }) => {
         if (wrap && !wrap.classList.contains('deleted-msg')) {
             wrap.classList.add('deleted-msg');
             wrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
-            wrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>`);
+            wrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;display:flex;align-items:center;gap:4px;">${ICONS.trash} ELIMINADO</div>`);
         }
     } else {
         row.style.cssText = "opacity:0; transition: opacity 0.3s";
         setTimeout(() => row.remove(), 300);
     }
 });
+
+// Función para convertir links (especialmente ap.me)
+function linkify(text) {
+    if (!text) return "";
+
+    // 1. Escapar HTML para seguridad (esto previene XSS)
+    let safeText = escapeHtml(text);
+
+    // 2. Regex para ap.me (ap.me/+hash o ap.me/handle)
+    // Soporta con o sin http/https
+    const apMeRegex = /(?:https?:\/\/)?(?:www\.)?ap\.me\/(\+[a-f0-9]+|[a-zA-Z0-9_]{3,})/gi;
+
+    safeText = safeText.replace(apMeRegex, (match, identifier) => {
+        // match es todo el string (ej: "ap.me/+abc")
+        // identifier es el grupo de captura (ej: "+abc" o "mi_canal")
+        return `<a href="/${identifier}" class="app-link" data-identifier="${identifier}">${match}</a>`;
+    });
+
+    // 3. Regex para otros URLs (que no sean ap.me ya procesados)
+    // Usamos una regex simple. Nota: Ya escapamos HTML, asi que & -> &amp; etc.
+    // Los URLs validos no suelen tener caracteres especiales HTML salvo &, pero ya estan escapados.
+    // Evitamos re-linkear lo que ya es <a> tag (muy basico, asumimos el paso 2 ya creo tags).
+    // Para simplificar y evitar romper el HTML del paso 2, usamos un placeholder o regex negativa?
+    // Mejor: Ejecutamos regex de URL general SOLO en partes que NO son tags. 
+    // PERO eso es complejo.
+    // ESTRATEGIA: Si el texto original contenia "ap.me", ya es un link.
+    // Si contiene "http...", lo hacemos link SÓLO Si no está dentro de un tag.
+    // Dado que paso 2 genera tags <a ...>...</a>.
+    // Una URL normal http://google.com NO coincide con ap.me.
+    // Pero http://ap.me/... SÍ coincide con ap.me y ya fue reemplazado.
+
+    // Regex URL standard (simplificado)
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+
+    safeText = safeText.replace(urlRegex, (match) => {
+        // Si el match ya es parte de un tag creado en paso 2, lo ignoramos?
+        // El paso 2 reemplaza "https://ap.me/..." con "<a href... >https://ap.me/...</a>"
+        // El urlRegex matcheará "https://ap.me/..." de nuevo DENTRO del tag href o del body?
+        // SI. DANGER.
+
+        // CORRECCION SIMPLE:
+        // Primero detectamos URLs generales y las convertimos.
+        // LUEGO detectamos si son de ap.me y las reescribimos?
+        // O al reves. 
+
+        // MEJOR: Un solo pase con logica custom.
+        return match;
+    });
+
+    // REINTENTO DE LOGICA LINKIFY:
+    // Dividir por espacios es cutre pero seguro para chat simple.
+    // Mejor: usar una libreria, pero no tengo.
+    // Voy a mantener SOLO el soporte ap.me por ahora para cumplir el requerimiento estricto sin bugs.
+    // Si el usuario quiere URLs normales clickeables, puedo agregarlo con cuidado.
+    // El requerimiento dice: "renderizar private channel links... como hipervínculo".
+    // No exigió todos los links. Haremos SOLO ap.me para seguridad y estabilidad.
+
+    return safeText;
+}
 
 function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0) {    // A. Renderizar fecha si es necesario
     renderDateDivider(dateStr);
@@ -1178,7 +1234,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}"></div>`;
         else bodyHtml = `<div style="color:red; font-size:12px;">[Sticker inválido]</div>`;
     } else {
-        bodyHtml = `<span>${escapeHtml(content)}</span>`;
+        bodyHtml = `<span>${linkify(content)}</span>`;
     }
 
     li.dataset.timestamp = new Date(dateStr).getTime();
@@ -1193,7 +1249,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
     const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
     const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
-    const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
+    const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;display:flex;align-items:center;gap:4px;">${ICONS.trash} ELIMINADO</div>` : '';
 
     // Meta (Hora
 
@@ -2306,14 +2362,14 @@ function showPinnedBar(content, type) {
 
     // Procesar texto previo
     let previewText = content;
-    if (type === 'image') previewText = '📷 Foto';
-    else if (type === 'sticker') previewText = '✨ Sticker';
-    else if (type === 'audio') previewText = '🎤 Mensaje de voz';
+    if (type === 'image') previewText = ICONS.photo + ' Foto';
+    else if (type === 'sticker') previewText = ICONS.sparkles + ' Sticker';
+    else if (type === 'audio') previewText = ICONS.mic + ' Mensaje de voz';
 
     // Si el contenido está encriptado o es JSON, mostrar texto genérico (seguridad)
     if (previewText.startsWith('{"iv":')) previewText = "🔒 Mensaje encriptado";
 
-    textEl.textContent = previewText;
+    textEl.innerHTML = previewText;
 
     bar.classList.remove('hidden');
     container.classList.add('has-pinned-message'); // Para ajustar padding
@@ -2572,7 +2628,7 @@ if (loveNotesBtn) {
                 loveNotesList.appendChild(div);
             });
         } else {
-            loveNotesList.innerHTML = '<div class="love-empty">No tienes mensajes nuevos.<br>Espera a que llegue la magia ✨</div>';
+            loveNotesList.innerHTML = `<div class="love-empty">No tienes mensajes nuevos.<br>Espera a que llegue la magia ${ICONS.sparkles}</div>`;
         }
     });
 }
@@ -2741,8 +2797,174 @@ async function loadMyChannels() {
         myChannels = channels;
         // Mezclar canales y usuarios en la lista lateral
         renderMixedSidebar();
+        // Chequear deep links al inicio
+        checkUrlIntent();
     }
 }
+
+// --- DEEP LINKING ---
+async function checkUrlIntent() {
+    const path = window.location.pathname;
+    // Formato: /+hash o /handle
+    if (path.length > 2 && (path.startsWith('/+') || /^\/[a-zA-Z0-9_]+$/.test(path))) {
+        const identifier = path.substring(1); // hash (con +) o handle
+
+        // Evitar loop si es /login
+        if (identifier === 'login' || identifier === 'admin') return;
+
+        openChannelPreview(identifier);
+    }
+}
+
+async function openChannelPreview(identifier) {
+    if (!identifier) return;
+
+    // Si viene con el +, por ejemplo de un link interno
+    const cleanId = identifier.startsWith('/') ? identifier.substring(1) : identifier;
+
+    // Check local
+    const localMatch = myChannels.find(c =>
+        (cleanId.startsWith('+') && c.private_hash === cleanId.substring(1)) ||
+        (c.handle && c.handle.toLowerCase() === cleanId.toLowerCase())
+    );
+
+    if (localMatch) {
+        openChannel(localMatch.id);
+        return;
+    }
+
+    // Fetch Preview
+    try {
+        document.body.style.cursor = 'wait'; // Visual feedback
+        const res = await apiRequest(`/api/channels/preview/${encodeURIComponent(cleanId)}`);
+        document.body.style.cursor = 'default';
+
+        if (res && res.success) {
+            if (res.isMember) {
+                await loadMyChannels();
+                openChannel(res.id);
+            } else {
+                renderJoinModal(res);
+            }
+        } else {
+            console.log("No encontrado o privado", cleanId);
+            // No alertar agresivamente si es un 404 simple, o si
+            // window.history.pushState({}, '', '/'); 
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// Helper para abrir canal por ID (usado por deep linking)
+function openChannel(channelId) {
+    const channel = myChannels.find(c => c.id == channelId);
+    if (channel) {
+        selectChannel(channel);
+    } else {
+        console.error("No se pudo abrir el canal: no encontrado en mis canales", channelId);
+    }
+}
+
+// Expose to window for inline onclick handlers
+window.openChannelPreview = openChannelPreview;
+
+
+function renderJoinModal(channel) {
+    let modal = document.getElementById('joinChannelModal');
+    if (!modal) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="joinChannelModal" class="modal hidden">
+                <div class="modal-content join-modal-card">
+                    <button id="closeJoinModal" class="close-icon-btn">&times;</button>
+                    <div class="join-header">
+                        <div id="joinChannelAvatar" class="join-avatar"></div>
+                        <h2 id="joinChannelName" class="join-title"></h2>
+                    </div>
+                    <div class="join-body">
+                        <p id="joinChannelCount" class="join-meta"></p>
+                        <p id="joinChannelDesc" class="join-desc"></p>
+                    </div>
+                    <div class="join-footer">
+                        <button id="btnJoinChannel" class="btn primary-btn join-btn">Unirme al canal</button>
+                        <p id="joinPrivateLabel" class="join-private-label">🔒 Enlace de invitación privado</p>
+                    </div>
+                </div>
+            </div>
+        `);
+        modal = document.getElementById('joinChannelModal');
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            window.history.pushState({}, '', '/');
+        };
+        document.getElementById('closeJoinModal').onclick = closeModal;
+        // Close on click outside
+        modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+    }
+
+    const nameEl = document.getElementById('joinChannelName');
+    const descEl = document.getElementById('joinChannelDesc');
+    const avatarEl = document.getElementById('joinChannelAvatar');
+    const countEl = document.getElementById('joinChannelCount');
+    const btn = document.getElementById('btnJoinChannel');
+    const privLabel = document.getElementById('joinPrivateLabel');
+
+    // Reset button state
+    btn.disabled = false;
+    btn.textContent = "Unirme al canal";
+
+    nameEl.textContent = channel.name;
+    descEl.textContent = channel.description || "Sin descripción";
+    countEl.textContent = `${channel.memberCount} miembros`;
+
+    if (channel.is_public === 0) privLabel.style.display = 'block';
+    else privLabel.style.display = 'none';
+
+    const avatarUrl = (channel.avatar && isValidUrl(channel.avatar)) ? channel.avatar : '/profile.png';
+    avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+
+    modal.classList.remove('hidden');
+
+    btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = "Uniéndome...";
+
+        // Pass secret validation for private channels
+        const body = { secret: channel.private_hash || (channel.is_public ? null : '') };
+
+        // Try to get hash from URL if missing in object (fallback)
+        if (!body.secret && window.location.pathname.includes('/+')) {
+            body.secret = window.location.pathname.split('/+')[1];
+        }
+
+        const res = await apiRequest(`/api/channels/${channel.id}/join`, 'POST', body);
+
+        if (res && res.success) {
+            modal.classList.add('hidden');
+            window.history.pushState({}, '', '/');
+            await loadMyChannels();
+            openChannel(channel.id);
+            showToast("Te has unido al canal");
+        } else {
+            btn.disabled = false;
+            btn.textContent = "Unirme al canal";
+            alert(res?.error || "Error al unirse");
+        }
+    };
+}
+
+// Global Event Delegation for Links (CSP Safe)
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('.app-link');
+    if (link) {
+        e.preventDefault();
+        const identifier = link.dataset.identifier;
+        if (identifier) {
+            openChannelPreview(identifier);
+        }
+    }
+});
+
 
 function renderMixedSidebar() {
     // Esta función reemplaza a renderUserList para mostrar ambos
@@ -3972,17 +4194,24 @@ function applyUserFilter() {
     // 4. Búsqueda Global Automática (Debounce 300ms)
     clearTimeout(globalSearchTimeout);
 
+    // 4. Búsqueda Global Automática (Debounce 300ms)
+    clearTimeout(globalSearchTimeout);
+
     if (term.length >= 2) {
         globalSearchTimeout = setTimeout(async () => {
             try {
-                const globalResults = await apiRequest(`/api/contacts/search?q=${encodeURIComponent(term)}`);
+                // Paralelo: Buscar Usuarios y Canales
+                const [globalUsers, channelResults] = await Promise.all([
+                    apiRequest(`/api/contacts/search?q=${encodeURIComponent(term)}`),
+                    apiRequest(`/api/channels/search?q=${encodeURIComponent(term)}`)
+                ]);
 
                 // Filtrar globales que ya son locales
-                const filteredGlobal = (globalResults || []).filter(g =>
+                const filteredGlobal = (globalUsers || []).filter(g =>
                     !allUsersCache.some(local => local.userId === g.id) && g.id !== myUser.id
                 );
 
-                renderCombinedResults(localResults, filteredGlobal, false);
+                renderCombinedResults(localResults, filteredGlobal, channelResults || [], false);
 
             } catch (e) {
                 console.error("Error búsqueda global", e);
@@ -3992,37 +4221,97 @@ function applyUserFilter() {
 }
 
 // Helper: Renderizar Combinado
-function renderCombinedResults(localUsers, globalUsers, loadingGlobal) {
+function renderCombinedResults(localUsers, globalUsers, channels, loadingGlobal) {
     usersList.innerHTML = '';
 
-    // A. Renderizar Locales
+    // A. Renderizar Locales (Contactos)
     if (localUsers.length > 0) {
+        usersList.appendChild(createSectionHeader('Contactos'));
         localUsers.forEach(u => usersList.appendChild(createUserItem(u, false)));
-    } else if (globalUsers.length === 0 && !loadingGlobal) {
-        // Nada en local ni global
+    }
+
+    // B. Renderizar Canales (Si hay)
+    if (channels && channels.length > 0) {
+        const sep = document.createElement('li');
+        sep.className = 'search-divider';
+        sep.textContent = 'Canales';
+        usersList.appendChild(sep);
+
+        channels.forEach(ch => {
+            usersList.appendChild(createChannelSearchItem(ch));
+        });
+    }
+
+    // C. Renderizar Globales (Usuarios)
+    if (globalUsers.length > 0) {
+        const sep = document.createElement('li');
+        sep.className = 'search-divider';
+        sep.textContent = 'Personas Globales';
+        usersList.appendChild(sep);
+
+        globalUsers.forEach(u => {
+            usersList.appendChild(createGlobalUserItem(u));
+        });
+    }
+
+    // D. Empty State
+    if (localUsers.length === 0 && globalUsers.length === 0 && (!channels || channels.length === 0) && !loadingGlobal) {
         usersList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No se encontraron resultados</li>';
         return;
     }
 
-    // B. Separador (Solo si hay ambos)
-    if (localUsers.length > 0 && globalUsers.length > 0) {
-        const sep = document.createElement('li');
-        sep.className = 'search-divider';
-        sep.textContent = 'Resultados Globales';
-        usersList.appendChild(sep);
-    }
-
-    // C. Renderizar Globales
-    globalUsers.forEach(u => {
-        usersList.appendChild(createGlobalUserItem(u));
-    });
-
-    // D. Indicador de carga
+    // E. Indicador de carga
     if (loadingGlobal) {
         const loadingLi = document.createElement('li');
         loadingLi.style.cssText = 'text-align:center; padding:15px; color:#888; font-size:13px; font-style:italic;';
-        loadingLi.textContent = localUsers.length > 0 ? 'Buscando más en global...' : 'Buscando en directorio global...';
+        loadingLi.textContent = 'Buscando en directorio...';
         usersList.appendChild(loadingLi);
+    }
+}
+
+function createSectionHeader(title) {
+    const li = document.createElement('li');
+    li.className = 'search-divider'; // Reusamos clase existente o creamos una nueva si se ve mal
+    li.textContent = title;
+    return li;
+}
+
+function createChannelSearchItem(ch) {
+    const li = document.createElement('li');
+    li.className = 'user-item'; // Reusamos para estilo base
+    li.onclick = () => {
+        // Si ya soy miembro (la API search de canales solo devuelve privados si soy miembro, o si es publico)
+        // Podemos intentar abrirlo directament.
+        // PERO, searchChannels no nos dice explicitamente si somos miembros, aunque la logica sql si filtra.
+        // Vamos a asumir abrir preview o canal directo.
+        handleChannelClickFromSearch(ch);
+    };
+
+    const avatarUrl = (ch.avatar && isValidUrl(ch.avatar)) ? ch.avatar : '/profile.png';
+    const isPrivate = ch.is_public === 0;
+    const lockIcon = isPrivate ? '<span style="font-size:12px; margin-left:5px;">🔒</span>' : '';
+
+    li.innerHTML = `
+        <div class="user-avatar" style="background-image: url('${escapeHtml(avatarUrl)}');"></div>
+        <div class="user-info">
+            <div class="user-name">${escapeHtml(ch.name)} ${lockIcon}</div>
+            <div class="user-status" style="font-size:11px;">${isPrivate ? 'Canal Privado' : ('@' + ch.handle)}</div>
+        </div>
+    `;
+    return li;
+}
+
+async function handleChannelClickFromSearch(ch) {
+    // Verificar si ya lo tengo en mis canales cargados (local check)
+    const iHaveIt = myChannels.some(c => c.id === ch.id);
+    if (iHaveIt) {
+        openChannel(ch.id);
+        if (window.innerWidth <= 768) document.querySelector('.sidebar').classList.remove('active');
+    } else {
+        // Si no lo tengo, probablemente es publico y no me he unido, O es privado y soy miembro pero algo fallo en sync local.
+        // O es publico y quiero unirme.
+        // Abrimos modal de preview
+        openChannelPreview(ch.handle || ch.private_hash || ch.id); // Usamos lo que tengamos, search devuelve handle y private_hash
     }
 }
 

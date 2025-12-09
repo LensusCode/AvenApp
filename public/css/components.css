@@ -173,7 +173,6 @@
 
 /* Modales y tarjetas */
 .profile-modal,
-.confirm-modal,
 .context-menu {
     position: fixed;
     inset: 0;
@@ -184,6 +183,18 @@
     align-items: center;
     justify-content: center;
     /* GPU Layer */
+    transform: translateZ(0);
+}
+
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, .8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transform: translateZ(0);
 }
 
@@ -460,6 +471,18 @@
     height: 24px;
     display: flex;
     align-items: center;
+}
+
+/* --- App Links in Chat --- */
+.app-link {
+    color: #ffffff;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.app-link:hover {
+    text-decoration: underline;
+    color: #ffffff;
 }
 
 .waveform-bg {
