@@ -262,13 +262,7 @@
                             style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                             <label
                                 style="color:#ec4899; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Enviar
-                                Nota Love <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" style="vertical-align: middle;">
-                                    <path
-                                        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
-                                    </path>
-                                </svg></label>
+                                Nota Love 💖</label>
                             <textarea id="adminLoveNoteInput" placeholder="Escribe un mensaje bonito..."
                                 style="width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; min-height:60px;"></textarea>
                             <button id="sendLoveNoteBtn" class="btn"
@@ -361,22 +355,11 @@
                 <!-- Lista de acciones -->
                 <div class="sticker-actions-list">
                     <button id="btnStickerFavAction" class="sticker-action-btn">
-                        <span id="stickerFavIcon" style="display:inline-flex;align-items:center;"><svg
-                                viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon
-                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                                </polygon>
-                            </svg></span>
+                        <span id="stickerFavIcon">☆</span>
                         <span id="stickerFavText">Añadir a favoritos</span>
                     </button>
                     <button id="btnStickerClose" class="sticker-action-btn secondary">
-                        <span style="display:inline-flex;align-items:center;"><svg viewBox="0 0 24 24" width="16"
-                                height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg></span>
+                        <span>✕</span>
                         <span>Cerrar</span>
                     </button>
                 </div>
@@ -498,13 +481,7 @@
                         </button>
                     </div>
 
-                    <button id="closeChatSearch" class="icon-btn-small"
-                        style="margin-left: 10px; display:inline-flex;align-items:center;justify-content:center;"><svg
-                            viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg></button>
+                    <button id="closeChatSearch" class="icon-btn-small" style="margin-left: 10px;">✕</button>
                 </div>
 
                 <!-- BOTÓN DE MENÚ (TRES PUNTOS) -->
@@ -611,13 +588,7 @@
                                 </div>
                                 <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
                             </div>
-                            <button type="button" id="closeReplyBtn" class="close-reply"
-                                style="display:inline-flex;align-items:center;justify-content:center;"><svg
-                                    viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg></button>
+                            <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
                         </div>
 
                         <div id="editPreview" class="reply-preview hidden">
@@ -635,13 +606,7 @@
                                     <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
                                 </div>
                             </div>
-                            <button type="button" id="closeEditBtn" class="close-reply"
-                                style="display:inline-flex;align-items:center;justify-content:center;"><svg
-                                    viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg></button>
+                            <button type="button" id="closeEditBtn" class="close-reply">✕</button>
                         </div>
 
                         <!-- NUEVO WRAPPER: Contiene Sticker + Input + Imagen -->
@@ -698,13 +663,7 @@
                     <!-- Pestañas internas de stickers (Giphy / Favoritos) -->
                     <div class="sticker-tabs">
                         <button id="tabGiphy" class="sticker-tab active">Explorar</button>
-                        <button id="tabFavs" class="sticker-tab">Favoritos <svg viewBox="0 0 24 24" width="14"
-                                height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" style="margin-left:4px; vertical-align:middle;">
-                                <polygon
-                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                                </polygon>
-                            </svg></button>
+                        <button id="tabFavs" class="sticker-tab">Favoritos ⭐</button>
                     </div>
 
                     <div class="sticker-header" id="stickerHeaderSearch">

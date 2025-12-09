@@ -136,7 +136,7 @@ function renderTable(users) {
             </td>
             <td class="text-center" style="${opacityStyle}">
                 <button class="btn-note" onclick="openNoteModal(${u.id}, '${u.username}')" ${disabledAttr}>
-                    Enviar
+                    💌 Enviar
                 </button>
             </td>
         `;
@@ -279,7 +279,7 @@ document.getElementById('sendNoteConfirm').addEventListener('click', async () =>
     if (!content) return;
     try {
         await apiRequest('/api/admin/send-love-note', 'POST', { targetUserId: targetNoteUserId, content });
-        alert('Enviado'); noteModal.classList.add('hidden');
+        alert('Enviado 💖'); noteModal.classList.add('hidden');
     } catch (e) { alert('Error'); }
 });
 

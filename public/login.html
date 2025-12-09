@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="/manifest.json">
 </head>
+
 <body class="login-body">
 
     <!-- Contenedor de Notificaciones (Toasts) -->
@@ -32,7 +34,8 @@
                     <input type="text" id="loginUser" placeholder="Usuario" required autocomplete="username" />
                 </div>
                 <div class="input-group">
-                    <input type="password" id="loginPass" placeholder="Contraseña" required autocomplete="current-password" />
+                    <input type="password" id="loginPass" placeholder="Contraseña" required
+                        autocomplete="current-password" />
                 </div>
                 <button type="submit" class="primary-btn">Entrar</button>
             </form>
@@ -49,7 +52,7 @@
                 </div>
 
                 <div class="input-group">
-                    <input type="text" id="regUser" placeholder="Usuario" required autocomplete="off"/>
+                    <input type="text" id="regUser" placeholder="Usuario" required autocomplete="off" />
                     <!-- Iconos de estado -->
                     <span class="status-icon" id="userStatusIcon"></span>
                 </div>
@@ -58,7 +61,7 @@
                     <input type="password" id="regPass" placeholder="Contraseña" required autocomplete="new-password" />
                     <span class="status-icon" id="passStatusIcon"></span>
                 </div>
-                
+
                 <p class="hint-text">Mínimo 8 caracteres</p>
 
                 <button type="submit" class="primary-btn" id="btnRegister">Crear Cuenta</button>
@@ -70,4 +73,5 @@
 
     <script src="login.js"></script>
 </body>
+
 </html>

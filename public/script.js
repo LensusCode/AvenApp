@@ -47,9 +47,12 @@ const ICONS = {
     blueBadge: `<span class="verified-badge" title="Verificado" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     purpleBadge: `<span class="verified-badge" title="Administrador" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#7c3aed"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     pinkBadge: `<span class="verified-badge" title="Verificado Amor" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle; filter: drop-shadow(0 2px 3px rgba(236, 72, 153, 0.5));"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><!-- Fondo Corazón Rosado con bordes suaves --><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ec4899"/><!-- Paloma blanca centrada --><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff" transform="scale(0.8) translate(3, 3)"/></svg></span>`,
-    close: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
-    sparkles: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z"></path></svg>`,
-    check: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    send: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
+    mic: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
+    play: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+    pause: `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`,
+    replyImage: `<svg viewBox="0 0 24 24" height="20" width="18" fill="none"><path d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21H5ZM5 19H19V5H5V19ZM7 17H17C17.2 17 17.35 16.9083 17.45 16.725C17.55 16.5417 17.5333 16.3667 17.4 16.2L14.65 12.525C14.55 12.3917 14.4167 12.325 14.25 12.325C14.0833 12.325 13.95 12.3917 13.85 12.525L11.25 16L9.4 13.525C9.3 13.3917 9.16667 13.325 9 13.325C8.83333 13.325 8.7 13.3917 8.6 13.525L6.6 16.2C6.46667 16.3667 6.45 16.5417 6.55 16.725C6.65 16.9083 6.8 17 7 17Z" fill="currentColor"></path></svg> Foto`,
+    replyAudio: `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mensaje de voz`
 };
 
 const getBadgeHtml = (u) => {
@@ -516,7 +519,7 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
     if (myUser?.is_admin) {
         adminSec.classList.remove('hidden');
         getEl('toggleVerifyBtn').textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
-        togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
+        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
     }
     else {
         adminSec.classList.add('hidden');
@@ -551,7 +554,7 @@ if (sendLoveNoteBtn) {
         sendLoveNoteBtn.textContent = "Enviar Nota";
 
         if (res && res.success) {
-            alert("Nota enviada con éxito");
+            alert("Nota enviada con éxito 💖");
             adminLoveNoteInput.value = '';
         } else {
             alert("Error al enviar.");
@@ -572,7 +575,7 @@ if (togglePremiumBtn) {
         currentTargetUserObj.is_premium = !currentTargetUserObj.is_premium;
 
         // A. Actualizar texto del botón inmediatamente
-        togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
+        togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
 
         // B. Actualizar el nombre en el Modal (Info Contacto) para ver el icono nuevo
         const modalNameEl = document.getElementById('contactInfoName');
@@ -604,7 +607,7 @@ if (togglePremiumBtn) {
             // Revertir cambios si falló
             currentTargetUserObj.is_premium = previousState;
             updateChatHeaderInfo(currentTargetUserObj);
-            togglePremiumBtn.innerHTML = currentTargetUserObj.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
+            togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
             alert("No se pudo actualizar el verificado de corazón.");
         }
     });
@@ -726,7 +729,7 @@ function renderStickersGrid(items) {
         img.onclick = () => { sendSticker(item.url); stickerPanel.classList.add('hidden'); };
         const btn = document.createElement('button');
         btn.className = `fav-action-btn ${myFavorites.has(item.url) ? 'is-fav' : ''}`;
-        btn.innerHTML = ICONS.starFilled;
+        btn.innerHTML = '★';
         btn.onclick = (e) => { e.stopPropagation(); toggleFavoriteSticker(item.url, btn, wrap); };
         wrap.append(img, btn);
         stickerResults.appendChild(wrap);
@@ -756,7 +759,7 @@ const toggleStickerModal = (show, url = null) => {
         currentStickerUrlInModal = url;
         getEl('stickerModalPreview').src = escapeHtml(url);
         const isFav = myFavorites.has(url);
-        getEl('stickerFavIcon').innerHTML = isFav ? ICONS.starFilled : ICONS.star;
+        getEl('stickerFavIcon').textContent = isFav ? '★' : '☆';
         getEl('stickerFavText').textContent = isFav ? 'Eliminar de favoritos' : 'Añadir a favoritos';
         getEl('btnStickerFavAction').classList.toggle('is-favorite', isFav);
     } else currentStickerUrlInModal = null;
@@ -821,7 +824,7 @@ socket.on('users', (users) => {
                 if (verifyBtn) verifyBtn.textContent = updated.is_verified ? "Quitar Verificado" : "Verificar Usuario";
 
                 const premBtn = document.getElementById('togglePremiumBtn');
-                if (premBtn) premBtn.innerHTML = updated.is_premium ? "Quitar Corazón " + ICONS.heartBroken : "Poner Corazón " + ICONS.heart;
+                if (premBtn) premBtn.textContent = updated.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
             }
         }
     }
@@ -1097,7 +1100,7 @@ socket.on('private message', (msg) => {
             let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
             let rText = msg.reply_content;
             if (msg.reply_type === 'image') rText = ICONS.replyImage;
-            else if (msg.reply_type === 'sticker') rText = ICONS.sparkles + " Sticker";
+            else if (msg.reply_type === 'sticker') rText = "✨ Sticker";
             else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz";
             rd = { username: rName, content: rText, type: msg.reply_type };
         }
@@ -1121,7 +1124,7 @@ socket.on('message deleted', ({ messageId }) => {
         if (wrap && !wrap.classList.contains('deleted-msg')) {
             wrap.classList.add('deleted-msg');
             wrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
-            wrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;display:flex;align-items:center;gap:4px;">${ICONS.trash} ELIMINADO</div>`);
+            wrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>`);
         }
     } else {
         row.style.cssText = "opacity:0; transition: opacity 0.3s";
@@ -1249,7 +1252,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
     const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
     const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
-    const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;display:flex;align-items:center;gap:4px;">${ICONS.trash} ELIMINADO</div>` : '';
+    const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
 
     // Meta (Hora
 
@@ -2362,14 +2365,14 @@ function showPinnedBar(content, type) {
 
     // Procesar texto previo
     let previewText = content;
-    if (type === 'image') previewText = ICONS.photo + ' Foto';
-    else if (type === 'sticker') previewText = ICONS.sparkles + ' Sticker';
-    else if (type === 'audio') previewText = ICONS.mic + ' Mensaje de voz';
+    if (type === 'image') previewText = '📷 Foto';
+    else if (type === 'sticker') previewText = '✨ Sticker';
+    else if (type === 'audio') previewText = '🎤 Mensaje de voz';
 
     // Si el contenido está encriptado o es JSON, mostrar texto genérico (seguridad)
     if (previewText.startsWith('{"iv":')) previewText = "🔒 Mensaje encriptado";
 
-    textEl.innerHTML = previewText;
+    textEl.textContent = previewText;
 
     bar.classList.remove('hidden');
     container.classList.add('has-pinned-message'); // Para ajustar padding
@@ -2628,7 +2631,7 @@ if (loveNotesBtn) {
                 loveNotesList.appendChild(div);
             });
         } else {
-            loveNotesList.innerHTML = `<div class="love-empty">No tienes mensajes nuevos.<br>Espera a que llegue la magia ${ICONS.sparkles}</div>`;
+            loveNotesList.innerHTML = '<div class="love-empty">No tienes mensajes nuevos.<br>Espera a que llegue la magia ✨</div>';
         }
     });
 }
