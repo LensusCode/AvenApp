@@ -2,4 +2,5 @@ node_modules
 .env
 .DS_Store
 public/Animated-Emojis/*
-!public/Animated-Emojis/Travel and Places/
+!public/Animated-Emojis/Activity/
+
