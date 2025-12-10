@@ -3,7 +3,7 @@ node_modules
 .DS_Store
 public/Animated-Emojis/*
 !public/Animated-Emojis/Flags/
-!public/Animated-Emojis/Objects/
+
 
 
 
