@@ -2,5 +2,9 @@ node_modules
 .env
 .DS_Store
 public/Animated-Emojis/*
-!public/Animated-Emojis/Activity/
+!public/Animated-Emojis/Flags/
+!public/Animated-Emojis/Objects/
+
+
+
 
