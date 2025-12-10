@@ -427,6 +427,36 @@
     min-width: 0;
 }
 
+/* --- NEW SKELETON CLASSES --- */
+.skeleton {
+    background: #27272a;
+    background-image: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    cursor: default;
+    pointer-events: none;
+}
+
+.skeleton-sticker {
+    width: 100%;
+    height: 80px;
+    /* Match .sticker-thumb height */
+    border-radius: 8px;
+}
+
+.skeleton-emoji {
+    width: 45px;
+    height: 45px;
+    border-radius: 6px;
+}
+
+.skeleton-text {
+    width: 100%;
+    height: 14px;
+    border-radius: 4px;
+    margin: 4px 0;
+}
+
 .input-stack {
     flex: 1;
     display: flex;
@@ -885,17 +915,105 @@
     box-shadow: none;
 }
 
-.fullscreen-img-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, .9);
-    z-index: 2000;
+
+/* --- CONTENTEDITABLE INPUT REFACTOR --- */
+.input-msg {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    padding: 10px 0;
+    /* Match original padding */
+    min-height: 20px;
+    max-height: 120px;
+    overflow-y: auto;
+    outline: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+}
+
+.input-msg:empty:before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    cursor: text;
+}
+
+/* --- EMOJI PANEL STYLES --- */
+.emoji-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: block !important;
+    /* Force block to allow scrolling unlike flex */
+}
+
+.emoji-tabs .sticker-tab {
+    display: inline-block;
+    flex: none;
+    width: auto;
+    padding: 10px 15px;
+}
+
+.hidden-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.hidden-scroll {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+
+.emoji-grid-mode {
+    grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)) !important;
+    gap: 4px !important;
+    padding: 10px;
+}
+
+.emoji-item {
+    height: 45px !important;
+    width: 45px !important;
+    aspect-ratio: 1 / 1;
     display: flex;
-    justify-content: center;
     align-items: center;
-    cursor: zoom-out;
-    animation: fadeIn .2s ease;
-    will-change: opacity;
+    justify-content: center;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.emoji-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.emoji-canvas {
+    width: 32px !important;
+    height: 32px !important;
+    object-fit: contain;
+    transition: transform 0.1s;
+}
+
+
+.inline-emoji {
+    height: 1.5em;
+    width: auto;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.animated-emoji-sticker {
+    max-width: 128px;
+    max-height: 128px;
+    width: auto;
+    height: auto;
+    cursor: pointer;
+    display: block;
+    margin: 5px 0;
 }
 
 .fullscreen-img {

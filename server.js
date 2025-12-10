@@ -65,6 +65,7 @@ const server = http.createServer(app);
     app.use('/api/channels', channelRoutes);
     app.use('/api', messageRoutes);
     app.use('/api/contacts', contactRoutes);
+    app.use('/api/emojis', require('./routes/emojiRoutes'));
 
     // Static Files for Admin/Login
     app.get('/admin', (req, res) => {

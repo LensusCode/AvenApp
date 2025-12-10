@@ -77,6 +77,10 @@ let currentChatType = 'private';
 
 let isEditing = false;
 let currentEditingId = null;
+let emojiCache = null;
+let currentPanelMode = 'stickers'; // 'stickers' or 'emojis'
+let currentEmojiCategory = null;
+
 const editPreview = document.getElementById('editPreview');
 const editPreviewText = document.getElementById('editPreviewText');
 const closeEditBtn = document.getElementById('closeEditBtn');
@@ -144,6 +148,185 @@ function loginSuccess(user) {
 }
 
 
+
+
+
+// --- CONTENTEDITABLE HELPERS ---
+
+// Obtener contenido parseado para enviar (HTML -> String [emoji:...])
+// Obtener contenido parseado para enviar (HTML -> String [emoji:...])
+function getInputContent() {
+    function parseNodes(nodes) {
+        let text = '';
+        nodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                text += node.textContent;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.tagName === 'IMG' && node.classList.contains('inline-emoji')) {
+                    const originalUrl = node.dataset.original || node.src;
+                    text += `[emoji:${originalUrl}]`;
+                } else if (node.tagName === 'BR') {
+                    text += '\n';
+                } else {
+                    // Recurse for nested nodes (divs, spans, b, i, etc)
+                    text += parseNodes(node.childNodes);
+
+                    // Add newline for block elements if not already present
+                    const style = window.getComputedStyle(node);
+                    if (style.display === 'block' || style.display === 'div') {
+                        if (!text.endsWith('\n')) text += '\n';
+                    }
+                }
+            }
+        });
+        return text;
+    }
+
+    return parseNodes(inputMsg.childNodes).trim();
+}
+
+function clearInput() {
+    inputMsg.innerHTML = '';
+}
+
+// Insertar Nodo (Emoji) en posición del cursor
+function insertEmojiAtCursor(url) {
+    inputMsg.focus();
+
+    // Crear imagen
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'inline-emoji';
+    img.dataset.original = url;
+
+    const sel = window.getSelection();
+    if (sel.getRangeAt && sel.rangeCount) {
+        let range = sel.getRangeAt(0);
+
+        // Verificar que el rango esté dentro del input
+        if (!inputMsg.contains(range.commonAncestorContainer)) {
+            range = document.createRange();
+            range.selectNodeContents(inputMsg);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        range.deleteContents();
+        range.insertNode(img);
+
+        // Mover cursor después de la imagen
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } else {
+        inputMsg.appendChild(img);
+    }
+
+    // Disparar evento input manual para actualizar estado
+    inputMsg.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Insert text at cursor (Handles Input/Textarea AND ContentEditable)
+function insertAtCursor(myField, myValue) {
+    // 1. Para elementos ContentEditable (Divs)
+    if (myField.isContentEditable) {
+        myField.focus();
+
+        // Intentar usar execCommand para preservar historial de deshacer
+        // 'insertText' inserta texto plano sin tags HTML extra
+        let success = false;
+        try {
+            success = document.execCommand('insertText', false, myValue);
+        } catch (e) {
+            console.warn("execCommand failed", e);
+        }
+
+        // Fallback robusto usando Rangos
+        if (!success) {
+            const sel = window.getSelection();
+            if (sel.getRangeAt && sel.rangeCount) {
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(myValue);
+                range.insertNode(textNode);
+
+                // Mover cursor al final del texto insertado
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } else {
+                // Si no hay selección, añadir al final
+                myField.innerText += myValue;
+            }
+        }
+
+        // Disparar evento para actualizar estado del botón (send vs mic)
+        myField.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+    }
+
+    // 2. Para Inputs y Textareas normales
+    if (document.selection) {
+        myField.focus();
+        sel = document.selection.createRange();
+        sel.text = myValue;
+    } else if (myField.selectionStart || myField.selectionStart == '0') {
+        var startPos = myField.selectionStart;
+        var endPos = myField.selectionEnd;
+        myField.value = myField.value.substring(0, startPos)
+            + myValue
+            + myField.value.substring(endPos, myField.value.length);
+        myField.selectionStart = startPos + myValue.length;
+        myField.selectionEnd = startPos + myValue.length;
+    } else {
+        myField.value += myValue;
+    }
+    // Disparar evento input
+    myField.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Helper para congelar imagen (WebP animado -> Canvas estático)
+const freezeImage = (img, saveOriginal = true) => {
+    try {
+        if (saveOriginal && !img.dataset.original) img.dataset.original = img.src;
+        if (img.dataset.frozen === "true") return; // Ya congelado
+
+        // Necesitamos que la imagen esté cargada para dibujarla
+        const doFreeze = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            img.src = canvas.toDataURL();
+            img.dataset.frozen = "true";
+        };
+
+        if (img.complete && img.naturalHeight > 0) doFreeze();
+        else img.onload = doFreeze;
+    } catch (e) { console.error("Freeze error", e); }
+};
+
+const unfreezeImage = (img) => {
+    if (img.dataset.original) {
+        img.src = img.dataset.original;
+        img.dataset.frozen = "false";
+    }
+};
+
+const playAnimationOnce = (img) => {
+    unfreezeImage(img);
+    // Reiniciar animación recargando src (hack común)
+    const src = img.src; img.src = ""; img.src = src;
+
+    // Detener después de 2.5s (ajustable)
+    if (img.dataset.timer) clearTimeout(parseInt(img.dataset.timer));
+    const t = setTimeout(() => freezeImage(img, false), 2500);
+    img.dataset.timer = t;
+};
 
 // --- EDITOR DE IMAGEN ---
 let currentEditFile = null;
@@ -683,9 +866,211 @@ if (getEl('tabGiphy')) {
     getEl('tabFavs').addEventListener('click', () => switchStickerTab('favorites'));
 }
 
+// --- EMOJIS ---
+const btnStickersNav = getEl('btnStickersNav');
+const btnEmojiNav = getEl('btnEmojiNav');
+const stickerTabsContainer = getEl('stickerTabsContainer');
+const emojiCategoryTabs = getEl('emojiCategoryTabs');
+const stickerSearchHeader = getEl('stickerHeaderSearch');
+
+async function switchPanelMode(mode) {
+    currentPanelMode = mode;
+
+    // UI Updates
+    if (mode === 'emojis') {
+        btnEmojiNav.classList.add('active-btn');
+        btnEmojiNav.classList.remove('inactive-btn');
+        btnStickersNav.classList.remove('active-btn');
+        btnStickersNav.classList.add('inactive-btn');
+
+        // Hide Sticker Tabs
+        stickerTabsContainer.classList.add('hidden');
+        stickerTabsContainer.style.display = 'none';
+
+        stickerSearchHeader.classList.add('hidden');
+
+        // Show Emoji Categories
+        emojiCategoryTabs.classList.remove('hidden');
+        // Reset display to allow CSS (block !important) to take over, or force it if needed.
+        // User requested 'flex' or 'block'. CSS handles it as block !important.
+        emojiCategoryTabs.style.removeProperty('display');
+
+        // Limpieza preventiva
+        stickerResults.innerHTML = '';
+
+        await loadEmojis();
+    } else {
+        // Stickers
+        btnStickersNav.classList.add('active-btn');
+        btnStickersNav.classList.remove('inactive-btn');
+        btnEmojiNav.classList.remove('active-btn');
+        btnEmojiNav.classList.add('inactive-btn');
+
+        // Show Sticker Tabs
+        stickerTabsContainer.classList.remove('hidden');
+        stickerTabsContainer.style.display = 'flex';
+
+        if (currentStickerTab === 'giphy') stickerSearchHeader.classList.remove('hidden');
+
+        // Hide Emoji Categories
+        emojiCategoryTabs.classList.add('hidden');
+        // Force hide because CSS has display: block !important
+        emojiCategoryTabs.style.setProperty('display', 'none', 'important');
+
+        // Reload current sticker view
+        stickerResults.className = 'sticker-grid'; // Reset class
+
+        // Limpieza preventiva
+        stickerResults.innerHTML = '';
+
+        currentStickerTab === 'giphy' ? loadStickers(getEl('stickerSearch').value) : loadFavoritesFromServer();
+    }
+}
+
+if (btnStickersNav && btnEmojiNav) {
+    btnStickersNav.addEventListener('click', () => switchPanelMode('stickers'));
+    btnEmojiNav.addEventListener('click', () => switchPanelMode('emojis'));
+}
+
+
+function renderSkeletonLoader(type) {
+    stickerResults.innerHTML = '';
+    const count = 20;
+    const fragment = document.createDocumentFragment();
+
+    // Ensure grid class is correct for the type
+    if (type === 'emojis') {
+        stickerResults.className = 'sticker-grid emoji-grid-mode';
+    } else {
+        stickerResults.className = 'sticker-grid';
+    }
+
+    for (let i = 0; i < count; i++) {
+        const div = document.createElement('div');
+        if (type === 'emojis') {
+            div.className = 'sticker-item-wrapper emoji-item';
+            const skel = document.createElement('div');
+            skel.className = 'skeleton skeleton-emoji';
+            div.appendChild(skel);
+        } else {
+            div.className = 'sticker-item-wrapper';
+            const skel = document.createElement('div');
+            skel.className = 'skeleton skeleton-sticker';
+            div.appendChild(skel);
+        }
+        fragment.appendChild(div);
+    }
+    stickerResults.appendChild(fragment);
+}
+
+async function loadEmojis() {
+    if (emojiCache) {
+        renderEmojiCategories(emojiCache);
+        return;
+    }
+
+    renderSkeletonLoader('emojis');
+
+    const res = await apiRequest('/api/emojis');
+
+    // Guard clause
+    if (currentPanelMode !== 'emojis') return;
+
+    if (res && res.success) {
+        emojiCache = res.data;
+        // Seleccionar primera categoría por defecto
+        const keys = Object.keys(emojiCache);
+        if (keys.length > 0) currentEmojiCategory = keys[0];
+
+        renderEmojiCategories(emojiCache);
+    } else {
+        stickerResults.innerHTML = '<div class="loading-stickers">Error al cargar emojis</div>';
+    }
+}
+
+function renderEmojiCategories(data) {
+    emojiCategoryTabs.innerHTML = '';
+    const categories = Object.keys(data);
+
+    if (categories.length === 0) {
+        stickerResults.innerHTML = '<div class="loading-stickers">No hay emojis disponibles</div>';
+        return;
+    }
+
+    categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = `sticker-tab ${currentEmojiCategory === cat ? 'active' : ''}`;
+        btn.textContent = cat;
+        btn.onclick = () => {
+            currentEmojiCategory = cat;
+            renderEmojiGrid(data[cat]);
+            // Actualizar tabs visualmente
+            Array.from(emojiCategoryTabs.children).forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+        };
+        emojiCategoryTabs.appendChild(btn);
+    });
+
+    // Render grid of current category
+    if (currentEmojiCategory && data[currentEmojiCategory]) {
+        renderEmojiGrid(data[currentEmojiCategory]);
+    }
+}
+
+function renderEmojiGrid(urls) {
+    stickerResults.innerHTML = '';
+
+    // Usamos un Grid más denso para emojis
+    stickerResults.className = 'sticker-grid emoji-grid-mode';
+
+    urls.forEach(url => {
+        const wrap = document.createElement('div');
+        wrap.className = 'sticker-item-wrapper emoji-item';
+
+        // Usamos Canvas para renderizar solo el primer frame (estático)
+        const canvas = document.createElement('canvas');
+        canvas.className = 'sticker-thumb emoji-canvas';
+        // Tamaño fijo para el canvas (resolución interna)
+        canvas.width = 64;
+        canvas.height = 64;
+
+        const img = new Image();
+        img.src = url;
+        img.crossOrigin = "Anonymous"; // Por si acaso
+
+        img.onload = () => {
+            // Dibujar imagen en el canvas (se dibuja estática)
+            const ctx = canvas.getContext('2d');
+            // Mantener ratio
+            ctx.drawImage(img, 0, 0, 64, 64);
+        };
+
+        // Al hacer click se inserta en el input
+        wrap.onclick = (e) => {
+            e.stopPropagation();
+            insertEmojiAtCursor(url);
+            stickerPanel.classList.add('hidden');
+            // focus internal
+            updateButtonState();
+        };
+
+        wrap.appendChild(canvas);
+        stickerResults.appendChild(wrap);
+    });
+}
+
+
 getEl('btnStickers').addEventListener('click', () => {
     stickerPanel.classList.toggle('hidden');
-    if (!stickerPanel.classList.contains('hidden')) refreshFavoritesCache().then(() => currentStickerTab === 'giphy' ? loadStickers() : loadFavoritesFromServer());
+    if (!stickerPanel.classList.contains('hidden')) {
+        refreshFavoritesCache();
+        // Cargar según el modo actual
+        if (currentPanelMode === 'stickers') {
+            currentStickerTab === 'giphy' ? loadStickers() : loadFavoritesFromServer();
+        } else {
+            loadEmojis();
+        }
+    }
 });
 document.addEventListener('click', (e) => { if (!stickerPanel.contains(e.target) && !getEl('btnStickers').contains(e.target)) stickerPanel.classList.add('hidden'); });
 
@@ -701,16 +1086,24 @@ async function refreshFavoritesCache() {
 }
 
 async function loadStickers(query = '') {
-    stickerResults.innerHTML = '<div class="loading-stickers">Cargando...</div>';
+    renderSkeletonLoader('stickers');
     const data = await apiRequest(`/api/stickers-proxy?q=${encodeURIComponent(query)}`);
+
+    // Guard clause: si cambiaron de pestaña
+    if (currentPanelMode !== 'stickers' || currentStickerTab !== 'giphy') return;
+
     if (data?.data) {
         renderStickersGrid(data.data.map(i => ({ url: i.images.fixed_height.url, thumb: i.images.fixed_height_small.url })));
     } else stickerResults.innerHTML = '<div class="loading-stickers">Error al cargar</div>';
 }
 
 async function loadFavoritesFromServer() {
-    stickerResults.innerHTML = '<div class="loading-stickers">Cargando favoritos...</div>';
+    renderSkeletonLoader('stickers');
     await refreshFavoritesCache();
+
+    // Guard clause
+    if (currentPanelMode !== 'stickers' || currentStickerTab !== 'favorites') return;
+
     if (!myFavorites.size) return stickerResults.innerHTML = '<div class="loading-stickers">Aún no tienes stickers favoritos.</div>';
     renderStickersGrid(Array.from(myFavorites).map(url => ({ url, thumb: url })));
 }
@@ -1010,12 +1403,27 @@ async function checkAndLoadPinnedMessage(targetUserId) {
     }
 }
 // --- AUDIO Y CONTROLES ---
-function updateButtonState() { mainActionBtn.innerHTML = isRecording ? ICONS.send : (inputMsg.value.trim().length > 0 ? ICONS.send : ICONS.mic); }
-inputMsg.addEventListener('input', () => { updateButtonState(); if (currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId }); });
+// --- AUDIO Y CONTROLES ---
+
+
+// Eventos ContentEditable
+inputMsg.addEventListener('input', () => {
+    updateButtonState();
+    if (currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId });
+});
+
+inputMsg.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        // Enviar mensaje
+        e.preventDefault();
+        mainActionBtn.click();
+    }
+});
+
 mainActionBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     if (isEditing) {
-        const newText = inputMsg.value.trim();
+        const newText = inputMsg.innerText.trim();
         if (newText.length > 0 && currentEditingId) {
             socket.emit('edit message', {
                 messageId: currentEditingId,
@@ -1028,13 +1436,14 @@ mainActionBtn.addEventListener('click', async (e) => {
     }
     if (isRecording) return stopRecording();
 
-    const text = inputMsg.value.trim();
+    // REFACTOR: Usar getInputContent() para contenteditable
+    const text = getInputContent();
     if (text.length > 0) {
         sendMessage(text, 'text', currentReplyId);
 
         // Limpiar input y UI
-        inputMsg.value = '';
-        inputMsg.style.height = '45px';
+        clearInput();
+        inputMsg.style.height = '45px'; // Reset altura si aplica
         inputMsg.focus();
         clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
@@ -1211,13 +1620,54 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     let layoutClass = 'layout-col';
 
     if (msgType === 'text') {
-        if (content.length < 32 && !content.includes('\n') && !replyData) {
+        // Calcular longitud visual aproximada
+        // Reemplazamos [emoji:url] por un placeholder corto (ej: "xx") para contar caracteres visuales
+        const visualContent = content.replace(/\[emoji:(.*?)\]/g, "xx");
+
+        if (visualContent.length < 32 && !content.includes('\n') && !replyData) {
             layoutClass = 'layout-row';
         }
     }
 
     let bodyHtml = '';
-    if (msgType === 'audio') {
+
+    // --- LÓGICA EMOJI ---
+    let isSingleEmoji = false;
+    let processedContent = content;
+
+    if (msgType === 'text') {
+        const emojiRegex = /\[emoji:(.*?)\]/g;
+        // Check if single emoji (exact match)
+        const singleMatch = content.trim().match(/^\[emoji:(.*?)\]$/);
+
+        if (singleMatch) {
+            isSingleEmoji = true;
+            // Remove background for single emoji
+            li.classList.add('sticker-wrapper');
+            // Force column layout so time is below sticker
+            layoutClass = 'layout-col';
+            const url = singleMatch[1];
+            bodyHtml = `<img src="${escapeHtml(url)}" class="animated-emoji-sticker" data-original="${escapeHtml(url)}">`;
+        } else {
+            // Mixed content: Split by emoji tag to avoid escaping HTML in linkify
+            const parts = content.split(emojiRegex); // Parts will be [text, url, text, url...] due to capturing group
+
+            // Loop through parts
+            let finalHtml = '';
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (i % 2 === 0) {
+                    // Even index = Text part (linkify it)
+                    if (part) finalHtml += linkify(part);
+                } else {
+                    // Odd index = URL part (from capturing group)
+                    // Create img tag directly
+                    finalHtml += `<img src="${escapeHtml(part)}" class="inline-emoji" data-original="${escapeHtml(part)}">`;
+                }
+            }
+            bodyHtml = `<span>${finalHtml}</span>`;
+        }
+    } else if (msgType === 'audio') {
         if (!isValidUrl(content)) return;
         const uid = `audio-${msgId}-${Date.now()}`;
         let avatarUrl = ownerType === 'me' ? (myUser.avatar || '/profile.png') : (currentTargetUserObj.avatar || '/profile.png');
@@ -1236,8 +1686,13 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         const safeSrc = isValidUrl(content) ? escapeHtml(content) : '';
         if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}"></div>`;
         else bodyHtml = `<div style="color:red; font-size:12px;">[Sticker inválido]</div>`;
+    } else if (msgType === 'sticker') {
+        const safeSrc = isValidUrl(content) ? escapeHtml(content) : '';
+        if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}"></div>`;
+        else bodyHtml = `<div style="color:red; font-size:12px;">[Sticker inválido]</div>`;
     } else {
-        bodyHtml = `<span>${linkify(content)}</span>`;
+        // Fallback for non-text types handled above
+        if (!bodyHtml) bodyHtml = `<span>${linkify(content)}</span>`;
     }
 
     li.dataset.timestamp = new Date(dateStr).getTime();
@@ -1310,6 +1765,30 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     addLongPressEvent(wrapper, msgId);
 
     addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
+
+    // --- MANEJO DE EMOJIS (Freeze/Unfreeze) ---
+    if (msgType === 'text') {
+        // 1. Inline Emojis (Mixed) -> Congelar inmediatamente
+        const inlineEmojis = li.querySelectorAll('.inline-emoji');
+        inlineEmojis.forEach(img => {
+            // Hack: esperar a que cargue para tener dimensiones
+            if (img.complete) freezeImage(img);
+            else img.onload = () => freezeImage(img);
+        });
+
+        // 2. Single Emoji -> Play once then freeze
+        const stickerEmoji = li.querySelector('.animated-emoji-sticker');
+        if (stickerEmoji) {
+            // Iniciar animación (ya está corriendo por ser src original) y programar stop
+            playAnimationOnce(stickerEmoji);
+
+            // Al click, reproducir una vez más
+            stickerEmoji.addEventListener('click', (e) => {
+                e.stopPropagation();
+                playAnimationOnce(stickerEmoji);
+            });
+        }
+    }
 }
 
 window.viewFullImage = (src) => {
@@ -2440,7 +2919,7 @@ function startEditing(msgId, currentText) {
     editPreview.classList.remove('hidden');
     editPreviewText.textContent = currentText;
     document.getElementById('inputStack').classList.add('active');
-    inputMsg.value = currentText;
+    inputMsg.innerText = currentText;
     inputMsg.focus();
 
     // Cambiar icono de envío a Checkmark (✓)
@@ -2453,7 +2932,7 @@ function cancelEditing() {
     currentEditingId = null;
     editPreview.classList.add('hidden');
     document.getElementById('inputStack').classList.remove('active');
-    inputMsg.value = '';
+    inputMsg.innerHTML = '';
     updateButtonState();
 }
 
@@ -2469,7 +2948,9 @@ function updateButtonState() {
     } else {
         // Tu lógica original
         mainActionBtn.style.backgroundColor = ""; // Reset color
-        mainActionBtn.innerHTML = isRecording ? ICONS.send : (inputMsg.value.trim().length > 0 ? ICONS.send : ICONS.mic);
+        // REFACTOR: Ahora validamos si hay texto O si hay imágenes (emojis inserted by script)
+        const hasContent = inputMsg.innerText.trim().length > 0 || inputMsg.querySelector('img');
+        mainActionBtn.innerHTML = isRecording ? ICONS.send : (hasContent ? ICONS.send : ICONS.mic);
     }
 }
 socket.on('message updated', ({ messageId, newContent, isEdited }) => {

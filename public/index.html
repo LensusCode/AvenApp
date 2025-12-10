@@ -624,7 +624,9 @@
                             </button>
 
                             <!-- INPUT TEXTO -->
-                            <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
+                            <!-- INPUT TEXTO (Refactor ContentEditable) -->
+                            <div id="input" class="input-msg" contenteditable="true" role="textbox"
+                                aria-multiline="true" spellcheck="true" data-placeholder="Mensaje"></div>
 
                             <!-- Botón Clip/Imagen (Derecha) -->
                             <button type="button" id="btnImage" class="inner-action-btn" aria-label="Adjuntar">
@@ -661,9 +663,14 @@
                 <!-- Contenido de Stickers (Buscador y Grid) -->
                 <div class="sticker-content-area">
                     <!-- Pestañas internas de stickers (Giphy / Favoritos) -->
-                    <div class="sticker-tabs">
+                    <div id="stickerTabsContainer" class="sticker-tabs">
                         <button id="tabGiphy" class="sticker-tab active">Explorar</button>
                         <button id="tabFavs" class="sticker-tab">Favoritos ⭐</button>
+                    </div>
+
+                    <!-- NUEVO: Pestañas de categorías de Emojis (Oculto por defecto) -->
+                    <div id="emojiCategoryTabs" class="sticker-tabs emoji-tabs hidden-scroll hidden">
+                        <!-- Se llenará dinámicamente con JS -->
                     </div>
 
                     <div class="sticker-header" id="stickerHeaderSearch">
@@ -678,7 +685,7 @@
                 <!-- NUEVA BARRA DE NAVEGACIÓN INFERIOR (Emoji, GIF, Sticker) -->
                 <div class="sticker-bottom-nav">
                     <!-- Botón Emojis (No funcional) -->
-                    <button class="sticker-nav-btn inactive-btn">
+                    <button id="btnEmojiNav" class="sticker-nav-btn inactive-btn">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -694,7 +701,7 @@
                     </button>
 
                     <!-- Botón Stickers (Activo y Funcional) -->
-                    <button class="sticker-nav-btn active-btn">
+                    <button id="btnStickersNav" class="sticker-nav-btn active-btn">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                             <path
                                 d="M18.5 2h-13C3.6 2 2 3.6 2 5.5v13C2 20.4 3.6 22 5.5 22h13c1.9 0 3.5-1.6 3.5-3.5v-13C22 3.6 20.4 2 18.5 2zM5.5 4h13c.8 0 1.5.7 1.5 1.5v9.8l-3.3-3.3c-.4-.4-1.1-.4-1.5 0l-1.9 1.9-4.1-4.1c-.4-.4-1.1-.4-1.5 0L5 12.6V5.5c0-.8.7-1.5.5-1.5z">

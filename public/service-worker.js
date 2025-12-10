@@ -1,6 +1,6 @@
-const CACHE_STATIC_NAME = 'aven-static-v1.0.39';
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.39';
-const CACHE_IMG_NAME = 'aven-images-v1.0.39';
+const CACHE_STATIC_NAME = 'aven-static-v1.0.40';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v1.0.40';
+const CACHE_IMG_NAME = 'aven-images-v1.0.40';
 const CACHE_LIMIT = 50;
 
 const urlsToCache = [
