@@ -2,9 +2,4 @@ node_modules
 .env
 .DS_Store
 public/Animated-Emojis/*
-!public/Animated-Emojis/Symbols/
-
-
-
-
-
+!public/Animated-Emojis/Smileys/
