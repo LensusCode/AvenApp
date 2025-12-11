@@ -2,7 +2,7 @@ node_modules
 .env
 .DS_Store
 public/Animated-Emojis/*
-!public/Animated-Emojis/Animals and Nature/
+!public/Animated-Emojis/Food and Drink/
 
 
 
