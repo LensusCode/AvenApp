@@ -198,6 +198,7 @@ function insertEmojiAtCursor(url) {
     img.src = url;
     img.className = 'inline-emoji';
     img.dataset.original = url;
+    freezeImage(img); // Freeze animation for input field
 
     const sel = window.getSelection();
     if (sel.getRangeAt && sel.rangeCount) {
