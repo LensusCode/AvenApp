@@ -1014,6 +1014,14 @@
     cursor: pointer;
     display: block;
     margin: 5px 0;
+    will-change: transform;
+    /* Hint for browser optimization */
+}
+
+.emoji-skeleton-large {
+    width: 128px;
+    height: 128px;
+    min-width: 128px;
 }
 
 .fullscreen-img {

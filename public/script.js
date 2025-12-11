@@ -1647,7 +1647,15 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
             // Force column layout so time is below sticker
             layoutClass = 'layout-col';
             const url = singleMatch[1];
-            bodyHtml = `<img src="${escapeHtml(url)}" class="animated-emoji-sticker" data-original="${escapeHtml(url)}">`;
+            // OPTIMIZATION: Skeleton + Lazy Load + Async Decoding
+            bodyHtml = `
+                <div class="skeleton-wrapper emoji-skeleton-large">
+                    <img src="${escapeHtml(url)}" 
+                         class="animated-emoji-sticker hidden-media" 
+                         data-original="${escapeHtml(url)}"
+                         loading="lazy" 
+                         decoding="async">
+                </div>`;
         } else {
             // Mixed content: Split by emoji tag to avoid escaping HTML in linkify
             const parts = content.split(emojiRegex); // Parts will be [text, url, text, url...] due to capturing group
@@ -1661,8 +1669,8 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
                     if (part) finalHtml += linkify(part);
                 } else {
                     // Odd index = URL part (from capturing group)
-                    // Create img tag directly
-                    finalHtml += `<img src="${escapeHtml(part)}" class="inline-emoji" data-original="${escapeHtml(part)}">`;
+                    // Create img tag directly - OPTIMIZATION: Async decoding for inline too
+                    finalHtml += `<img src="${escapeHtml(part)}" class="inline-emoji" data-original="${escapeHtml(part)}" decoding="async">`;
                 }
             }
             bodyHtml = `<span>${finalHtml}</span>`;
@@ -4878,6 +4886,26 @@ if ('serviceWorker' in navigator) {
 getEl('themeDefault')?.addEventListener('click', () => selectTheme('default'));
 getEl('themeLove')?.addEventListener('click', () => selectTheme('love'));
 getEl('themeSpace')?.addEventListener('click', () => selectTheme('space'));
+
+// --- OPTIMIZATION: GLOBAL IMAGE LOAD LISTENER ---
+// Usamos sniffing de eventos 'load' en fase de captura para detectar cuando cargan las imágenes
+// y quitar el skeleton. Esto es más eficiente que poner un onload en cada elemento.
+document.addEventListener('load', (e) => {
+    if (e.target.tagName === 'IMG') {
+        const img = e.target;
+        // Si es una imagen oculta (media loading)
+        if (img.classList.contains('hidden-media')) {
+            const wrapper = img.closest('.skeleton-wrapper');
+            if (wrapper) {
+                img.classList.remove('hidden-media');
+                img.classList.add('visible-media');
+                wrapper.classList.add('loaded');
+            }
+        }
+        // Si es un emoji animado, intentar freezearlo si tenemos la logica (opcional)
+        // Pero por ahora solo manejamos el skeleton.
+    }
+}, true); // Use capture phase
 
 window.closePinModal = () => { getEl('pinConfirmModal').classList.add('hidden'); };
 getEl('pinModalBackdrop')?.addEventListener('click', closePinModal);
