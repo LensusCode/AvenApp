@@ -34,8 +34,6 @@ exports.uploadAvatar = async (req, res) => {
 
         db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, req.user.id], (err) => {
             if (err) return res.status(500).json({ error: 'Error DB' });
-            // We need io to emit 'user_updated_profile'. 
-            // I'll import getIo from socketManager
             const { getIo } = require('../sockets/socketManager');
             try {
                 getIo().emit('user_updated_profile', { userId: req.user.id, avatar: avatarUrl });
@@ -65,14 +63,12 @@ exports.togglePremium = (req, res) => {
 };
 
 exports.sendLoveNote = (req, res) => {
-    // req.user is admin
     if (!req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
     const { targetUserId, content } = req.body;
     if (!targetUserId || !content) return res.status(400).json({ error: 'Datos incompletos' });
 
     db.run(`INSERT INTO love_notes (user_id, content) VALUES (?, ?)`, [targetUserId, content], function (err) {
         if (err) return res.status(500).json({ error: 'Error al enviar nota' });
-        // Optional: Notify user via socket?
         res.json({ success: true, id: this.lastID });
     });
 };

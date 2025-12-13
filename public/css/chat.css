@@ -1,4 +1,3 @@
-/* ---------- CHAT AREA ---------- */
 .chat-header {
     height: 65px;
     border-bottom: 1px solid var(--border);
@@ -26,7 +25,7 @@
     justify-content: center;
 }
 
-/* 3. Animación de entrada de mensajes */
+
 @keyframes messageSlideIn {
     from {
         opacity: 0;
@@ -129,7 +128,7 @@
     font-weight: 600;
 }
 
-/* ---------- COMPOSER (FORMULARIO) ---------- */
+
 .composer {
     padding: 10px 15px 15px;
     border-top: 1px solid var(--border);
@@ -171,7 +170,7 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
-/* Contenedor relativo para posicionar la estrella */
+
 .sticker-item-wrapper {
     position: relative;
     width: 100%;
@@ -193,7 +192,7 @@
     transform: scale(1.1);
 }
 
-/* Botón de Favorito (Estrella) */
+
 .fav-action-btn {
     position: absolute;
     top: 4px;
@@ -354,7 +353,7 @@
     color: #ff5f5f;
 }
 
-/* --- SKELETON LOADING ANIMATION --- */
+
 @keyframes skeleton-loading {
     0% {
         background-position: 200% 0;
@@ -427,7 +426,7 @@
     min-width: 0;
 }
 
-/* --- NEW SKELETON CLASSES --- */
+
 .skeleton {
     background: #27272a;
     background-image: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%);
@@ -440,7 +439,7 @@
 .skeleton-sticker {
     width: 100%;
     height: 80px;
-    /* Match .sticker-thumb height */
+
     border-radius: 8px;
 }
 
@@ -465,7 +464,7 @@
     min-width: 0;
 }
 
-/* Reply Preview */
+
 .reply-preview {
     background: var(--input-bg);
     border: 1px solid var(--border);
@@ -609,7 +608,7 @@
     display: block;
 }
 
-/* Swipe gestures */
+
 .message-row {
     display: flex;
     width: 100%;
@@ -628,7 +627,7 @@
     display: flex;
 }
 
-/* 1. MENSAJES CORTOS (< 32 caracteres) */
+
 .message-content-wrapper.layout-row {
     display: flex;
     flex-direction: row;
@@ -700,7 +699,7 @@
     z-index: 0;
 }
 
-/* Context Menu */
+
 .context-menu-backdrop {
     position: absolute;
     inset: 0;
@@ -913,6 +912,7 @@
     background: transparent !important;
     padding: 0;
     box-shadow: none;
+    border: none !important;
 }
 
 

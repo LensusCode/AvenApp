@@ -7,7 +7,7 @@ html,
 body {
     height: 100%;
     overscroll-behavior-y: none;
-    /* Evita el rebote de la página completa */
+
 }
 
 body {
@@ -25,7 +25,7 @@ body {
     overflow: hidden;
 }
 
-/* 2. Scrollbar Moderna (Estilo Dark) */
+
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

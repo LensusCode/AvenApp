@@ -1,5 +1,7 @@
+// --- REDIRECCIÓN DE SEGURIDAD E INICIALIZACIÓN ---
 let myUser = null;
 
+// Helper API Seguro
 async function apiRequest(url, method = 'GET', body = null) {
     try {
         const headers = {};
@@ -23,13 +25,13 @@ async function apiRequest(url, method = 'GET', body = null) {
     }
 }
 
-
+// Configuración Socket
 const socket = io({
     autoConnect: false,
     transports: ['websocket', 'polling']
 });
 
-
+// Verificación de sesión
 async function checkSession() {
     if (window.location.pathname === '/login') return;
     const userData = await apiRequest('/api/me');
@@ -40,7 +42,7 @@ async function checkSession() {
     }
 }
 
-
+// --- CENTRALIZACIÓN DE ICONOS ---
 const ICONS = {
     blueBadge: `<span class="verified-badge" title="Verificado" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#3b82f6"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
     purpleBadge: `<span class="verified-badge" title="Administrador" style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.2 2.9.8 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#7c3aed"/><path fill="#fff" transform="translate(12, 12) scale(0.75) translate(-12, -12)" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></span>`,
@@ -61,7 +63,7 @@ const getBadgeHtml = (u) => {
     return '';
 };
 
-
+// --- VARIABLES DE ESTADO ---
 let currentTargetUserId = null, currentTargetUserObj = null;
 let messageIdToDelete = null;
 let deleteActionType = 'single';
@@ -76,14 +78,14 @@ let currentChatType = 'private';
 let isEditing = false;
 let currentEditingId = null;
 let emojiCache = null;
-let currentPanelMode = 'stickers';
+let currentPanelMode = 'stickers'; // 'stickers' or 'emojis'
 let currentEmojiCategory = null;
 
 const editPreview = document.getElementById('editPreview');
 const editPreviewText = document.getElementById('editPreviewText');
 const closeEditBtn = document.getElementById('closeEditBtn');
 
-
+// --- ELEMENTOS DOM ---
 const getEl = (id) => document.getElementById(id);
 const profileBtn = getEl('profileBtn'), profileModal = getEl('profileModal'), closeProfile = getEl('closeProfile');
 const myAvatar = getEl('myAvatar'), profilePreviewAvatar = getEl('profilePreviewAvatar'), avatarInput = getEl('avatarInput');
@@ -106,15 +108,15 @@ const adminLoveNoteInput = document.getElementById('adminLoveNoteInput');
 const sendLoveNoteBtn = document.getElementById('sendLoveNoteBtn');
 
 
+// --- SEGURIDAD: HELPERS ---
 
-
-
+// 1. Sanitizar HTML
 const escapeHtml = (text) => {
     if (!text) return text;
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 };
 
-
+// 2. Validar URL
 const isValidUrl = (string) => {
     if (!string) return false;
     if (string.startsWith('/') || string.startsWith('./')) return true;
@@ -126,7 +128,7 @@ const isValidUrl = (string) => {
     }
 };
 
-
+// Intentar iniciar sesión
 checkSession();
 
 getEl('searchUsers').addEventListener('input', applyUserFilter);
@@ -149,9 +151,9 @@ function loginSuccess(user) {
 
 
 
+// --- CONTENTEDITABLE HELPERS ---
 
-
-
+// Obtener contenido parseado para enviar (HTML -> String [emoji:...])
 function getInputContent() {
     function parseNodes(nodes) {
         let text = '';
@@ -165,10 +167,10 @@ function getInputContent() {
                 } else if (node.tagName === 'BR') {
                     text += '\n';
                 } else {
-
+                    // Recurse for nested nodes (divs, spans, b, i, etc)
                     text += parseNodes(node.childNodes);
 
-
+                    // Add newline for block elements if not already present
                     const style = window.getComputedStyle(node);
                     if (style.display === 'block' || style.display === 'div') {
                         if (!text.endsWith('\n')) text += '\n';
@@ -186,17 +188,17 @@ function clearInput() {
     inputMsg.innerHTML = '';
 }
 
-
+// Insertar Nodo (Emoji) en posición del cursor
 function insertEmojiAtCursor(url) {
     inputMsg.focus();
 
-
+    // Crear imagen
     const img = document.createElement('img');
     img.src = url;
     img.className = 'inline-emoji';
     img.dataset.original = url;
 
-
+    // Freeze animation for input
     img.crossOrigin = "Anonymous";
     freezeImage(img, false);
 
@@ -204,7 +206,7 @@ function insertEmojiAtCursor(url) {
     if (sel.getRangeAt && sel.rangeCount) {
         let range = sel.getRangeAt(0);
 
-
+        // Verificar que el rango esté dentro del input
         if (!inputMsg.contains(range.commonAncestorContainer)) {
             range = document.createRange();
             range.selectNodeContents(inputMsg);
@@ -216,7 +218,7 @@ function insertEmojiAtCursor(url) {
         range.deleteContents();
         range.insertNode(img);
 
-
+        // Mover cursor después de la imagen
         range.setStartAfter(img);
         range.setEndAfter(img);
         sel.removeAllRanges();
@@ -225,13 +227,13 @@ function insertEmojiAtCursor(url) {
         inputMsg.appendChild(img);
     }
 
-
+    // Disparar evento input manual para actualizar estado
     inputMsg.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-
+// Insert text at cursor (Handles Input/Textarea AND ContentEditable)
 function insertAtCursor(myField, myValue) {
-
+    // 1. Para elementos ContentEditable (Divs)
     if (myField.isContentEditable) {
         myField.focus();
 
@@ -242,7 +244,7 @@ function insertAtCursor(myField, myValue) {
             console.warn("execCommand failed", e);
         }
 
-
+        // Fallback robusto usando Rangos
         if (!success) {
             const sel = window.getSelection();
             if (sel.getRangeAt && sel.rangeCount) {
@@ -251,23 +253,23 @@ function insertAtCursor(myField, myValue) {
                 const textNode = document.createTextNode(myValue);
                 range.insertNode(textNode);
 
-
+                // Mover cursor al final del texto insertado
                 range.setStartAfter(textNode);
                 range.setEndAfter(textNode);
                 sel.removeAllRanges();
                 sel.addRange(range);
             } else {
-
+                // Si no hay selección, añadir al final
                 myField.innerText += myValue;
             }
         }
 
-
+        // Disparar evento para actualizar estado del botón (send vs mic)
         myField.dispatchEvent(new Event('input', { bubbles: true }));
         return;
     }
 
-
+    // 2. Para Inputs y Textareas normales
     if (document.selection) {
         myField.focus();
         sel = document.selection.createRange();
@@ -283,17 +285,17 @@ function insertAtCursor(myField, myValue) {
     } else {
         myField.value += myValue;
     }
-
+    // Disparar evento input
     myField.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-
+// Helper para congelar imagen (WebP animado -> Canvas estático)
 const freezeImage = (img, saveOriginal = true) => {
     try {
         if (saveOriginal && !img.dataset.original) img.dataset.original = img.src;
-        if (img.dataset.frozen === "true") return;
+        if (img.dataset.frozen === "true") return; // Ya congelado
 
-
+        // Necesitamos que la imagen esté cargada para dibujarla
         const doFreeze = () => {
             const canvas = document.createElement('canvas');
             canvas.width = img.naturalWidth || img.width;
@@ -318,20 +320,20 @@ const unfreezeImage = (img) => {
 
 const playAnimationOnce = (img) => {
     unfreezeImage(img);
-
+    // Reiniciar animación recargando src (hack común)
     const src = img.src; img.src = ""; img.src = src;
 
-
+    // Detener después de 2.5s (ajustable)
     if (img.dataset.timer) clearTimeout(parseInt(img.dataset.timer));
     const t = setTimeout(() => freezeImage(img, false), 2500);
     img.dataset.timer = t;
 };
 
-
+// --- EDITOR DE IMAGEN ---
 let currentEditFile = null;
 let currentScaleX = 1;
 
-
+// --- 1. ABRIR EDITOR (Vista Previa) ---
 chatImageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -340,16 +342,16 @@ chatImageInput.addEventListener('change', (e) => {
     const reader = new FileReader();
 
     reader.onload = (evt) => {
-
+        // Resetear UI
         if (cropper) { cropper.destroy(); cropper = null; }
         getEl('imageEditorModal').classList.remove('hidden');
 
-
+        // Mostrar elementos principales, ocultar recorte
         getEl('mainHeader').classList.remove('hidden');
         getEl('mainFooter').classList.remove('hidden');
         getEl('cropFooter').classList.add('hidden');
 
-
+        // Cargar imagen
         imageToEdit.src = evt.target.result;
         imageCaptionInput.value = '';
         imageCaptionInput.focus();
@@ -358,27 +360,27 @@ chatImageInput.addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-
+// --- 2. CERRAR EDITOR COMPLETAMENTE ---
 getEl('closeEditorBtn').addEventListener('click', () => {
     getEl('imageEditorModal').classList.add('hidden');
     if (cropper) { cropper.destroy(); cropper = null; }
     currentEditFile = null;
 });
 
-
+// --- 3. ENTRAR A MODO RECORTE ---
 getEl('enterCropModeBtn').addEventListener('click', () => {
-
+    // Ocultar UI principal
     getEl('mainHeader').classList.add('hidden');
     getEl('mainFooter').classList.add('hidden');
 
-
+    // Mostrar UI de recorte
     getEl('cropFooter').classList.remove('hidden');
 
-
-    currentScaleX = 1;
+    // Iniciar Cropper
+    currentScaleX = 1; // Resetear flip
     cropper = new Cropper(imageToEdit, {
         viewMode: 1,
-        dragMode: 'none',
+        dragMode: 'none',       // Imagen fija
         autoCropArea: 0.9,
         restore: false,
         guides: true,
@@ -393,9 +395,9 @@ getEl('enterCropModeBtn').addEventListener('click', () => {
     });
 });
 
+// --- 4. ACCIONES DEL MODO RECORTE ---
 
-
-
+// Botón ROTAR
 getEl('rotateBtn').addEventListener('click', () => {
     if (!cropper) return;
 
@@ -405,9 +407,9 @@ getEl('rotateBtn').addEventListener('click', () => {
     const cropBoxData = cropper.getCropBoxData();
     const containerData = cropper.getContainerData();
 
-    cropper.rotate(90);
+    cropper.rotate(90); // Rotar
 
-
+    // Invertir dimensiones del recuadro para que acompañe el giro
     const containerCenterX = containerData.width / 2;
     const containerCenterY = containerData.height / 2;
     const newWidth = cropBoxData.height;
@@ -423,50 +425,50 @@ getEl('rotateBtn').addEventListener('click', () => {
     setTimeout(() => container.classList.remove('animating-rotation'), 300);
 });
 
-
+// Botón FLIP
 getEl('flipBtn').addEventListener('click', () => {
     if (!cropper) return;
-    currentScaleX = -currentScaleX;
-    cropper.scaleX(currentScaleX);
+    currentScaleX = -currentScaleX; // Invertir estado
+    cropper.scaleX(currentScaleX);  // Aplicar flip horizontal
 });
 
-
+// Botón CANCELAR
 getEl('cancelCropBtn').addEventListener('click', () => {
-
+    // Destruir cropper
     if (cropper) { cropper.destroy(); cropper = null; }
 
-
+    // Volver a la UI Principal
     getEl('cropFooter').classList.add('hidden');
     getEl('mainHeader').classList.remove('hidden');
     getEl('mainFooter').classList.remove('hidden');
 });
 
-
+// Boton OK (Aplicar recorte y volver)
 getEl('okCropBtn').addEventListener('click', () => {
     if (!cropper) return;
 
-
+    // 1. Obtener la imagen recortada como DataURL (base64)
     const croppedCanvas = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048 });
     const croppedImageBase64 = croppedCanvas.toDataURL('image/jpeg', 0.9);
 
-
+    // 2. Destruir cropper
     cropper.destroy();
     cropper = null;
 
-
+    // 3. Reemplazar la imagen visible con la versión recortada
     imageToEdit.src = croppedImageBase64;
 
-
+    // 4. Volver a la UI Principal
     getEl('cropFooter').classList.add('hidden');
     getEl('mainHeader').classList.remove('hidden');
     getEl('mainFooter').classList.remove('hidden');
 });
 
-
+// --- 5. ENVIAR IMAGEN FINAL ---
 getEl('sendImageBtn').addEventListener('click', async () => {
     getEl('sendImageBtn').innerHTML = '...';
 
-
+    // Convertir el src actual (que puede ser el original o el recortado) a Blob
     const res = await fetch(imageToEdit.src);
     const blob = await res.blob();
 
@@ -523,7 +525,7 @@ socket.on('chat history cleared', ({ chatId }) => {
     }
 });
 
-
+// --- PERFIL Y EDICIÓN ---
 
 socket.on('nicknames', (map) => {
     myNicknames = map;
@@ -531,7 +533,7 @@ socket.on('nicknames', (map) => {
     if (currentTargetUserObj) updateChatHeaderInfo(currentTargetUserObj);
 });
 
-
+// Función para editar MI PERFIL (Envía a DB)
 function enableInlineEdit(elementId, dbField, prefix = '') {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -601,7 +603,7 @@ function enableInlineEdit(elementId, dbField, prefix = '') {
     });
 }
 
-
+// Función para editar APODO de CONTACTO
 function enableNicknameEdit(elementId, targetUserId) {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -646,7 +648,7 @@ function enableNicknameEdit(elementId, targetUserId) {
     });
 }
 
-
+// Evento: ABRIR MI PERFIL
 profileBtn.addEventListener('click', () => {
     if (fabNewChat) fabNewChat.classList.add('hidden');
     if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
@@ -670,7 +672,7 @@ profileBtn.addEventListener('click', () => {
 });
 
 const togglePremiumBtn = getEl('togglePremiumBtn');
-
+// Evento: ABRIR INFO CONTACTO
 getEl('headerAvatarBtn').addEventListener('click', () => {
     if (!currentTargetUserObj) return;
 
@@ -744,38 +746,38 @@ if (sendLoveNoteBtn) {
     });
 }
 
-
+// --- LÓGICA PARA EL BOTÓN DE VERIFICADO DE CORAZÓN ---
 if (togglePremiumBtn) {
     togglePremiumBtn.addEventListener('click', async () => {
-
+        // Validación de seguridad
         if (!currentTargetUserObj || !currentTargetUserId) return;
 
-
+        // 1. Guardar estado anterior por si falla
         const previousState = currentTargetUserObj.is_premium;
 
-
+        // 2. ACTUALIZACIÓN OPTIMISTA (UI INMEDIATA)
         currentTargetUserObj.is_premium = !currentTargetUserObj.is_premium;
 
-
+        // A. Actualizar texto del botón inmediatamente
         togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
 
-
+        // B. Actualizar el nombre en el Modal (Info Contacto) para ver el icono nuevo
         const modalNameEl = document.getElementById('contactInfoName');
         const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
         if (modalNameEl) {
             modalNameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
         }
 
-
+        // C. Actualizar el Header del Chat
         updateChatHeaderInfo(currentTargetUserObj);
 
-
+        // D. Actualizar la lista de usuarios (para que salga el icono en la barra lateral)
         const userListItem = document.querySelector(`.user-item[data-uid="${currentTargetUserObj.userId}"] div[style*="font-weight:600"]`);
         if (userListItem) {
             userListItem.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
         }
 
-
+        // 3. Llamada a la API (Simulada o Real)
         try {
             const res = await apiRequest('/api/admin/toggle-premium', 'POST', {
                 targetUserId: currentTargetUserObj.userId
@@ -786,7 +788,7 @@ if (togglePremiumBtn) {
             }
         } catch (error) {
             console.error(error);
-
+            // Revertir cambios si falló
             currentTargetUserObj.is_premium = previousState;
             updateChatHeaderInfo(currentTargetUserObj);
             togglePremiumBtn.textContent = currentTargetUserObj.is_premium ? "Quitar Corazón 💔" : "Poner Corazón 💖";
@@ -804,7 +806,7 @@ closeProfile.addEventListener('click', () => {
     }
 });
 
-
+// Botón de menú Perfil
 if (profileOptionsBtn) {
     profileOptionsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -817,7 +819,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-
+// Logout
 const newLogoutBtn = getEl('profileLogout');
 if (newLogoutBtn) {
     newLogoutBtn.replaceWith(newLogoutBtn.cloneNode(true));
@@ -851,7 +853,7 @@ function updateChatHeaderInfo(u) {
     chatTitle.innerHTML = escapeHtml(myNicknames[u.userId] || u.username) + getBadgeHtml(u);
 }
 
-
+// --- STICKERS ---
 const switchStickerTab = (tab) => {
     currentStickerTab = tab;
     getEl('tabGiphy').classList.toggle('active', tab === 'giphy');
@@ -865,7 +867,7 @@ if (getEl('tabGiphy')) {
     getEl('tabFavs').addEventListener('click', () => switchStickerTab('favorites'));
 }
 
-
+// --- EMOJIS ---
 const btnStickersNav = getEl('btnStickersNav');
 const btnEmojiNav = getEl('btnEmojiNav');
 const stickerTabsContainer = getEl('stickerTabsContainer');
@@ -875,51 +877,51 @@ const stickerSearchHeader = getEl('stickerHeaderSearch');
 async function switchPanelMode(mode) {
     currentPanelMode = mode;
 
-
+    // UI Updates
     if (mode === 'emojis') {
         btnEmojiNav.classList.add('active-btn');
         btnEmojiNav.classList.remove('inactive-btn');
         btnStickersNav.classList.remove('active-btn');
         btnStickersNav.classList.add('inactive-btn');
 
-
+        // Hide Sticker Tabs
         stickerTabsContainer.classList.add('hidden');
         stickerTabsContainer.style.display = 'none';
 
         stickerSearchHeader.classList.add('hidden');
 
-
+        // Show Emoji Categories
         emojiCategoryTabs.classList.remove('hidden');
-
-
+        // Reset display to allow CSS (block !important) to take over, or force it if needed.
+        // User requested 'flex' or 'block'. CSS handles it as block !important.
         emojiCategoryTabs.style.removeProperty('display');
 
-
+        // Limpieza preventiva
         stickerResults.innerHTML = '';
 
         await loadEmojis();
     } else {
-
+        // Stickers
         btnStickersNav.classList.add('active-btn');
         btnStickersNav.classList.remove('inactive-btn');
         btnEmojiNav.classList.remove('active-btn');
         btnEmojiNav.classList.add('inactive-btn');
 
-
+        // Show Sticker Tabs
         stickerTabsContainer.classList.remove('hidden');
         stickerTabsContainer.style.display = 'flex';
 
         if (currentStickerTab === 'giphy') stickerSearchHeader.classList.remove('hidden');
 
-
+        // Hide Emoji Categories
         emojiCategoryTabs.classList.add('hidden');
-
+        // Force hide because CSS has display: block !important
         emojiCategoryTabs.style.setProperty('display', 'none', 'important');
 
+        // Reload current sticker view
+        stickerResults.className = 'sticker-grid'; // Reset class
 
-        stickerResults.className = 'sticker-grid';
-
-
+        // Limpieza preventiva
         stickerResults.innerHTML = '';
 
         currentStickerTab === 'giphy' ? loadStickers(getEl('stickerSearch').value) : loadFavoritesFromServer();
@@ -937,7 +939,7 @@ function renderSkeletonLoader(type) {
     const count = 20;
     const fragment = document.createDocumentFragment();
 
-
+    // Ensure grid class is correct for the type
     if (type === 'emojis') {
         stickerResults.className = 'sticker-grid emoji-grid-mode';
     } else {
@@ -972,12 +974,12 @@ async function loadEmojis() {
 
     const res = await apiRequest('/api/emojis');
 
-
+    // Guard clause
     if (currentPanelMode !== 'emojis') return;
 
     if (res && res.success) {
         emojiCache = res.data;
-
+        // Seleccionar primera categoría por defecto
         const keys = Object.keys(emojiCache);
         if (keys.length > 0) currentEmojiCategory = keys[0];
 
@@ -1003,14 +1005,14 @@ function renderEmojiCategories(data) {
         btn.onclick = () => {
             currentEmojiCategory = cat;
             renderEmojiGrid(data[cat]);
-
+            // Actualizar tabs visualmente
             Array.from(emojiCategoryTabs.children).forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
         };
         emojiCategoryTabs.appendChild(btn);
     });
 
-
+    // Render grid of current category
     if (currentEmojiCategory && data[currentEmojiCategory]) {
         renderEmojiGrid(data[currentEmojiCategory]);
     }
@@ -1019,37 +1021,37 @@ function renderEmojiCategories(data) {
 function renderEmojiGrid(urls) {
     stickerResults.innerHTML = '';
 
-
+    // Usamos un Grid más denso para emojis
     stickerResults.className = 'sticker-grid emoji-grid-mode';
 
     urls.forEach(url => {
         const wrap = document.createElement('div');
         wrap.className = 'sticker-item-wrapper emoji-item';
 
-
+        // Usamos Canvas para renderizar solo el primer frame (estático)
         const canvas = document.createElement('canvas');
         canvas.className = 'sticker-thumb emoji-canvas';
-
+        // Tamaño fijo para el canvas (resolución interna)
         canvas.width = 64;
         canvas.height = 64;
 
         const img = new Image();
         img.src = url;
-        img.crossOrigin = "Anonymous";
+        img.crossOrigin = "Anonymous"; // Por si acaso
 
         img.onload = () => {
-
+            // Dibujar imagen en el canvas (se dibuja estática)
             const ctx = canvas.getContext('2d');
-
+            // Mantener ratio
             ctx.drawImage(img, 0, 0, 64, 64);
         };
 
-
+        // Al hacer click se inserta en el input
         wrap.onclick = (e) => {
             e.stopPropagation();
             insertEmojiAtCursor(url);
             stickerPanel.classList.add('hidden');
-
+            // focus internal
             updateButtonState();
         };
 
@@ -1063,7 +1065,7 @@ getEl('btnStickers').addEventListener('click', () => {
     stickerPanel.classList.toggle('hidden');
     if (!stickerPanel.classList.contains('hidden')) {
         refreshFavoritesCache();
-
+        // Cargar según el modo actual
         if (currentPanelMode === 'stickers') {
             currentStickerTab === 'giphy' ? loadStickers() : loadFavoritesFromServer();
         } else {
@@ -1088,7 +1090,7 @@ async function loadStickers(query = '') {
     renderSkeletonLoader('stickers');
     const data = await apiRequest(`/api/stickers-proxy?q=${encodeURIComponent(query)}`);
 
-
+    // Guard clause: si cambiaron de pestaña
     if (currentPanelMode !== 'stickers' || currentStickerTab !== 'giphy') return;
 
     if (data?.data) {
@@ -1100,7 +1102,7 @@ async function loadFavoritesFromServer() {
     renderSkeletonLoader('stickers');
     await refreshFavoritesCache();
 
-
+    // Guard clause
     if (currentPanelMode !== 'stickers' || currentStickerTab !== 'favorites') return;
 
     if (!myFavorites.size) return stickerResults.innerHTML = '<div class="loading-stickers">Aún no tienes stickers favoritos.</div>';
@@ -1167,7 +1169,7 @@ getEl('btnStickerFavAction')?.addEventListener('click', async () => {
 });
 function openStickerOptions(url) { toggleStickerModal(true, url); }
 
-
+// --- REPLY ---
 function setReply(msgId, content, type, ownerId) {
     if (isEditing) {
         cancelEditing();
@@ -1202,7 +1204,7 @@ getEl('closeReplyBtn').addEventListener('click', clearReply);
 btnImage.addEventListener('click', () => chatImageInput.click());
 getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSuccessModal').classList.add('hidden'));
 
-
+// --- LISTA DE USUARIOS Y SOCKETS ---
 socket.on('users', (users) => {
     allUsersCache = users;
 
@@ -1221,7 +1223,7 @@ socket.on('users', (users) => {
         }
     }
 
-
+    // 2. Revisar mis propios datos (ME)
     const me = users.find(u => u.userId === myUser.id);
     if (me) {
         if (!myUser.is_verified && me.is_verified) {
@@ -1286,7 +1288,7 @@ socket.on('user_updated_profile', ({ userId, avatar }) => {
 async function selectUser(target, elem) {
     if (fabNewChat) fabNewChat.classList.add('hidden');
     if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
-
+    // --- RESET UX ---
     lastMessageDate = null;
     lastMessageUserId = null;
 
@@ -1367,7 +1369,7 @@ async function selectUser(target, elem) {
 backBtn.addEventListener('click', () => {
     chatContainer.classList.remove('mobile-chat-active');
 
-
+    // Quitar temas globales (Código existente)
     document.body.classList.remove('theme-love', 'theme-space');
 
     if (fabNewChat) fabNewChat.classList.remove('hidden');
@@ -1401,11 +1403,11 @@ async function checkAndLoadPinnedMessage(targetUserId) {
         console.error("Error cargando fijado:", e);
     }
 }
+// --- AUDIO Y CONTROLES ---
+// --- AUDIO Y CONTROLES ---
 
 
-
-
-
+// Eventos ContentEditable
 inputMsg.addEventListener('input', () => {
     updateButtonState();
     if (currentTargetUserId) socket.emit('typing', { toUserId: currentTargetUserId });
@@ -1413,7 +1415,7 @@ inputMsg.addEventListener('input', () => {
 
 inputMsg.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-
+        // Enviar mensaje
         e.preventDefault();
         mainActionBtn.click();
     }
@@ -1435,14 +1437,14 @@ mainActionBtn.addEventListener('click', async (e) => {
     }
     if (isRecording) return stopRecording();
 
-
+    // REFACTOR: Usar getInputContent() para contenteditable
     const text = getInputContent();
     if (text.length > 0) {
         sendMessage(text, 'text', currentReplyId);
 
-
+        // Limpiar input y UI
         clearInput();
-        inputMsg.style.height = '45px';
+        inputMsg.style.height = '45px'; // Reset altura si aplica
         inputMsg.focus();
         clearReply();
         socket.emit('stop typing', { toUserId: currentTargetUserId });
@@ -1482,7 +1484,7 @@ function stopRecording() { if (mediaRecorder?.state !== 'inactive') { mediaRecor
 getEl('cancelRecordingBtn').addEventListener('click', () => { shouldSendAudio = false; stopRecording(); });
 function resetRecordingUI() { isRecording = false; clearInterval(recordingInterval); getEl('inputStack').classList.remove('recording'); recordingUI.classList.add('hidden'); updateButtonState(); }
 
-
+// --- ENVÍO Y RECEPCIÓN ---
 function sendMessage(content, type, replyId = null) {
     if (!currentTargetUserId) return;
     if ((type === 'image' || type === 'sticker') && !isValidUrl(content)) { return alert("Error de seguridad"); }
@@ -1513,10 +1515,10 @@ socket.on('private message', (msg) => {
             rd = { username: rName, content: rText, type: msg.reply_type };
         }
 
-
+        // 3. Renderizar
         appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0);
 
-
+        // 4. Scroll condicional
         if (isAtBottom) {
             scrollToBottom(true);
         }
@@ -1540,7 +1542,7 @@ socket.on('message deleted', ({ messageId }) => {
     }
 });
 
-
+// Función para convertir links (especialmente ap.me)
 function linkify(text) {
     if (!text) return "";
 
@@ -1670,7 +1672,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         if (safeSrc) bodyHtml = `<div class="skeleton-wrapper sticker-skeleton"><img src="${safeSrc}" class="sticker-img hidden-media" data-url="${safeSrc}"></div>`;
         else bodyHtml = `<div style="color:red; font-size:12px;">[Sticker inválido]</div>`;
     } else {
-
+        // Fallback for non-text types handled above
         if (!bodyHtml) bodyHtml = `<span>${linkify(content)}</span>`;
     }
 
@@ -1680,7 +1682,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     const isStickerWithReply = (msgType === 'sticker' && replyData !== null);
 
-
+    // 2. Definir la clase extra
     const stickerBubbleClass = isStickerWithReply ? 'sticker-reply-bubble' : '';
 
     const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
@@ -1688,7 +1690,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
     const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
 
-
+    // Meta (Hora
 
 
 
@@ -1702,7 +1704,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     messagesList.appendChild(li);
 
 
-
+    // C. Ajuste de Bordes (Grouping)
     if (isSequence) {
         const prevLi = li.previousElementSibling;
 
@@ -1719,15 +1721,15 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         }
     }
 
-
+    // Actualizamos el rastreador
     lastMessageUserId = currentUserId;
 
-
+    // Listeners
     if (msgType === 'sticker' && isValidUrl(content)) {
         li.querySelector('.sticker-img').addEventListener('click', (e) => { e.stopPropagation(); myFavorites.size ? openStickerOptions(content) : refreshFavoritesCache().then(() => openStickerOptions(content)); });
     }
 
-
+    // CSP FIX: Handle Image Click and Load
     const mediaImg = li.querySelector('.chat-image, .sticker-img');
     if (mediaImg) {
         mediaImg.addEventListener('load', function () {
@@ -1745,23 +1747,23 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
 
-
+    // --- MANEJO DE EMOJIS (Freeze/Unfreeze) ---
     if (msgType === 'text') {
-
+        // 1. Inline Emojis (Mixed) -> Congelar inmediatamente
         const inlineEmojis = li.querySelectorAll('.inline-emoji');
         inlineEmojis.forEach(img => {
-
+            // Hack: esperar a que cargue para tener dimensiones
             if (img.complete) freezeImage(img);
             else img.onload = () => freezeImage(img);
         });
 
-
+        // 2. Single Emoji -> Play once then freeze
         const stickerEmoji = li.querySelector('.animated-emoji-sticker');
         if (stickerEmoji) {
-
+            // Iniciar animación (ya está corriendo por ser src original) y programar stop
             playAnimationOnce(stickerEmoji);
 
-
+            // Al click, reproducir una vez más
             stickerEmoji.addEventListener('click', (e) => {
                 e.stopPropagation();
                 playAnimationOnce(stickerEmoji);
@@ -1779,7 +1781,7 @@ window.viewFullImage = (src) => {
     document.body.appendChild(m);
 };
 
-
+// --- GESTOS ---
 function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
     const icon = row.querySelector('.swipe-reply-icon');
     let startX = 0, currentX = 0, isSwiping = false;
@@ -1796,7 +1798,7 @@ function addLongPressEvent(el, msgId) {
     let timer;
 
     const start = (e) => {
-
+        // Si el mensaje se está deslizando (swipe), no iniciar long press
         if (el.style.transform && el.style.transform !== 'translateX(0px)') return;
 
         el.classList.add('pressing');
@@ -1812,18 +1814,18 @@ function addLongPressEvent(el, msgId) {
 
     el.addEventListener('mousedown', (e) => { if (e.button === 0) start(e); });
 
-
+    // 1. Eventos que NO requieren passive explícito o no son de scroll
     ['mouseup', 'mouseleave', 'touchend'].forEach(ev => el.addEventListener(ev, cancel));
 
-
+    // 2. SOLUCIÓN: Agregar touchmove explícitamente como 'passive: true'
     el.addEventListener('touchmove', cancel, { passive: true });
 
     el.addEventListener('touchstart', start, { passive: true });
 }
 
+//  MENÚ CONTEXTUAL // 
 
-
-
+// Función global para cerrar el menú y limpiar estados
 window.closeContextMenu = () => {
     msgContextMenu.classList.add('hidden');
     currentContextMessageId = null;
@@ -1831,7 +1833,7 @@ window.closeContextMenu = () => {
 };
 getEl('contextMenuBackdrop')?.addEventListener('click', closeContextMenu);
 
-
+// Función para abrir el menú
 function openContextMenu(x, y, msgId) {
     currentContextMessageId = msgId;
     messageIdToDelete = msgId;
@@ -1866,7 +1868,7 @@ function openContextMenu(x, y, msgId) {
         }
     }
 
-
+    // --- LÓGICA BOTÓN ELIMINAR PARA TODOS ---
     const btnEveryone = document.getElementById('btnDeleteEveryone');
     if (btnEveryone) {
         if (isMyMessage || isAdmin) {
@@ -1876,7 +1878,7 @@ function openContextMenu(x, y, msgId) {
         }
     }
 
-
+    // --- POSICIONAMIENTO DEL MENÚ ---
     let top = y;
     let left = x;
 
@@ -1887,17 +1889,17 @@ function openContextMenu(x, y, msgId) {
     menu.style.left = `${left}px`;
 }
 
+// 1. LISTENERS DEL MENÚ CONTEXTUAL
 
-
-
+// Responder
 getEl('ctxReplyBtn').addEventListener('click', () => {
     const msgEl = document.getElementById(`msg-${currentContextMessageId}`);
     if (msgEl) {
-
+        // Intentar obtener contenido (texto o imagen)
         let content = msgEl.innerText;
         let type = 'text';
 
-
+        // Si tiene imagen
         if (msgEl.querySelector('.chat-image')) {
             content = msgEl.querySelector('.chat-image').src;
             type = 'image';
@@ -1911,8 +1913,8 @@ getEl('ctxReplyBtn').addEventListener('click', () => {
     closeContextMenu();
 });
 
-
-
+// Copiar
+// 2. Copiar
 getEl('ctxCopyBtn').addEventListener('click', async () => {
     if (!currentContextMessageId) return;
 
@@ -1952,16 +1954,16 @@ getEl('ctxDeleteBtn').addEventListener('click', () => {
 
     getEl('deleteConfirmModal').classList.remove('hidden');
 });
+//  LÓGICA DE BORRADO //
 
-
-
+// Función helper para cerrar modal de borrado
 window.closeDeleteModal = () => {
     getEl('deleteConfirmModal').classList.add('hidden');
 };
 getEl('deleteModalBackdrop')?.addEventListener('click', closeDeleteModal);
 getEl('btnCancelDelete')?.addEventListener('click', closeDeleteModal);
 
-
+// Función visual para quitar mensaje de la UI suavemente
 function removeMessageFromUI(msgId) {
     const el = document.getElementById(`msg-${msgId}`);
     if (el) {
@@ -1973,7 +1975,7 @@ function removeMessageFromUI(msgId) {
     }
 }
 
-
+// 1. Eliminar PARA TODOS
 getEl('btnDeleteEveryone').addEventListener('click', () => {
     if (!currentTargetUserId) return closeDeleteModal();
 
@@ -1991,9 +1993,9 @@ getEl('btnDeleteEveryone').addEventListener('click', () => {
             deleteType: 'everyone'
         });
 
+        // Limpiar UI
 
-
-
+        // Si la acción era "Eliminar Chat y Salir"
         if (deleteActionType === 'delete_chat') {
             performExitChat();
         }
@@ -2001,12 +2003,12 @@ getEl('btnDeleteEveryone').addEventListener('click', () => {
     closeDeleteModal();
 });
 
-
+// --- ACCIÓN: ELIMINAR PARA MÍ ---
 getEl('btnDeleteMe').addEventListener('click', () => {
     if (!currentTargetUserId) return closeDeleteModal();
 
     if (deleteActionType === 'single' && messageIdToDelete) {
-
+        // CASO 1: Mensaje Individual
         socket.emit('delete message', {
             messageId: messageIdToDelete,
             toUserId: currentTargetUserId,
@@ -2015,16 +2017,16 @@ getEl('btnDeleteMe').addEventListener('click', () => {
         removeMessageFromUI(messageIdToDelete);
 
     } else if (deleteActionType === 'clear' || deleteActionType === 'delete_chat') {
-
+        // CASO 2: Vaciar Chat Completo (Solo para mí)
         socket.emit('clear chat history', {
             toUserId: currentTargetUserId,
             deleteType: 'me'
         });
 
-
+        // Limpiar UI
         document.getElementById('messages').innerHTML = '';
 
-
+        // Si la acción era "Eliminar Chat y Salir"
         if (deleteActionType === 'delete_chat') {
             performExitChat();
         }
@@ -2032,13 +2034,13 @@ getEl('btnDeleteMe').addEventListener('click', () => {
     closeDeleteModal();
 });
 
-
+// Función auxiliar para salir del chat (UI)
 function performExitChat() {
-
+    // Eliminar de la lista lateral visualmente
     const userItem = document.querySelector(`.user-item[data-uid="${currentTargetUserId}"]`);
     if (userItem) userItem.remove();
 
-
+    // Salir a pantalla vacía
     document.querySelector('.chat-container').classList.remove('mobile-chat-active');
     document.querySelector('.chat-header').classList.add('hidden');
     document.querySelector('.messages').classList.add('hidden');
@@ -2047,34 +2049,34 @@ function performExitChat() {
 
     if (fabNewChat) fabNewChat.classList.remove('hidden');
 
-
+    // 4. Restaurar botón Love Notes si corresponde
     if (loveNotesBtn && myUser && myUser.is_premium) {
         loveNotesBtn.classList.remove('hidden');
     }
 
-
+    // Resetear usuario actual
     currentTargetUserId = null;
     currentTargetUserObj = null;
 }
 
 
 socket.on('typing', ({ fromUserId, username }) => {
-
+    // Solo mostrar si el que escribe es el usuario del chat abierto actualmente
     if (fromUserId === currentTargetUserId) {
 
-
+        // Lógica según el tipo de chat
         if (currentChatType === 'private') {
-
+            // Chat privado: Solo "Escribiendo..." (Sin nombre)
             typingText.textContent = "Escribiendo...";
         } else if (currentChatType === 'group') {
-
+            // Grupo: "Juan está escribiendo..." (Con nombre)
             const name = escapeHtml(myNicknames[fromUserId] || username);
             typingText.textContent = `${name} está escribiendo...`;
         } else if (currentChatType === 'channel') {
-
+            // Canal: Generalmente no se muestra nada, o solo "Escribiendo..."
             typingText.textContent = "Escribiendo...";
         } else {
-
+            // Fallback por defecto
             typingText.textContent = "Escribiendo...";
         }
 
@@ -2083,28 +2085,28 @@ socket.on('typing', ({ fromUserId, username }) => {
 });
 socket.on('stop typing', ({ fromUserId }) => { if (fromUserId === currentTargetUserId) typingIndicator.classList.add('hidden'); });
 inputMsg.addEventListener('input', () => {
-
+    // Ajustar altura del textarea (tu código actual)
     inputMsg.style.height = 'auto';
     inputMsg.style.height = inputMsg.scrollHeight + 'px';
     const isScroll = inputMsg.scrollHeight >= 120;
     inputMsg.classList.toggle('scroll-active', isScroll);
     inputMsg.style.overflowY = isScroll ? 'auto' : 'hidden';
 
-
+    // Actualizar botón (Micrófono vs Enviar)
     updateButtonState();
 
-
+    // Socket typing (tu código actual)
     if (currentTargetUserId) {
         socket.emit('typing', { toUserId: currentTargetUserId });
 
-
-
+        // --- NUEVO: GUARDAR BORRADOR EN LOCALSTORAGE ---
+        // Guardamos usando el ID del usuario como clave
         localStorage.setItem(`draft_${currentTargetUserId}`, inputMsg.value);
     }
 });
 inputMsg.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (inputMsg.value.trim().length) mainActionBtn.click(); } });
 
-
+// Login/PWA
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
 const tabLogin = document.getElementById('tabLogin');
@@ -2122,47 +2124,47 @@ if (loginForm) {
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if (installBtn) installBtn.classList.remove('hidden'); });
 if (installBtn) { installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; installBtn.classList.add('hidden'); } }); }
-
+// --- LÓGICA CORREGIDA PARA EL BOTÓN DE VERIFICAR ---
 const toggleVerifyBtn = document.getElementById('toggleVerifyBtn');
 
 if (toggleVerifyBtn) {
     toggleVerifyBtn.addEventListener('click', async () => {
-
+        // Validación de seguridad
         if (!currentTargetUserObj || !currentTargetUserId) return;
 
-
+        // 1. Guardamos el estado anterior por si falla la petición
         const previousState = currentTargetUserObj.is_verified;
 
+        // 2. ACTUALIZACIÓN OPTIMISTA (UI INMEDIATA)
+        // Cambiamos el estado localmente antes de esperar al servidor
+        currentTargetUserObj.is_verified = !currentTargetUserObj.is_verified; // Toggle true/false (o 1/0)
 
-
-        currentTargetUserObj.is_verified = !currentTargetUserObj.is_verified;
-
-
+        // A. Actualizar texto del botón inmediatamente
         toggleVerifyBtn.textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
 
-
+        // B. Actualizar el nombre en el Modal (Info Contacto)
         const modalNameEl = document.getElementById('contactInfoName');
         const displayName = myNicknames[currentTargetUserObj.userId] || currentTargetUserObj.display_name || currentTargetUserObj.username;
         if (modalNameEl) {
             modalNameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(currentTargetUserObj);
         }
 
-
+        // C. [CLAVE] Actualizar el Header del Chat inmediatamente
         updateChatHeaderInfo(currentTargetUserObj);
 
-
+        // 3. Llamada a la API (Segundo plano)
         try {
             const res = await apiRequest('/api/admin/toggle-verify', 'POST', {
                 targetUserId: currentTargetUserObj.userId
             });
 
-
+            // Si hubo error en el servidor, revertimos los cambios visuales
             if (!res || !res.success) {
                 throw new Error("Error en servidor");
             }
         } catch (error) {
             console.error(error);
-
+            // Revertir cambios si falló
             currentTargetUserObj.is_verified = previousState;
             updateChatHeaderInfo(currentTargetUserObj);
             toggleVerifyBtn.textContent = currentTargetUserObj.is_verified ? "Quitar Verificado" : "Verificar Usuario";
@@ -2186,27 +2188,27 @@ function initAudioPlayer(uid) {
 
     if (!audio || !btn || !slider) return;
 
-
+    // 1. Cargar metadatos (Duración inicial)
     audio.addEventListener('loadedmetadata', () => {
         slider.max = audio.duration;
         timeDisplay.textContent = formatTime(audio.duration);
     });
 
-
+    // Si los metadatos ya cargaron (cache)
     if (audio.readyState >= 1) {
         slider.max = audio.duration;
         timeDisplay.textContent = formatTime(audio.duration);
     }
 
-
+    // 2. Botón Play/Pause
     btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); // Evitar abrir menús o cerrar cosas
         if (audio.paused) {
-
+            // Pausar otros audios sonando
             document.querySelectorAll('audio').forEach(a => {
                 if (a !== audio && !a.paused) {
                     a.pause();
-
+                    // Resetear icono del otro botón
                     const otherBtn = document.getElementById(`btn-${a.id}`);
                     if (otherBtn) otherBtn.innerHTML = ICONS.play;
                 }
@@ -2219,26 +2221,26 @@ function initAudioPlayer(uid) {
         }
     });
 
-
+    // 3. Actualizar barra y tiempo mientras reproduce
     audio.addEventListener('timeupdate', () => {
         slider.value = audio.currentTime;
         const percent = (audio.currentTime / audio.duration) * 100;
         fill.style.width = `${percent}%`;
 
-
-
+        // Muestra tiempo restante o actual. Aquí ponemos duración - actual (estilo WhatsApp)
+        // O si prefieres tiempo actual: formatTime(audio.currentTime)
         const remaining = audio.duration - audio.currentTime;
         timeDisplay.textContent = formatTime(remaining);
     });
 
-
+    // 4. Mover la barra manualmente (Seeking)
     slider.addEventListener('input', () => {
         audio.currentTime = slider.value;
         const percent = (slider.value / audio.duration) * 100;
         fill.style.width = `${percent}%`;
     });
 
-
+    // 5. Cuando termina el audio
     audio.addEventListener('ended', () => {
         btn.innerHTML = ICONS.play;
         fill.style.width = '0%';
@@ -2246,7 +2248,7 @@ function initAudioPlayer(uid) {
         timeDisplay.textContent = formatTime(audio.duration);
     });
 
-
+    // Seguridad por si se pausa externamente
     audio.addEventListener('pause', () => {
         btn.innerHTML = ICONS.play;
     });
@@ -2256,17 +2258,17 @@ function initAudioPlayer(uid) {
     });
 }
 
-let lastMessageDate = null;
-let lastMessageUserId = null;
+let lastMessageDate = null;   // Para rastrear el cambio de día
+let lastMessageUserId = null; // Para agrupar mensajes del mismo usuario
 
-
-
-
+// ==========================================
+// 1. FUNCIÓN HELPER: Scroll Inteligente
+// ==========================================
 function scrollToBottom(smooth = true) {
-
+    // Identificamos el contenedor que realmente tiene el scroll (el padre de la lista)
     const scrollContainer = messagesList.parentNode;
 
-
+    // Usamos setTimeout para dar tiempo al navegador a pintar el nuevo mensaje
     setTimeout(() => {
         if (smooth) {
             scrollContainer.scrollTo({
@@ -2274,15 +2276,15 @@ function scrollToBottom(smooth = true) {
                 behavior: 'smooth'
             });
         } else {
-
+            // Scroll forzado e instantáneo
             scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
     }, 50);
 }
 
-
-
-
+// ==========================================
+// 2. FUNCIÓN HELPER: Divisor de Fechas
+// ==========================================
 function renderDateDivider(dateStr) {
     const date = new Date(dateStr);
     const today = new Date();
@@ -2291,11 +2293,11 @@ function renderDateDivider(dateStr) {
 
     let label = date.toLocaleDateString();
 
-
+    // Lógica para "Hoy" y "Ayer"
     if (date.toDateString() === today.toDateString()) label = "Hoy";
     else if (date.toDateString() === yesterday.toDateString()) label = "Ayer";
 
-
+    // Si la fecha cambió respecto al mensaje anterior, insertar píldora
     if (lastMessageDate !== label) {
         const li = document.createElement('li');
         li.className = 'date-divider';
@@ -2303,24 +2305,24 @@ function renderDateDivider(dateStr) {
         messagesList.appendChild(li);
 
         lastMessageDate = label;
-        lastMessageUserId = null;
+        lastMessageUserId = null; // Reseteamos la agrupación al cambiar de día
     }
 }
-
-
-
+// ==========================================
+// LÓGICA DEL BOTÓN "IR ABAJO"
+// ==========================================
 const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
-
+// El contenedor que hace scroll es el padre de la lista de mensajes (chat-main)
 const chatScrollContainer = document.querySelector('.chat-main');
 
 if (scrollToBottomBtn && chatScrollContainer) {
 
-
+    // 1. Detectar scroll
     chatScrollContainer.addEventListener('scroll', () => {
-
+        // Distancia desde el fondo = Altura Total - Scroll Actual - Altura Visible
         const distanceToBottom = chatScrollContainer.scrollHeight - chatScrollContainer.scrollTop - chatScrollContainer.clientHeight;
 
-
+        // Si el usuario sube más de 300px, mostramos el botón
         if (distanceToBottom > 300) {
             scrollToBottomBtn.classList.remove('hidden');
         } else {
@@ -2328,7 +2330,7 @@ if (scrollToBottomBtn && chatScrollContainer) {
         }
     });
 
-
+    // 2. Click para bajar
     scrollToBottomBtn.addEventListener('click', () => {
         chatScrollContainer.scrollTo({
             top: chatScrollContainer.scrollHeight,
@@ -2336,33 +2338,35 @@ if (scrollToBottomBtn && chatScrollContainer) {
         });
     });
 }
-
+// --- FUNCIÓN PARA MOSTRAR NOTIFICACIONES ---
 function showToast(message) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
-
+    // Crear el elemento
     const toast = document.createElement('div');
     toast.className = 'toast';
 
-
+    // Icono de check + Texto
     toast.innerHTML = `
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
         <span>${message}</span>
     `;
 
-
+    // Agregar al contenedor
     container.appendChild(toast);
 
-
+    // Eliminar después de 3 segundos
     setTimeout(() => {
-        toast.classList.add('hiding');
+        toast.classList.add('hiding'); // Activar animación de salida CSS
         setTimeout(() => {
-            toast.remove();
-        }, 300);
+            toast.remove(); // Eliminar del DOM
+        }, 300); // Esperar a que termine la animación
     }, 3000);
 }
-
+/* =========================================================
+   LÓGICA DEL MENÚ DE CHAT (BÚSQUEDA, FONDO, VACIAR)
+   ========================================================= */
 
 const chatMenuBtn = document.getElementById('chatMenuBtn');
 const chatOptionsMenu = document.getElementById('chatOptionsMenu');
@@ -2372,7 +2376,7 @@ const closeChatSearch = document.getElementById('closeChatSearch');
 const searchCount = document.getElementById('searchCount');
 const wallpaperInput = document.getElementById('wallpaperInput');
 
-
+// 1. TOGGLE MENÚ
 if (chatMenuBtn) {
     chatMenuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2380,7 +2384,7 @@ if (chatMenuBtn) {
     });
 }
 
-
+// Cerrar menú al hacer click fuera
 document.addEventListener('click', (e) => {
     if (chatOptionsMenu && !chatOptionsMenu.classList.contains('hidden')) {
         if (!chatOptionsMenu.contains(e.target) && !chatMenuBtn.contains(e.target)) {
@@ -2389,7 +2393,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-
+// 2. OPCIÓN: BUSCAR
 document.getElementById('optSearch').addEventListener('click', () => {
     chatOptionsMenu.classList.add('hidden');
     chatSearchBar.classList.remove('hidden');
@@ -2402,20 +2406,20 @@ closeChatSearch.addEventListener('click', () => {
     clearSearchHighlights();
 });
 
+// Lógica de búsqueda en tiempo real (Cliente)
+// --- VARIABLES DE BÚSQUEDA GLOBAL ---
+let searchMatches = [];     // Almacena los elementos <span> de las coincidencias
+let searchCurrentIndex = -1; // Índice actual (-1 significa ninguno seleccionado)
 
-
-let searchMatches = [];
-let searchCurrentIndex = -1;
-
-
+// Elementos DOM
 const searchUpBtn = document.getElementById('searchUpBtn');
 const searchDownBtn = document.getElementById('searchDownBtn');
 
-
+// 1. INPUT DE BÚSQUEDA
 chatSearchInput.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
 
-
+    // Limpiar estado anterior
     clearSearchHighlights();
     searchMatches = [];
     searchCurrentIndex = -1;
@@ -2426,30 +2430,30 @@ chatSearchInput.addEventListener('input', (e) => {
         return;
     }
 
-
-    const messages = document.querySelectorAll('.message-content-wrapper span');
+    // Buscar en todos los mensajes de texto
+    const messages = document.querySelectorAll('.message-content-wrapper span'); // Asegúrate que apunta al texto
 
     messages.forEach(span => {
-
+        // Obviamos metadatos, horas, etc.
         if (span.closest('.meta-row') || span.classList.contains('meta')) return;
 
         const text = span.textContent;
         if (text.toLowerCase().includes(term)) {
-
+            // Regex para preservar mayúsculas/minúsculas visuales
             const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
 
-
+            // Reemplazar texto por HTML con spans
             span.innerHTML = text.replace(regex, '<span class="highlight-text">$1</span>');
         }
     });
 
-
+    // Recolectar todos los spans creados
     searchMatches = Array.from(document.querySelectorAll('.highlight-text'));
 
     if (searchMatches.length > 0) {
         toggleSearchNav(true);
-
-
+        // Seleccionar el último mensaje por defecto (el más reciente suele estar abajo)
+        // O el primero si prefieres buscar desde arriba. Vamos al último para ver lo reciente:
         searchCurrentIndex = searchMatches.length - 1;
         updateSearchUI();
     } else {
@@ -2458,16 +2462,16 @@ chatSearchInput.addEventListener('input', (e) => {
     }
 });
 
-
-searchUpBtn.addEventListener('click', () => navigateSearch(-1));
-searchDownBtn.addEventListener('click', () => navigateSearch(1));
+// 2. FUNCIONES DE NAVEGACIÓN
+searchUpBtn.addEventListener('click', () => navigateSearch(-1));   // Ir hacia atrás (arriba)
+searchDownBtn.addEventListener('click', () => navigateSearch(1));  // Ir hacia adelante (abajo)
 
 function navigateSearch(direction) {
     if (searchMatches.length === 0) return;
 
     searchCurrentIndex += direction;
 
-
+    // Loop infinito (Carrusel)
     if (searchCurrentIndex < 0) searchCurrentIndex = searchMatches.length - 1;
     if (searchCurrentIndex >= searchMatches.length) searchCurrentIndex = 0;
 
@@ -2475,104 +2479,106 @@ function navigateSearch(direction) {
 }
 
 function updateSearchUI() {
-
-
+    // 1. Actualizar contador "1 de 5"
+    // Sumamos 1 al índice porque los humanos cuentan desde 1
     searchCount.textContent = `${searchCurrentIndex + 1} de ${searchMatches.length}`;
 
-
+    // 2. Quitar clase activa de todos
     searchMatches.forEach(m => m.classList.remove('active-match'));
     document.querySelectorAll('.message-flash').forEach(m => m.classList.remove('message-flash'));
 
-
+    // 3. Resaltar el actual
     const currentEl = searchMatches[searchCurrentIndex];
     if (currentEl) {
         currentEl.classList.add('active-match');
 
-
-        const messageBubble = currentEl.closest('.message-content-wrapper');
+        // 4. Obtener la burbuja del mensaje padre para hacer el efecto FLASH
+        const messageBubble = currentEl.closest('.message-content-wrapper'); // O '.message' según tu HTML
         if (messageBubble) {
-
+            // Removemos y agregamos la clase para reiniciar la animación si ya estaba
             messageBubble.classList.remove('message-flash');
-            void messageBubble.offsetWidth;
+            void messageBubble.offsetWidth; // Trigger reflow
             messageBubble.classList.add('message-flash');
 
-
+            // 5. Scroll suave hacia el mensaje
             messageBubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 }
 
 function toggleSearchNav(show) {
-
+    // Habilitar/Deshabilitar botones si hay resultados
     searchUpBtn.disabled = !show;
     searchDownBtn.disabled = !show;
     searchUpBtn.style.opacity = show ? 1 : 0.5;
     searchDownBtn.style.opacity = show ? 1 : 0.5;
 }
 
-
+// 3. LIMPIEZA
 function clearSearchHighlights() {
     document.querySelectorAll('.highlight-text').forEach(mark => {
         const parent = mark.parentNode;
 
-
+        // --- ✅ AGREGA ESTA VERIFICACIÓN ---
         if (parent) {
-            parent.textContent = parent.textContent;
-            parent.normalize();
+            parent.textContent = parent.textContent; // Eliminar HTML tags (spans) y dejar texto plano
+            parent.normalize(); // Unir nodos de texto fragmentados
         }
     });
 
-
+    // Limpiar clases de flash
     document.querySelectorAll('.message-flash').forEach(m => m.classList.remove('message-flash'));
 }
 
-
+// Actualizar el botón de cerrar búsqueda existente para limpiar también
 closeChatSearch.addEventListener('click', () => {
     chatSearchBar.classList.add('hidden');
     chatSearchInput.value = '';
     clearSearchHighlights();
 });
 
-
-
+// 3. OPCIÓN: CAMBIAR FONDO
+/* ==========================================
+   LÓGICA DE TEMAS Y FONDOS
+   ========================================== */
 
 const themeModal = document.getElementById('themeModal');
+// 'wallpaperInput' is declared earlier in the file; do not redeclare it here to avoid a duplicate const error.
 
-
-
+// 1. ABRIR EL MODAL AL DAR CLICK EN "CAMBIAR FONDO"
 document.getElementById('optWallpaper').addEventListener('click', () => {
-    chatOptionsMenu.classList.add('hidden');
-    themeModal.classList.remove('hidden');
+    chatOptionsMenu.classList.add('hidden'); // Cerrar menú de 3 puntos
+    themeModal.classList.remove('hidden');   // Abrir modal de temas
 });
 
-
+// 2. CERRAR MODAL
 document.getElementById('closeThemeBtn').addEventListener('click', () => {
     themeModal.classList.add('hidden');
 });
-
+// Cerrar si tocas fuera
 themeModal.addEventListener('click', (e) => {
     if (e.target === themeModal) themeModal.classList.add('hidden');
 });
 
-
+// 3. SELECCIONAR UN TEMA PREDEFINIDO
 window.selectTheme = function (themeName) {
     if (!currentTargetUserId) return;
 
-
+    // Guardar preferencia: { type: 'preset', value: 'love' }
     const config = { type: 'preset', value: themeName };
     localStorage.setItem(`theme_config_${currentTargetUserId}`, JSON.stringify(config));
 
-
+    // Aplicar inmediatamente
     applyThemeConfig(config);
 
-
+    // Feedback visual en el modal
     updateActiveThemeUI(themeName);
 
-
-
+    // (Opcional) Cerrar modal automáticamente
+    // themeModal.classList.add('hidden');
 };
 
-
+// 4. ELEGIR DESDE GALERÍA
 document.getElementById('btnGalleryTheme').addEventListener('click', () => {
     wallpaperInput.click();
 });
@@ -2585,35 +2591,35 @@ wallpaperInput.addEventListener('change', (e) => {
     reader.onload = (evt) => {
         if (currentTargetUserId) {
             const base64 = evt.target.result;
-
+            // Guardar preferencia: { type: 'image', value: BASE64_STRING }
             const config = { type: 'image', value: base64 };
             localStorage.setItem(`theme_config_${currentTargetUserId}`, JSON.stringify(config));
 
             applyThemeConfig(config);
-            themeModal.classList.add('hidden');
+            themeModal.classList.add('hidden'); // Cerrar modal tras elegir foto
         }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
 });
 
-
+// 5. FUNCIÓN CENTRAL PARA APLICAR EL TEMA
 function applyThemeConfig(config) {
     const mainColumn = document.querySelector('.main-column');
     const chatMain = document.querySelector('.chat-main');
-    const body = document.body;
+    const body = document.body; // <--- Referencia al body
 
-
+    // 1. LIMPIEZA: Quitar clases de temas anteriores del Body y MainColumn
     mainColumn.classList.remove('theme-love', 'theme-space');
-    body.classList.remove('theme-love', 'theme-space');
+    body.classList.remove('theme-love', 'theme-space'); // <--- Limpiar body
 
-
+    // Resetear imagen de fondo inline
     chatMain.style.backgroundImage = '';
 
     if (!config) return;
 
     if (config.type === 'image') {
-
+        // Fondo de imagen (Solo afecta al área de chat, no al body completo usualmente)
         chatMain.style.backgroundImage = `url('${config.value}')`;
         chatMain.style.backgroundSize = 'cover';
         chatMain.style.backgroundPosition = 'center';
@@ -2621,99 +2627,99 @@ function applyThemeConfig(config) {
     else if (config.type === 'preset') {
         if (config.value === 'love') {
             mainColumn.classList.add('theme-love');
-            body.classList.add('theme-love');
+            body.classList.add('theme-love'); // <--- Aplicar al body
         } else if (config.value === 'space') {
             mainColumn.classList.add('theme-space');
-            body.classList.add('theme-space');
+            body.classList.add('theme-space'); // <--- Aplicar al body
         }
     }
 }
 
-
+// Helper para resaltar la opción seleccionada en el modal
 function updateActiveThemeUI(activeTheme) {
     document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
-
+    // Lógica simple para encontrar cuál activar (puedes mejorarla con IDs)
     if (activeTheme === 'love') document.querySelector('.theme-option:nth-child(2)').classList.add('active');
     else if (activeTheme === 'space') document.querySelector('.theme-option:nth-child(3)').classList.add('active');
     else document.querySelector('.theme-option:nth-child(1)').classList.add('active');
 }
 
+// 6. MODIFICAR selectUser PARA CARGAR EL TEMA AL ENTRAR AL CHAT
+// (Reemplaza o busca tu función selectUser existente y añade esto al final)
 
-
-
-const originalSelectUserFn = selectUser;
+const originalSelectUserFn = selectUser; // Guardamos la referencia anterior si la hubiera
 selectUser = async function (target, elem) {
-
+    // Llamar a la lógica original de carga de mensajes
     await originalSelectUserFn(target, elem);
 
-
+    // --- NUEVO: Cargar Tema ---
     const savedConfig = localStorage.getItem(`theme_config_${target.userId}`);
     if (savedConfig) {
         try {
             applyThemeConfig(JSON.parse(savedConfig));
         } catch (e) {
-            applyThemeConfig(null);
+            applyThemeConfig(null); // Fallback si falla JSON
         }
     } else {
-
+        // Si no hay config, revisamos si había un fondo antiguo (compatibilidad)
         const oldBg = localStorage.getItem(`bg_${target.userId}`);
         if (oldBg) {
             applyThemeConfig({ type: 'image', value: oldBg });
         } else {
-            applyThemeConfig(null);
+            applyThemeConfig(null); // Default
         }
     }
 };
 
-
+// --- MODIFICACIÓN: OPCIÓN VACIAR CHAT (Abriendo modal) ---
 document.getElementById('optClearChat').addEventListener('click', () => {
     chatOptionsMenu.classList.add('hidden');
 
-
+    // 1. Configurar contexto
     deleteActionType = 'clear';
-    messageIdToDelete = null;
+    messageIdToDelete = null; // No aplica ID específico
 
-
+    // 2. Cambiar textos del modal dinámicamente
     document.querySelector('#deleteConfirmModal h3').textContent = "¿Vaciar chat?";
     document.querySelector('#deleteConfirmModal p').textContent = "Los mensajes se borrarán permanentemente.";
 
-
+    // 3. Abrir modal
     document.getElementById('deleteConfirmModal').classList.remove('hidden');
 });
 
-
+// --- MODIFICACIÓN: OPCIÓN ELIMINAR CHAT (Abriendo modal) ---
 document.getElementById('optDeleteChat').addEventListener('click', () => {
     chatOptionsMenu.classList.add('hidden');
 
-
+    // 1. Configurar contexto
     deleteActionType = 'delete_chat';
     messageIdToDelete = null;
 
-
+    // 2. Cambiar textos del modal dinámicamente
     document.querySelector('#deleteConfirmModal h3').textContent = "¿Eliminar chat?";
     document.querySelector('#deleteConfirmModal p').textContent = "¿Borrar chat y salir? Esta acción no se puede deshacer.";
 
-
+    // 3. Abrir modal
     document.getElementById('deleteConfirmModal').classList.remove('hidden');
 });
 let messageIdToPin = null;
-let currentPinnedMessageId = null;
+let currentPinnedMessageId = null; // ID del mensaje actualmente fijado
 
-
-
+// 1. ABRIR EL MODAL DESDE EL MENÚ CONTEXTUAL
+// (Asegúrate de tener el botón <button id="ctxPinBtn">Fijar</button> en tu HTML del menú contextual)
 const ctxPinBtn = document.getElementById('ctxPinBtn');
 if (ctxPinBtn) {
     ctxPinBtn.addEventListener('click', () => {
-
+        // Guardamos el ID del mensaje seleccionado
         messageIdToPin = currentContextMessageId;
-        closeContextMenu();
+        closeContextMenu(); // Cerrar menú de 3 puntos/contextual
 
-
+        // Abrir modal de confirmación
         document.getElementById('pinConfirmModal').classList.remove('hidden');
     });
 }
 
-
+// 2. CERRAR MODAL
 window.closePinModal = () => {
     document.getElementById('pinConfirmModal').classList.add('hidden');
     messageIdToPin = null;
@@ -2837,7 +2843,7 @@ function updatePinnedBarUI(msgId) {
 
         let cleanText = clone.innerText.trim();
 
-        if (!cleanText && type === 'image') cleanText = "";
+        if (!cleanText && type === 'image') cleanText = ""; // showPinnedBar pondrá "Foto"
 
         currentPinnedMessageId = msgId;
         showPinnedBar(cleanText, type);
@@ -3322,7 +3328,7 @@ function renderMixedSidebar() {
 
     myChannels.forEach(c => {
         const li = document.createElement('li');
-        li.className = `user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`;
+        li.className = `user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`; // Usamos prefijo c_
         li.innerHTML = `
             <div class="u-avatar" style="background-image:url('${c.avatar || '/profile.png'}'); border-radius:12px;"></div> <!-- Cuadrado redondeado para canales -->
             <div style="overflow:hidden;">
@@ -3473,15 +3479,15 @@ async function openChannelProfile() {
     const channel = currentTargetUserObj;
 
     const nameEl = document.getElementById('channelProfileName');
-    const statusEl = document.getElementById('channelProfileStatus');
+    const statusEl = document.getElementById('channelProfileStatus'); // El texto debajo del avatar
     const bioEl = document.getElementById('channelProfileBio');
     const avatarEl = document.getElementById('channelProfileAvatar');
-    const subCountEl = document.getElementById('channelSubCount');
+    const subCountEl = document.getElementById('channelSubCount'); // Número en la lista
     const editBtn = document.getElementById('btnEditChannel');
 
     const linkSection = document.getElementById('channelLinkSection');
     const publicLinkEl = document.getElementById('channelPublicLink');
-    const subSection = document.getElementById('channelSubSection');
+    const subSection = document.getElementById('channelSubSection'); // El item de lista de suscriptores
 
     nameEl.textContent = channel.name;
 
@@ -3562,7 +3568,7 @@ btnEditChannel.addEventListener('click', () => {
 
 document.getElementById('closeChannelEdit').addEventListener('click', () => {
     channelEditModal.classList.add('hidden');
-    channelProfileModal.classList.remove('hidden');
+    channelProfileModal.classList.remove('hidden'); // Volver al perfil
 });
 const editAvatarInput = document.getElementById('editChannelAvatarInput');
 if (editAvatarInput) {
@@ -3594,7 +3600,7 @@ if (saveInfoBtn) {
     saveInfoBtn.addEventListener('click', async () => {
         const newName = document.getElementById('editChannelName').value.trim();
         const newBio = document.getElementById('editChannelBio').value.trim();
-        const avatarInput = document.getElementById('editChannelAvatarInput');
+        const avatarInput = document.getElementById('editChannelAvatarInput'); // Asegurarnos de obtener el input actual
         const avatarFile = avatarInput && avatarInput.files ? avatarInput.files[0] : null;
 
         if (!newName) return alert("El nombre no puede estar vacío");
@@ -3924,7 +3930,7 @@ async function submitCreateChannel() {
     fd.append('isPublic', type === 'public');
 
     if (type === 'public') fd.append('handle', handle);
-    if (channelAvatarFile) fd.append('avatar', channelAvatarFile);
+    if (channelAvatarFile) fd.append('avatar', channelAvatarFile); // Ahora channelAvatarFile existe
 
     try {
         const res = await apiRequest('/api/channels/create', 'POST', fd);
@@ -4502,7 +4508,7 @@ function renderCombinedResults(localUsers, globalUsers, channels, loadingGlobal)
 
 function createSectionHeader(title) {
     const li = document.createElement('li');
-    li.className = 'search-divider';
+    li.className = 'search-divider'; // Reusamos clase existente o creamos una nueva si se ve mal
     li.textContent = title;
     return li;
 }
@@ -4534,7 +4540,7 @@ async function handleChannelClickFromSearch(ch) {
         openChannel(ch.id);
         if (window.innerWidth <= 768) document.querySelector('.sidebar').classList.remove('active');
     } else {
-        openChannelPreview(ch.handle || ch.private_hash || ch.id);
+        openChannelPreview(ch.handle || ch.private_hash || ch.id); // Usamos lo que tengamos, search devuelve handle y private_hash
     }
 }
 

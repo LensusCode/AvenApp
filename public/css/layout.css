@@ -7,7 +7,7 @@
     overflow: hidden;
 }
 
-/* ---------- CHAT AREA ---------- */
+
 .main-column {
     flex: 1;
     background: var(--panel-bg);

@@ -292,9 +292,7 @@ exports.searchChannels = (req, res) => {
 
     const term = `%${query.toLowerCase()}%`;
 
-    // REGLA DE PRIVACIDAD:
-    // 1. Canales Públicos (is_public = 1) -> Mostrar siempre si coinciden
-    // 2. Canales Privados (is_public = 0) -> Mostrar SOLO si el usuario es MIEMBRO o DUEÑO
+
     const sql = `
         SELECT c.id, c.name, c.avatar, c.is_public, c.handle, c.private_hash
         FROM channels c
@@ -315,22 +313,17 @@ exports.searchChannels = (req, res) => {
 };
 
 exports.getChannelPreview = (req, res) => {
-    const { identifier } = req.params; // handle or private_hash
-    const userId = req.user ? req.user.id : null; // User might be checking preview before joining
+    const { identifier } = req.params;
+    const userId = req.user ? req.user.id : null;
 
-    // Primero intentamos buscar por handle (público) - Tal cual
+
     db.get(`SELECT * FROM channels WHERE handle = ?`, [identifier.toLowerCase()], (err, channel) => {
         if (err) return res.status(500).json({ error: "DB Error" });
 
         if (!channel) {
-            // Si no, buscar por private_hash
-            // El hash en la URL viene con "+" usualmente (ap.me/+hash), pero en BD es solo hex.
-            // Limpiamos el +
-            let potentialHash = identifier;
-            if (potentialHash.startsWith('+') || potentialHash.startsWith('%2B')) { // Handle both cases just in case
+            if (potentialHash.startsWith('+') || potentialHash.startsWith('%2B')) {
                 potentialHash = potentialHash.replace(/^(\+|%2B)/, '');
             } else if (identifier.match(/^[a-f0-9]+$/i)) {
-                // Si es solo hex, usalo
                 potentialHash = identifier;
             }
 
@@ -347,7 +340,7 @@ exports.getChannelPreview = (req, res) => {
 };
 
 function sendPreview(channel, userId, res) {
-    // Contar miembros
+
     db.get(`SELECT COUNT(*) as count FROM channel_members WHERE channel_id = ?`, [channel.id], (err, countRow) => {
         let isMember = false;
 
@@ -361,7 +354,7 @@ function sendPreview(channel, userId, res) {
                 is_public: channel.is_public,
                 memberCount: countRow ? countRow.count : 0,
                 isMember: isMember,
-                private_hash: channel.private_hash // Needed for join
+                private_hash: channel.private_hash
             });
         };
 
@@ -383,55 +376,7 @@ exports.joinChannel = (req, res) => {
     db.get(`SELECT is_public, private_hash FROM channels WHERE id = ?`, [channelId], (err, channel) => {
         if (err || !channel) return res.status(404).json({ error: "Canal no encontrado" });
 
-        // Si es público -> Cualquiera entra
-        // Si es privado -> Solo si fue invitado? 
-        // El requerimiento dice "La única forma de acceso para no miembros debe ser mediante un enlace directo".
-        // Si el usuario llama a este endpoint es porque tiene el ID.
-        // Si tiene el ID, ¿asumimos que tiene acceso?
-        // En UI, el modal sale SOLO si accedió por link (preview).
-        // Aqui podríamos validar si el referer o alguna logica extra, pero simplificaremos:
-        // Si el usuario TIENE el link PREVIEW (que ya valida hash), entonces puede unirse.
-        // Pero este endpoint es POST /:id/join. 
-        // Si el canal es privado, ¿deberíamos pedir el hash?
-        // Por ahora, asumiremos que si llega al botón "Join" del modal, el usuario ya "vio" el canal.
-        // Pero para seguridad estricta:
-        // Si es PUBLICO: Libre.
-        // Si es PRIVADO: Debería haber un token o el backend confía en que si conoce el ID es suficiente?
-        // El ID es secuencial/predecible? SQLite rowid es predecible.
-        // ENTONCES: Para canales PRIVADOS, este endpoint es INSEGURO si solo usa ID.
-        // Debería requerir el private_hash en el body si es privado.
 
-        // PERO, para no complicar el frontend que ya hice:
-        // Voy a permitir unirse por ahora, O revisar si puedo pasar el hash.
-        // El frontend renderJoinModal tiene el objeto channel completo (con private_hash si vino de search/preview).
-        // Pero searchChannels NO devuelve private_hash si NO es miembro.
-        // getChannelPreview SI devuelve private_hash si se busca por hash.
-        // Si se busca por handle (publico), devuelve handle.
-
-        // CORRECCION: SearchChannels devuelve private_hash en la query SQL que escribí?
-        // SI: SELECT ..., c.private_hash. 
-        // WAIT. Si searchChannels devuelve private_hash a NO miembros, entonces cualquiera puede unirse?
-        // MI SQL dice: WHERE ( (c.is_public=0 AND (c.owner_id OR cm.user IS NOT NULL)) )
-        // O SEA: Search NO devuelve canales privados a no miembros. BIEN.
-        // Entonces, si un usuario NO miembro quiere unirse, solo puede hacerlo via LINK (+hash) -> Preview -> Join.
-        // El preview por Link (+hash) obtiene el canal.
-        // El modal tiene el ID.
-        // Si yo hago POST /join/:id, un atacante podría adivinar IDs.
-        // IMPLEMENTACION SEGURA: Si es privado, requerir `private_hash` (o algo) en body.
-        // El frontend YA TIENE el hash si vino por preview de link, O no lo tiene si vino por... magia? NO.
-        // El search no muestra privados.
-        // ASI QUE: Solo se puede llegar al Join Modal de un privado via Deep Link (+hash).
-        // El endpoint preview devuelve el hash? 
-        // getChannelPreview -> sendPreview -> NO devuelve hash explicitamente en el JSON output, devuelve ID.
-        // Mmmm.
-
-        // Voy a permitir unirse si es publico. Si es privado, asumire que si el usuario llego aquí es valido, 
-        // AUNQUE idealmente pediría el hash.
-        // Retomando reglas: "Visibilidad en Búsqueda: ... NO aparezcan".
-        // "Navegación por Link: ... único acceso".
-
-        // Si es privado, validaremos que en el body venga el private_hash correcto.
-        // EL frontend necesita enviar el hash.
 
         const { secret } = req.body;
 

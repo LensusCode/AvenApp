@@ -22,23 +22,20 @@ const server = http.createServer(app);
     await initDatabase();
     await fixChannelTables();
 
-    // Run migration asynchronously without blocking
     setTimeout(() => {
         migrateExistingMessagesToContacts().catch(err => {
             console.error('Migration error (non-fatal):', err.message);
         });
     }, 1000);
 
-    // Proxy Trust
     app.set('trust proxy', 1);
 
-    // Middleware
     app.use(helmet({
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
                 scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
-                scriptSrcElem: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"], // Added explicitly
+                scriptSrcElem: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
                 scriptSrcAttr: ["'none'"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
                 imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com"],
@@ -55,19 +52,16 @@ const server = http.createServer(app);
     app.use(cookieParser());
     app.use(express.static(path.join(__dirname, 'public')));
 
-    // Routes
     app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
-    // API Routes
-    app.use('/api', authRoutes); // Auth Routes
+    app.use('/api', authRoutes);
     app.use('/api', userRoutes);
-    app.use('/api/admin', require('./routes/adminRoutes')); // New Admin Routes
+    app.use('/api/admin', require('./routes/adminRoutes'));
     app.use('/api/channels', channelRoutes);
     app.use('/api', messageRoutes);
     app.use('/api/contacts', contactRoutes);
     app.use('/api/emojis', require('./routes/emojiRoutes'));
 
-    // Static Files for Admin/Login
     app.get('/admin', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'admin.html'));
     });
@@ -75,19 +69,16 @@ const server = http.createServer(app);
         res.sendFile(path.join(__dirname, 'public', 'login.html'));
     });
 
-    // Deep Linking
     app.get([
-        /^\/\+[a-f0-9]+$/i,       // Private invite: /+hash
-        /^\/[a-zA-Z0-9_]{3,}$/    // Public handle: /handle
+        /^\/\+[a-f0-9]+$/i,
+        /^\/[a-zA-Z0-9_]{3,}$/
     ], (req, res) => {
-        // Exclude reserved paths just in case regex is too broad (though regex above is decent)
         if (req.path.startsWith('/api') || req.path.startsWith('/admin') || req.path === '/login' || req.path === '/ping') {
             return res.status(404).send('Not found');
         }
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
 
-    // Socket.io
     initSocket(server);
 
     const PORT = process.env.PORT || 3000;

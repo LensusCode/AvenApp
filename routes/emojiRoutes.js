@@ -3,7 +3,6 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
-// Cache simple para no leer el disco en cada request (opcional, pero bueno para performance)
 let emojiCache = null;
 
 router.get('/', (req, res) => {
@@ -14,7 +13,6 @@ router.get('/', (req, res) => {
 
         const emojisDir = path.join(__dirname, '../public/Animated-Emojis');
 
-        // Verificar si existe el directorio
         if (!fs.existsSync(emojisDir)) {
             console.error('Directorio de emojis no encontrado:', emojisDir);
             return res.json({ success: true, data: {} });
@@ -28,9 +26,8 @@ router.get('/', (req, res) => {
                 const categoryName = item.name;
                 const categoryPath = path.join(emojisDir, categoryName);
 
-                // Leer archivos dentro de la categoría
                 const files = fs.readdirSync(categoryPath)
-                    .filter(file => /\.(png|webp|gif)$/i.test(file)) // Filtrar solo imágenes
+                    .filter(file => /\.(png|webp|gif)$/i.test(file))
                     .map(file => `/Animated-Emojis/${categoryName}/${file}`);
 
                 if (files.length > 0) {
@@ -39,7 +36,7 @@ router.get('/', (req, res) => {
             }
         }
 
-        emojiCache = categories; // Guardar en caché
+        emojiCache = categories;
         res.json({ success: true, data: categories });
 
     } catch (error) {
@@ -48,7 +45,6 @@ router.get('/', (req, res) => {
     }
 });
 
-// Endpoint para limpiar caché si se agregan nuevos emojis sin reiniciar
 router.post('/refresh', (req, res) => {
     emojiCache = null;
     res.json({ success: true, message: 'Caché de emojis limpiada' });

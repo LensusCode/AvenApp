@@ -16,16 +16,16 @@ let isUserValid = false;
 let isPassValid = false;
 
 // Redirección si ya logueado
-if(localStorage.getItem('chatUser')) {
+if (localStorage.getItem('chatUser')) {
     window.location.href = '/';
 }
 
-// --- SISTEMA DE NOTIFICACIONES (TOAST) ---
+
 function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
     let icon = '';
     if (type === 'success') icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;vertical-align:middle;margin-right:8px" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9 12l2 2 4-4"></path></svg>';
     else if (type === 'error') icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;vertical-align:middle;margin-right:8px" fill="none" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6M9 9l6 6"></path></svg>';
@@ -41,9 +41,8 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// --- VALIDACIONES DE REGISTRO ---
 
-// 1. Debounce function (esperar a que deje de escribir)
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -56,10 +55,10 @@ function debounce(func, wait) {
     };
 }
 
-// 2. Verificar usuario en servidor
+
 regUser.addEventListener('input', debounce(async (e) => {
     const username = e.target.value.trim();
-    
+
     // Reset visual
     regUser.classList.remove('valid', 'invalid');
     isUserValid = false;
@@ -70,7 +69,7 @@ regUser.addEventListener('input', debounce(async (e) => {
     try {
         const res = await fetch('/api/check-username', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
         });
         const data = await res.json();
@@ -89,16 +88,16 @@ regUser.addEventListener('input', debounce(async (e) => {
     updateRegisterBtn();
 }, 500)); // Espera 500ms tras teclear
 
-// 3. Validar Contraseña (Min 8 caracteres)
+
 regPass.addEventListener('input', (e) => {
     const pass = e.target.value;
     regPass.classList.remove('valid', 'invalid');
-    
+
     if (pass.length >= 8) {
         regPass.classList.add('valid');
         isPassValid = true;
     } else {
-        if(pass.length > 0) regPass.classList.add('invalid');
+        if (pass.length > 0) regPass.classList.add('invalid');
         isPassValid = false;
     }
     updateRegisterBtn();
@@ -109,7 +108,7 @@ function updateRegisterBtn() {
     // btnRegister.disabled = !(isUserValid && isPassValid && regName.value && regSurname.value);
 }
 
-// --- TABS LOGIC ---
+
 tabLogin.addEventListener('click', () => {
     tabLogin.classList.add('active'); tabRegister.classList.remove('active');
     loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
@@ -120,7 +119,7 @@ tabRegister.addEventListener('click', () => {
     registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
 });
 
-// --- SUBMIT REGISTRO ---
+
 registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -137,13 +136,13 @@ registerForm.addEventListener('submit', async (e) => {
         btnRegister.disabled = true;
 
         const res = await fetch('/api/register', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password, firstName, lastName })
         });
-        
+
         const data = await res.json();
 
-        if(res.ok) {
+        if (res.ok) {
             showToast('¡Cuenta creada! Iniciando sesión...', 'success');
             // Auto-login o cambiar a tab login
             setTimeout(() => {
@@ -154,7 +153,7 @@ registerForm.addEventListener('submit', async (e) => {
         } else {
             showToast(data.error || 'Error al registrar', 'error');
         }
-    } catch (e) { 
+    } catch (e) {
         showToast("Error de conexión con el servidor", 'error');
     } finally {
         btnRegister.textContent = 'Crear Cuenta';
@@ -162,23 +161,23 @@ registerForm.addEventListener('submit', async (e) => {
     }
 });
 
-// --- SUBMIT LOGIN ---
+
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUser').value;
     const password = document.getElementById('loginPass').value;
-    
+
     const btn = loginForm.querySelector('button');
     btn.textContent = 'Verificando...';
-    
+
     try {
         const res = await fetch('/api/login', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
         const data = await res.json();
-        
-        if(res.ok) {
+
+        if (res.ok) {
             localStorage.setItem('chatUser', JSON.stringify(data.user));
             showToast('Bienvenido de nuevo', 'success');
             setTimeout(() => window.location.href = '/', 1000);
@@ -188,14 +187,14 @@ loginForm.addEventListener('submit', async (e) => {
             document.getElementById('loginPass').classList.add('invalid');
             setTimeout(() => document.getElementById('loginPass').classList.remove('invalid'), 500);
         }
-    } catch (e) { 
+    } catch (e) {
         showToast("Error de conexión", 'error');
     } finally {
         btn.textContent = 'Entrar';
     }
 });
 
-// PWA Install Logic
+
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();

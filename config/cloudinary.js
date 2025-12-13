@@ -9,7 +9,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// 1. Storage para IMÁGENES (Avatar y Chat)
+
 const imageStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -18,7 +18,7 @@ const imageStorage = new CloudinaryStorage({
     }
 });
 
-// 2. Storage para AUDIOS
+
 const audioStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {

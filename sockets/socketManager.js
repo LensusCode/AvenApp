@@ -242,7 +242,6 @@ const getIo = () => {
 function emitUsers() {
     if (!io) return;
 
-    // Obtener todos los usuarios online
     const onlineUserIds = new Set();
     if (io.of("/")) {
         for (let [id, socket] of io.of("/").sockets) {
@@ -250,13 +249,11 @@ function emitUsers() {
         }
     }
 
-    // Para cada socket conectado, enviar solo sus contactos
     if (io.of("/")) {
         for (let [id, socket] of io.of("/").sockets) {
             const userId = socket.data.userId;
             if (!userId) continue;
 
-            // Obtener contactos de este usuario
             db.all(
                 `SELECT u.id, u.username, u.display_name, u.bio, u.avatar, u.is_verified, u.is_admin, u.is_premium
                  FROM contacts c
@@ -281,7 +278,6 @@ function emitUsers() {
                         is_premium: row.is_premium
                     }));
 
-                    // Emitir solo a este socket
                     socket.emit('users', contacts);
                 }
             );

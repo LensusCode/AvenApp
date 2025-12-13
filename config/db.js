@@ -6,7 +6,7 @@ const client = createClient({
     authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// Adaptador para simular sqlite3
+
 const db = {
     run: function (sql, params, callback) {
         if (typeof params === 'function') { callback = params; params = []; }

@@ -90,7 +90,6 @@ async function migrateExistingMessagesToContacts() {
     console.log("🔄 Migrando usuarios con mensajes a contactos...");
 
     try {
-        // Obtener todos los pares de usuarios que han intercambiado mensajes
         const result = await client.execute(`
             SELECT DISTINCT 
                 from_user_id as user1, 
@@ -105,14 +104,12 @@ async function migrateExistingMessagesToContacts() {
             const user1 = row.user1;
             const user2 = row.user2;
 
-            // Agregar ambas direcciones (A->B y B->A)
             if (user1 && user2) {
                 pairs.add(`${user1}-${user2}`);
                 pairs.add(`${user2}-${user1}`);
             }
         }
 
-        // Insertar contactos
         let count = 0;
         for (const pair of pairs) {
             const [userId, contactId] = pair.split('-').map(Number);
@@ -123,7 +120,6 @@ async function migrateExistingMessagesToContacts() {
                 });
                 count++;
             } catch (e) {
-                // Ignorar duplicados
             }
         }
 

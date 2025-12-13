@@ -1,4 +1,4 @@
-// --- VERIFICACIÓN DE SESIÓN ---
+
 async function checkAuth() {
     try {
         const res = await fetch('/api/me');
@@ -16,13 +16,13 @@ async function checkAuth() {
 }
 checkAuth();
 
-// --- VARIABLES ---
+
 const listBody = document.getElementById('adminUserList');
 const reportsBody = document.getElementById('reportsListBody');
 const searchInput = document.getElementById('adminSearch');
 const statsTimeRange = document.getElementById('statsTimeRange');
 
-// Vistas
+
 const views = {
     users: document.getElementById('viewUsers'),
     stats: document.getElementById('viewStats'),
@@ -48,7 +48,7 @@ let currentUsers = [];
 let targetNoteUserId = null;
 let growthChart = null;
 
-// --- API ---
+
 async function apiRequest(url, method = 'GET', body = null) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
@@ -56,7 +56,7 @@ async function apiRequest(url, method = 'GET', body = null) {
     return res.json();
 }
 
-// --- NAVEGACIÓN ---
+
 function switchView(viewName) {
     Object.values(views).forEach(el => el.classList.add('hidden'));
     Object.values(btns).forEach(el => el.classList.remove('active'));
@@ -73,7 +73,7 @@ btns.users.addEventListener('click', () => switchView('users'));
 btns.stats.addEventListener('click', () => switchView('stats'));
 btns.reports.addEventListener('click', () => switchView('reports'));
 
-// --- LOGICA USUARIOS ---
+
 async function loadUsers() {
     // Usamos el nuevo endpoint admin
     const users = await apiRequest('/api/admin/all-users');
@@ -151,7 +151,7 @@ function updateQuickStats(users) {
     stats.premium.innerText = users.filter(u => u.is_premium).length;
 }
 
-// --- LOGICA ESTADÍSTICAS (CHART) ---
+
 async function loadStats() {
     const range = statsTimeRange.value;
     const data = await apiRequest(`/api/admin/stats?range=${range}`);
@@ -211,7 +211,7 @@ function renderChart(graphData) {
     });
 }
 
-// --- LOGICA REPORTES ---
+
 async function loadReports() {
     const reports = await apiRequest('/api/admin/reports');
     if (!reports || !Array.isArray(reports)) return;
@@ -246,8 +246,7 @@ function renderReports(reports) {
 }
 
 
-// --- EXISTING ACTIONS (Verify, Premium, Notes) ---
-// (Copied functionality but simplified for brevity if logic is same)
+
 window.toggleVerify = async (id, el) => {
     try {
         await apiRequest('/api/admin/toggle-verify', 'POST', { targetUserId: id });
@@ -260,7 +259,7 @@ window.togglePremium = async (id, el) => {
     } catch (e) { el.checked = !el.checked; alert('Error'); }
 };
 
-// Notes Modal Logic
+
 const noteModal = document.getElementById('noteModal');
 const noteTargetName = document.getElementById('noteTargetName');
 const noteText = document.getElementById('noteText');
@@ -283,20 +282,20 @@ document.getElementById('sendNoteConfirm').addEventListener('click', async () =>
     } catch (e) { alert('Error'); }
 });
 
-// Logout
+
 document.getElementById('logoutBtn').addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login.html';
 });
 
-// Search Filter (Users View)
+
 searchInput.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     const filtered = currentUsers.filter(u => u.username.toLowerCase().includes(term) || (u.display_name || '').toLowerCase().includes(term));
     renderTable(filtered);
 });
 
-// Mobile Menu
+
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -307,5 +306,5 @@ if (sidebarOverlay) {
     sidebarOverlay.addEventListener('click', () => { sidebar.classList.remove('active'); sidebarOverlay.classList.remove('active'); });
 }
 
-// Init
+
 loadUsers();

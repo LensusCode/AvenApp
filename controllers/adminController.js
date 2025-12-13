@@ -1,11 +1,10 @@
 const { db } = require('../config/db');
 
 exports.getStats = (req, res) => {
-    // 1. Graph Data: Users joined in last 30 days
     const range = req.query.range === '30' ? 30 : 7;
     const d = new Date();
     d.setDate(d.getDate() - range);
-    const dateThreshold = d.toISOString(); // or .split('T')[0] if column is date only, but usually created_at is timestamp
+    const dateThreshold = d.toISOString();
 
     const sqlGraph = `
         SELECT date(created_at) as date, COUNT(*) as count 
@@ -44,8 +43,7 @@ exports.getStats = (req, res) => {
     });
 };
 
-exports.getReports = (req, res) => {
-    // Simple fetch of reports with reporter info
+exports.getReports = (res) => {
     const sql = `
         SELECT r.*, u.username as reporter_username, u.avatar as reporter_avatar 
         FROM reports r
@@ -59,7 +57,7 @@ exports.getReports = (req, res) => {
     });
 };
 
-exports.getAllUsers = (req, res) => {
+exports.getAllUsers = (res) => {
     const sql = `SELECT id, username, display_name, avatar, is_admin, is_verified, is_premium, bio, created_at FROM users ORDER BY id DESC`;
     db.all(sql, [], (err, rows) => {
         if (err) {

@@ -1,6 +1,5 @@
 const { db } = require('../config/db');
 
-// Buscar usuarios por username (con @)
 exports.searchUsers = (req, res) => {
     const query = req.query.q || '';
 
@@ -8,7 +7,6 @@ exports.searchUsers = (req, res) => {
         return res.json([]);
     }
 
-    // Remover @ si está presente
     const searchTerm = query.replace('@', '').toLowerCase();
 
     db.all(
@@ -27,7 +25,6 @@ exports.searchUsers = (req, res) => {
     );
 };
 
-// Agregar un usuario como contacto
 exports.addContact = (req, res) => {
     const { contactUserId } = req.body;
 
@@ -35,13 +32,11 @@ exports.addContact = (req, res) => {
         return res.status(400).json({ error: 'ID de contacto inválido' });
     }
 
-    // Verificar que el usuario existe
     db.get('SELECT id FROM users WHERE id = ?', [contactUserId], (err, user) => {
         if (err || !user) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        // Agregar contacto
         db.run(
             'INSERT OR IGNORE INTO contacts (user_id, contact_user_id) VALUES (?, ?)',
             [req.user.id, contactUserId],
@@ -51,7 +46,6 @@ exports.addContact = (req, res) => {
                     return res.status(500).json({ error: 'Error al agregar contacto' });
                 }
 
-                // Emitir actualización de usuarios para que el socket envíe la lista actualizada
                 const { emitUsers } = require('../sockets/socketManager');
                 emitUsers();
 
@@ -61,7 +55,6 @@ exports.addContact = (req, res) => {
     });
 };
 
-// Eliminar un contacto
 exports.removeContact = (req, res) => {
     const contactUserId = parseInt(req.params.contactId);
 
@@ -78,7 +71,6 @@ exports.removeContact = (req, res) => {
                 return res.status(500).json({ error: 'Error al eliminar contacto' });
             }
 
-            // Emitir actualización
             const { emitUsers } = require('../sockets/socketManager');
             emitUsers();
 
@@ -87,7 +79,6 @@ exports.removeContact = (req, res) => {
     );
 };
 
-// Obtener lista de contactos del usuario
 exports.getMyContacts = (req, res) => {
     db.all(
         `SELECT u.id, u.username, u.display_name, u.avatar, u.is_verified, u.is_admin, u.is_premium, u.bio

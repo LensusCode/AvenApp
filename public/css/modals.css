@@ -1,4 +1,3 @@
-/* --- EDITOR DE IMAGEN (Estilo AvenApp) --- */
 .image-editor-modal {
     position: fixed;
     inset: 0;
@@ -10,7 +9,7 @@
     transform: translateZ(0);
 }
 
-/* Cabecera minimalista */
+
 .editor-header {
     height: 60px;
     display: flex;
@@ -25,13 +24,13 @@
     z-index: 20;
 }
 
-/* Contenedor de herramientas derecha */
+
 .editor-header-tools {
     display: flex;
     gap: 15px;
 }
 
-/* Botones de icono (X, Crop, Rotate) */
+
 .editor-header .nav-icon-btn {
     color: #fff;
     background: rgba(0, 0, 0, 0.3);
@@ -56,7 +55,6 @@
     color: white;
 }
 
-/* Ajuste del canvas para que ocupe todo el espacio disponible */
 .editor-canvas-container {
     flex: 1;
     position: relative;
@@ -69,7 +67,6 @@
     padding-bottom: 20px;
 }
 
-/* Footer (Input y Enviar) con fondo oscuro sólido */
 .editor-footer {
     position: relative;
     z-index: 20;
@@ -101,7 +98,7 @@
     max-width: 100%;
 }
 
-/* --- PERSONALIZACIÓN DE CROPPER.JS (LA CUADRÍCULA) --- */
+
 .cropper-container *,
 .cropper-crop-box,
 .cropper-view-box,
@@ -111,7 +108,7 @@
     transition: none !important;
 }
 
-/* Animación solo al rotar */
+
 .animating-rotation .cropper-canvas,
 .animating-rotation .cropper-canvas>img,
 .animating-rotation .cropper-view-box>img,
@@ -332,7 +329,7 @@
     display: block;
 }
 
-/* 1. MODO PANTALLA COMPLETA */
+
 .profile-card.modern-profile {
     width: 100vw !important;
     height: 100vh !important;
@@ -480,7 +477,7 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
-/* --- MODAL DE TEMAS (BOTTOM SHEET) --- */
+
 .theme-modal {
     position: fixed;
     inset: 0;
@@ -619,7 +616,7 @@
     background: linear-gradient(180deg, #0f172a 0%, #312e81 100%);
 }
 
-/* --- Love Notes Float --- */
+
 .love-notes-float-btn {
     position: fixed;
     bottom: 20px;
@@ -769,6 +766,14 @@
 
     .fab-container {
         bottom: 80px;
+    }
+}
+
+@media (min-width: 769px) {
+    .fab-container {
+        left: 20px;
+        right: auto;
+        bottom: 20px;
     }
 }
 
