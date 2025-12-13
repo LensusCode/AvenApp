@@ -1771,11 +1771,45 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 }
 
 window.viewFullImage = (src) => {
-    if (!isValidUrl(src)) return;
+    if (!src) return;
+
+    // Create modal container
     const m = document.createElement('div');
     m.className = 'fullscreen-img-modal';
-    m.innerHTML = `<img src="${escapeHtml(src)}" class="fullscreen-img">`;
-    m.onclick = () => m.remove();
+
+    // Create image element
+    const img = document.createElement('img');
+    img.src = escapeHtml(src);
+    img.className = 'fullscreen-img';
+
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'fullscreen-close-btn';
+    closeBtn.innerHTML = '&times;'; // Standard X character or use an icon if preferred
+
+    // Close on click outside (backdrop)
+    m.onclick = (e) => {
+        if (e.target === m) m.remove();
+    };
+
+    // Close on button click
+    closeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent triggering backdrop click
+        m.remove();
+    };
+
+    // Close on Escape key
+    const escListener = (e) => {
+        if (e.key === 'Escape') {
+            m.remove();
+            document.removeEventListener('keydown', escListener);
+        }
+    };
+    document.addEventListener('keydown', escListener);
+
+    // Assemble
+    m.appendChild(img);
+    m.appendChild(closeBtn);
     document.body.appendChild(m);
 };
 
