@@ -126,6 +126,45 @@ const isValidUrl = (string) => {
     }
 };
 
+// --- NAVIGATION / HISTORY LOGIC ---
+
+function closeChatUI() {
+    chatContainer.classList.remove('mobile-chat-active');
+    document.body.classList.remove('theme-love', 'theme-space');
+
+    if (fabNewChat) fabNewChat.classList.remove('hidden');
+
+    if (loveNotesBtn && myUser && myUser.is_premium) {
+        loveNotesBtn.classList.remove('hidden');
+    }
+
+    // Limpiar estado visual de selección
+    document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+    currentTargetUserId = null;
+    currentTargetUserObj = null;
+}
+
+window.addEventListener('popstate', (event) => {
+    // Si no hay estado o no indica chat abierto, cerramos el chat
+    if (!event.state || !event.state.chatOpen) {
+        closeChatUI();
+        return;
+    }
+
+    // Si el historial dice que hay un chat abierto, intentamos restaurarlo
+    if (event.state.chatOpen && event.state.userId) {
+        // Buscamos el usuario en cache
+        const targetUser = allUsersCache.find(u => u.userId == event.state.userId);
+        if (targetUser) {
+            // Abrimos chat SIN hacer push al historial (ya estamos navegando en él)
+            selectUser(targetUser, null, false);
+        } else {
+            // Fallback si no encontramos al usuario
+            closeChatUI();
+        }
+    }
+});
+
 
 checkSession();
 
@@ -1283,7 +1322,9 @@ socket.on('user_updated_profile', ({ userId, avatar }) => {
     document.querySelectorAll(`.message.${myUser.id == userId ? 'me' : 'other'} .audio-avatar-img`).forEach(img => img.src = avatar || '/profile.png');
 });
 
-async function selectUser(target, elem) {
+// Modificada para aceptar pushHistory
+async function selectUser(target, elem, pushHistory = true) {
+
     if (fabNewChat) fabNewChat.classList.add('hidden');
     if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
 
@@ -1298,6 +1339,11 @@ async function selectUser(target, elem) {
     currentTargetUserObj = target;
 
     currentChatType = target.chat_type || 'private';
+
+    // HISTORY PUSH
+    if (pushHistory) {
+        history.pushState({ chatOpen: true, userId: target.userId }, "", "");
+    }
 
     clearReply();
     updateChatHeaderInfo(target);
@@ -1365,16 +1411,9 @@ async function selectUser(target, elem) {
     checkAndLoadPinnedMessage(target.userId);
 }
 backBtn.addEventListener('click', () => {
-    chatContainer.classList.remove('mobile-chat-active');
-
-
-    document.body.classList.remove('theme-love', 'theme-space');
-
-    if (fabNewChat) fabNewChat.classList.remove('hidden');
-
-    if (loveNotesBtn && myUser && myUser.is_premium) {
-        loveNotesBtn.classList.remove('hidden');
-    }
+    // En lugar de cerrar UI manualmente, hacemos "Atrás" en el navegador.
+    // Esto disparará 'popstate', que llamará a closeChatUI().
+    window.history.back();
 });
 async function checkAndLoadPinnedMessage(targetUserId) {
     hidePinnedBar();
