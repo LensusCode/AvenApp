@@ -3361,7 +3361,10 @@ function renderMixedSidebar() {
             <div class="u-avatar" style="background-image:url('${c.avatar || '/profile.png'}'); border-radius:12px;"></div> <!-- Cuadrado redondeado para canales -->
             <div style="overflow:hidden;">
                 <div style="font-weight:600; color:#fff;">${escapeHtml(c.name)}</div>
-                <div style="font-size:12px; color:#a1a1aa;">📢 Canal</div>
+                <div style="font-size:12px; color:#a1a1aa; display: flex; align-items: center; gap: 5px;">
+                    <img src="/icons/megaphone.svg" style="width: 14px; height: 14px;" alt="Canal">
+                    Canal
+                </div>
             </div>`;
         li.onclick = () => selectChannel(c, li);
         usersList.appendChild(li);
@@ -3836,7 +3839,7 @@ if (creationCheckBtn) creationCheckBtn.addEventListener('click', () => {
 function updateNextButton() {
     if (selectedMembers.size > 0) {
         creationNextBtn.classList.remove('hidden');
-        creationNextBtn.textContent = `Sig. (${selectedMembers.size})`;
+        creationNextBtn.textContent = 'Siguiente';
     } else {
         creationNextBtn.classList.add('hidden');
     }

@@ -1,6 +1,12 @@
 {
   "name": "AvenApp",
   "short_name": "AvenApp",
+  "description": "AvenApp - La red social moderna para conectar, chatear y compartir momentos.",
+  "categories": [
+    "social",
+    "lifestyle",
+    "communication"
+  ],
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000 ",

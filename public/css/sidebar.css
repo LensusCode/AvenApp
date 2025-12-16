@@ -15,7 +15,7 @@
     align-items: center;
 }
 
-.sidebar-header h3 {
+.sidebar-header h1 {
     margin: 0;
     font-size: 20px;
     background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
