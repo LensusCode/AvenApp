@@ -11,14 +11,25 @@ const initSocket = (server) => {
     io = new Server(server);
 
     io.use((socket, next) => {
-        const cookieHeader = socket.request.headers.cookie;
-        if (!cookieHeader) return next(new Error("No autorizado"));
-        const cookies = {};
-        cookieHeader.split(';').forEach(cookie => {
-            const parts = cookie.split('=');
-            cookies[parts.shift().trim()] = decodeURI(parts.join('='));
-        });
-        const token = cookies['chat_token'];
+        let token = null;
+
+        // Primero intentar leer el token de socket.handshake.auth (Capacitor/mobile)
+        if (socket.handshake.auth && socket.handshake.auth.token) {
+            token = socket.handshake.auth.token;
+        }
+        // Si no, intentar leer de las cookies (web browser)
+        else {
+            const cookieHeader = socket.request.headers.cookie;
+            if (cookieHeader) {
+                const cookies = {};
+                cookieHeader.split(';').forEach(cookie => {
+                    const parts = cookie.split('=');
+                    cookies[parts.shift().trim()] = decodeURI(parts.join('='));
+                });
+                token = cookies['chat_token'];
+            }
+        }
+
         if (!token) return next(new Error("No autorizado"));
 
         jwt.verify(token, JWT_SECRET, (err, decoded) => {

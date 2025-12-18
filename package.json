@@ -4,12 +4,23 @@
   "description": "Proyecto Chat Socket.io",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "android": "npx cap open android",
+    "sync": "npx cap sync",
+    "build:android": "npx cap sync && cd android && gradlew.bat assembleDebug",
+    "build:release": "npx cap sync && cd android && gradlew.bat bundleRelease"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@libsql/client": "^0.15.15",
     "@octokit/rest": "^22.0.1",
     "axios": "^1.13.2",

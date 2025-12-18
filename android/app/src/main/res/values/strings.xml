@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AvenApp</string>
+    <string name="title_activity_main">AvenApp</string>
+    <string name="package_name">com.avenapp.app</string>
+    <string name="custom_url_scheme">com.avenapp.app</string>
+</resources>

@@ -1,36 +1,5 @@
 let myUser = null;
 
-// Inicializar Socket.IO con la URL correcta (móvil o web)
-// Socket comienza desconectado y se conectará después del login
-const socket = io(typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : window.location.origin, {
-    autoConnect: false,  // No conectar automáticamente
-    transports: ['websocket', 'polling'],
-    withCredentials: true,
-    extraHeaders: {
-        // Las cookies se agregarán dinámicamente al conectar
-    }
-});
-
-console.log('[SOCKET.IO] Initialized with URL:', typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : window.location.origin);
-
-// Event listeners para debugging
-socket.on('connect', () => {
-    console.log('[SOCKET.IO] ✅ Connected! Socket ID:', socket.id);
-});
-
-socket.on('disconnect', (reason) => {
-    console.log('[SOCKET.IO] ❌ Disconnected. Reason:', reason);
-});
-
-socket.on('connect_error', (error) => {
-    console.error('[SOCKET.IO] ⚠️ Connection error:', error.message);
-});
-
-socket.on('users', (users) => {
-    console.log('[SOCKET.IO] 📥 Received users event. Count:', users?.length || 0);
-    console.log('[SOCKET.IO] Users data:', users);
-});
-
 async function apiRequest(url, method = 'GET', body = null) {
     try {
         const fullUrl = typeof getApiUrl === 'function' ? getApiUrl(url) : url;
@@ -38,7 +7,7 @@ async function apiRequest(url, method = 'GET', body = null) {
         // En móvil, usar CapacitorHttp para evitar CORS
         const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
 
-        if (isNative && window.Capacitor?.Plugins?.CapacitorHttp) {
+        const CapHttp = window.Capacitor?.Plugins?.CapacitorHttp; if (isNative && CapHttp) {
             console.log('[DEBUG] Using CapacitorHttp for:', fullUrl);
 
             const options = {
@@ -66,7 +35,7 @@ async function apiRequest(url, method = 'GET', body = null) {
                 }
             }
 
-            const response = await window.Capacitor.Plugins.CapacitorHttp.request(options);
+            const response = await CapHttp.request(options);
 
             if (response.status === 401 || response.status === 403) {
                 localStorage.removeItem('chatUser');
@@ -78,8 +47,6 @@ async function apiRequest(url, method = 'GET', body = null) {
                 return null;
             }
 
-            // Guardar response completo para acceder a headers si es necesario
-            window.lastApiResponse = response;
             return response.status >= 200 && response.status < 300 ? response.data : null;
         } else {
             // En web, usar fetch normal
@@ -105,6 +72,11 @@ async function apiRequest(url, method = 'GET', body = null) {
         return null;
     }
 }
+
+const socket = io(typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : undefined, {
+    autoConnect: false,
+    transports: ['websocket', 'polling']
+});
 
 
 async function checkSession() {
@@ -204,18 +176,6 @@ function showMobileLogin() {
                 console.log('[DEBUG] Login response:', data);
 
                 if (data && data.user) {
-                    // Extraer y guardar token del header Set-Cookie
-                    if (window.lastApiResponse?.headers) {
-                        const setCookieHeader = window.lastApiResponse.headers['Set-Cookie'] || window.lastApiResponse.headers['set-cookie'];
-                        if (setCookieHeader) {
-                            const tokenMatch = setCookieHeader.match(/chat_token=([^;]+)/);
-                            if (tokenMatch) {
-                                localStorage.setItem('chat_token', tokenMatch[1]);
-                                console.log('[DEBUG] Stored chat_token in localStorage');
-                            }
-                        }
-                    }
-
                     localStorage.setItem('chatUser', JSON.stringify(data.user));
                     loginScreen.remove();
 
@@ -226,7 +186,7 @@ function showMobileLogin() {
 
                     loginSuccess(data.user);
                 } else {
-                    errorEl.textContent = 'Usuario o contraseña incorrectos';
+                    errorEl.textContent = data?.error || 'Error al iniciar sesión';
                 }
             } catch (e) {
                 errorEl.textContent = 'Error de conexión: ' + e.message;
@@ -343,31 +303,7 @@ function loginSuccess(user) {
     profileBtn.classList.remove('hidden');
     if (myUser.is_admin) document.body.classList.add('is-admin');
     updateMyAvatarUI(myUser.avatar);
-
-    console.log('[DEBUG] Calling socket.connect()');
-
-    // En Capacitor, necesitamos pasar el token manualmente a Socket.IO
-    const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
-    if (isNative) {
-        // Leer token de localStorage
-        const token = localStorage.getItem('chat_token');
-        console.log('[DEBUG] Token from localStorage:', token ? token.substring(0, 50) + '...' : 'null');
-
-        if (token) {
-            // Usar auth en lugar de extraHeaders - más confiable
-            socket.auth = { token };
-            socket.io.opts.extraHeaders = {
-                'cookie': `chat_token=${token}`
-            };
-            console.log('[DEBUG] Set Socket.IO auth and headers with token');
-        } else {
-            console.error('[DEBUG] No token found in localStorage!');
-        }
-    }
-
     socket.connect();
-    console.log('[DEBUG] socket.connect() called. Connected:', socket.connected);
-
     updateButtonState();
     refreshFavoritesCache();
 
@@ -4897,6 +4833,3 @@ document.addEventListener('load', (e) => {
 window.closePinModal = () => { getEl('pinConfirmModal').classList.add('hidden'); };
 getEl('pinModalBackdrop')?.addEventListener('click', closePinModal);
 getEl('btnCancelPin')?.addEventListener('click', closePinModal);
-
-
-
