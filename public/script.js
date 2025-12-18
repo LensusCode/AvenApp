@@ -4817,8 +4817,8 @@ function createUserItem(u) {
 
     li.innerHTML = `
         <div class="u-avatar" style="background-image:url('${escapeHtml(avatarUrl)}')"></div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <div style="flex:1; min-width:0;">
+            <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};word-break:break-word;">
                 ${escapeHtml(name)}${getBadgeHtml(u)}
             </div>
             <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">
@@ -4839,8 +4839,8 @@ function createGlobalUserItem(user) {
 
     li.innerHTML = `
         <div class="u-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; color:#fff; word-break:break-word;">
                 ${escapeHtml(displayName)}${getBadgeHtml(user)}
             </div>
             <div style="font-size:12px; color:#a1a1aa;">@${escapeHtml(user.username)}</div>
