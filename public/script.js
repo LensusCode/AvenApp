@@ -152,66 +152,394 @@ function showMobileLogin() {
     if (mainColumn) mainColumn.style.display = 'none';
     if (fabBtn) fabBtn.style.display = 'none';
 
-    // Mostrar una pantalla de login simple
+    // Mostrar una pantalla de login moderna
     let loginScreen = document.getElementById('mobile-login-screen');
     if (!loginScreen) {
-        console.log('[DEBUG] Creating login screen element');
+        console.log('[DEBUG] Creating modern login screen element');
         loginScreen = document.createElement('div');
         loginScreen.id = 'mobile-login-screen';
-        loginScreen.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; background: #0a0a0a;';
+
+        // Estilos inline para el login screen
         loginScreen.innerHTML = `
-            <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
-                <div style="width: 100%; max-width: 400px;">
-                    <div style="text-align: center; margin-bottom: 40px;">
-                        <img src="/logo.png" alt="Logo" style="width: 80px; height: 80px; border-radius: 20px; margin-bottom: 15px;">
-                        <h1 style="color: #fff; font-size: 28px; margin: 0;">AvenApp</h1>
-                        <p style="color: #666; font-size: 14px; margin-top: 8px;">Inicia sesión para continuar</p>
+            <style>
+                #mobile-login-screen {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 10000;
+                    background: 
+                        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+                        #0a0a0a;
+                    overflow-y: auto;
+                    animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                .auth-container {
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                }
+                
+                .auth-card {
+                    width: 100%;
+                    height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    background: transparent;
+                    padding: 40px 28px;
+                    box-sizing: border-box;
+                }
+                
+                .auth-logo {
+                    text-align: center;
+                    margin-bottom: 45px;
+                    animation: logoAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+                }
+                
+                @keyframes logoAppear {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-20px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+                
+                .auth-logo img {
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 20px;
+                    margin-bottom: 18px;
+                    filter: drop-shadow(0 4px 20px rgba(99, 102, 241, 0.4));
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .auth-logo img:active {
+                    transform: scale(0.95);
+                }
+                
+                .auth-logo h1 {
+                    margin: 0;
+                    font-size: 36px;
+                    font-weight: 700;
+                    color: #fff;
+                    letter-spacing: -0.5px;
+                    text-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+                }
+                
+                .auth-logo p {
+                    color: #a1a1aa;
+                    font-size: 15px;
+                    margin: 10px 0 0;
+                    transition: color 0.3s ease;
+                }
+                
+                .form-toggle {
+                    display: flex;
+                    background: rgba(255, 255, 255, 0.05);
+                    padding: 5px;
+                    border-radius: 14px;
+                    margin-bottom: 30px;
+                    animation: formAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards;
+                }
+                
+                @keyframes formAppear {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                .form-toggle button {
+                    flex: 1;
+                    background: none;
+                    border: none;
+                    color: #a1a1aa;
+                    padding: 13px;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 15px;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                .form-toggle button.active {
+                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+                    color: #fff;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+                    transform: scale(1.02);
+                }
+                
+                .auth-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                    animation: formAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+                }
+                
+                .auth-form.hidden {
+                    display: none;
+                }
+                
+                .input-group {
+                    position: relative;
+                    width: 100%;
+                }
+                
+                .input-row {
+                    display: flex;
+                    gap: 14px;
+                }
+                
+                .auth-form input {
+                    width: 100%;
+                    padding: 17px 20px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 16px;
+                    color: #fff;
+                    font-size: 16px;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    outline: none;
+                    box-sizing: border-box;
+                }
+                
+                .auth-form input::placeholder {
+                    color: #71717a;
+                }
+                
+                .auth-form input:focus {
+                    border-color: #6366f1;
+                    background: rgba(99, 102, 241, 0.08);
+                    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+                    transform: translateY(-1px);
+                }
+                
+                .auth-form input.valid {
+                    border-color: #10b981;
+                    background: rgba(16, 185, 129, 0.08);
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+                }
+                
+                .auth-form input.invalid {
+                    border-color: #ef4444;
+                    background: rgba(239, 68, 68, 0.08);
+                    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+                    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+                }
+                
+                @keyframes shake {
+                    10%, 90% { transform: translateX(-2px); }
+                    20%, 80% { transform: translateX(4px); }
+                    30%, 50%, 70% { transform: translateX(-6px); }
+                    40%, 60% { transform: translateX(6px); }
+                }
+                
+                .hint-text {
+                    font-size: 12px;
+                    color: #a1a1aa;
+                    margin: 6px 0 0 4px;
+                    display: block;
+                    transition: color 0.3s ease;
+                }
+                
+                .submit-btn {
+                    width: 100%;
+                    padding: 18px;
+                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+                    border: none;
+                    border-radius: 16px;
+                    color: #fff;
+                    font-size: 17px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    margin-top: 12px;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .submit-btn::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: -100%;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                    transition: left 0.5s;
+                }
+                
+                .submit-btn:active::before {
+                    left: 100%;
+                }
+                
+                .submit-btn:active {
+                    transform: scale(0.97);
+                    box-shadow: 0 3px 15px rgba(99, 102, 241, 0.3);
+                }
+                
+                .submit-btn:disabled {
+                    background: #3f3f46;
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    box-shadow: none;
+                    transform: none;
+                }
+                
+                .error-message {
+                    color: #ef4444;
+                    text-align: center;
+                    margin-top: 14px;
+                    font-size: 14px;
+                    min-height: 20px;
+                    animation: slideDown 0.3s ease-out;
+                    font-weight: 500;
+                }
+                
+                .success-message {
+                    color: #10b981;
+                    text-align: center;
+                    margin-top: 14px;
+                    font-size: 14px;
+                    animation: slideDown 0.3s ease-out;
+                    font-weight: 500;
+                }
+                
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+            </style>
+            
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-logo">
+                        <img src="/logo.png" alt="Logo" onerror="this.style.display='none'">
+                        <h1>AvenApp</h1>
+                        <p id="auth-subtitle">Inicia sesión para continuar</p>
                     </div>
                     
-                    <form id="mobile-login-form" style="background: #18181b; border-radius: 20px; padding: 30px;">
-                        <div style="margin-bottom: 20px;">
-                            <input type="text" id="mobile-username" placeholder="Usuario" required 
-                                style="width: 100%; padding: 15px; background: #27272a; border: none; border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box;">
+                    <div class="form-toggle">
+                        <button id="tab-login" class="active">Iniciar Sesión</button>
+                        <button id="tab-register">Registrarse</button>
+                    </div>
+                    
+                    <!-- LOGIN FORM -->
+                    <form id="mobile-login-form" class="auth-form">
+                        <div class="input-group">
+                            <input type="text" id="mobile-username" placeholder="Usuario" required autocomplete="username">
                         </div>
-                        <div style="margin-bottom: 25px;">
-                            <input type="password" id="mobile-password" placeholder="Contraseña" required 
-                                style="width: 100%; padding: 15px; background: #27272a; border: none; border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box;">
+                        <div class="input-group">
+                            <input type="password" id="mobile-password" placeholder="Contraseña" required autocomplete="current-password">
                         </div>
-                        <button type="submit" style="width: 100%; padding: 15px; background: #3b82f6; border: none; border-radius: 12px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;">
-                            Entrar
-                        </button>
-                        <div id="mobile-login-error" style="color: #ef4444; text-align: center; margin-top: 15px; font-size: 14px;"></div>
+                        <button type="submit" class="submit-btn">Entrar</button>
+                        <div id="mobile-login-error" class="error-message"></div>
+                    </form>
+                    
+                    <!-- REGISTER FORM -->
+                    <form id="mobile-register-form" class="auth-form hidden">
+                        <div class="input-row">
+                            <div class="input-group">
+                                <input type="text" id="register-name" placeholder="Nombre" required>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="register-surname" placeholder="Apellido" required>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="register-username" placeholder="Usuario" required autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <input type="password" id="register-password" placeholder="Contraseña" required autocomplete="new-password">
+                            <p class="hint-text">Mínimo 8 caracteres</p>
+                        </div>
+                        <button type="submit" class="submit-btn" id="btn-register">Crear Cuenta</button>
+                        <div id="mobile-register-error" class="error-message"></div>
+                        <div id="mobile-register-success" class="success-message"></div>
                     </form>
                 </div>
             </div>
         `;
-        document.body.appendChild(loginScreen);
-        console.log('[DEBUG] Login screen appended to body');
 
-        // Manejar el login
-        document.getElementById('mobile-login-form').addEventListener('submit', async (e) => {
+        document.body.appendChild(loginScreen);
+        console.log('[DEBUG] Modern login screen appended to body');
+
+        // Tab toggle functionality
+        const tabLogin = document.getElementById('tab-login');
+        const tabRegister = document.getElementById('tab-register');
+        const loginForm = document.getElementById('mobile-login-form');
+        const registerForm = document.getElementById('mobile-register-form');
+        const subtitle = document.getElementById('auth-subtitle');
+
+        tabLogin.addEventListener('click', () => {
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            subtitle.textContent = 'Inicia sesión para continuar';
+        });
+
+        tabRegister.addEventListener('click', () => {
+            tabRegister.classList.add('active');
+            tabLogin.classList.remove('active');
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            subtitle.textContent = 'Crea tu cuenta';
+        });
+
+        // Login form handler
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('[DEBUG] Login form submitted');
 
             const username = document.getElementById('mobile-username').value;
             const password = document.getElementById('mobile-password').value;
             const errorEl = document.getElementById('mobile-login-error');
+            const btn = loginForm.querySelector('.submit-btn');
+
+            btn.textContent = 'Verificando...';
+            btn.disabled = true;
+            errorEl.textContent = '';
 
             try {
-                console.log('[DEBUG] Logging in with apiRequest to /api/login');
-
                 const data = await apiRequest('/api/login', 'POST', { username, password });
                 console.log('[DEBUG] Login response:', data);
 
                 if (data && data.user) {
-                    // Extraer y guardar token del header Set-Cookie
                     if (window.lastApiResponse?.headers) {
                         const setCookieHeader = window.lastApiResponse.headers['Set-Cookie'] || window.lastApiResponse.headers['set-cookie'];
                         if (setCookieHeader) {
                             const tokenMatch = setCookieHeader.match(/chat_token=([^;]+)/);
                             if (tokenMatch) {
                                 localStorage.setItem('chat_token', tokenMatch[1]);
-                                console.log('[DEBUG] Stored chat_token in localStorage');
                             }
                         }
                     }
@@ -219,7 +547,6 @@ function showMobileLogin() {
                     localStorage.setItem('chatUser', JSON.stringify(data.user));
                     loginScreen.remove();
 
-                    // Restaurar visibilidad
                     if (sidebar) sidebar.style.display = '';
                     if (mainColumn) mainColumn.style.display = '';
                     if (fabBtn) fabBtn.style.display = '';
@@ -227,10 +554,124 @@ function showMobileLogin() {
                     loginSuccess(data.user);
                 } else {
                     errorEl.textContent = 'Usuario o contraseña incorrectos';
+                    document.getElementById('mobile-password').classList.add('invalid');
+                    setTimeout(() => {
+                        document.getElementById('mobile-password').classList.remove('invalid');
+                    }, 400);
                 }
             } catch (e) {
-                errorEl.textContent = 'Error de conexión: ' + e.message;
+                errorEl.textContent = 'Error de conexión';
                 console.error('[DEBUG] Login error:', e);
+            } finally {
+                btn.textContent = 'Entrar';
+                btn.disabled = false;
+            }
+        });
+
+        // Register form validation
+        let isUserValid = false;
+        let isPassValid = false;
+
+        const regUsername = document.getElementById('register-username');
+        const regPassword = document.getElementById('register-password');
+        const btnRegister = document.getElementById('btn-register');
+
+        // Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Username validation
+        regUsername.addEventListener('input', debounce(async function (e) {
+            const username = e.target.value.trim();
+            regUsername.classList.remove('valid', 'invalid');
+            isUserValid = false;
+
+            if (username.length < 3) return;
+
+            try {
+                const data = await apiRequest('/api/check-username', 'POST', { username });
+                if (data && data.available) {
+                    regUsername.classList.add('valid');
+                    isUserValid = true;
+                } else {
+                    regUsername.classList.add('invalid');
+                    document.getElementById('mobile-register-error').textContent = 'Usuario no disponible';
+                }
+            } catch (e) {
+                console.error('Error validando usuario:', e);
+            }
+        }, 500));
+
+        // Password validation
+        regPassword.addEventListener('input', function (e) {
+            const pass = e.target.value;
+            regPassword.classList.remove('valid', 'invalid');
+
+            if (pass.length >= 8) {
+                regPassword.classList.add('valid');
+                isPassValid = true;
+            } else {
+                if (pass.length > 0) regPassword.classList.add('invalid');
+                isPassValid = false;
+            }
+        });
+
+        // Register form handler
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const errorEl = document.getElementById('mobile-register-error');
+            const successEl = document.getElementById('mobile-register-success');
+            errorEl.textContent = '';
+            successEl.textContent = '';
+
+            if (!isUserValid) {
+                errorEl.textContent = 'Elige un usuario válido y disponible';
+                return;
+            }
+
+            if (!isPassValid) {
+                errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres';
+                return;
+            }
+
+            const username = regUsername.value;
+            const password = regPassword.value;
+            const firstName = document.getElementById('register-name').value;
+            const lastName = document.getElementById('register-surname').value;
+
+            btnRegister.textContent = 'Creando cuenta...';
+            btnRegister.disabled = true;
+
+            try {
+                const data = await apiRequest('/api/register', 'POST', {
+                    username,
+                    password,
+                    firstName,
+                    lastName
+                });
+
+                if (data) {
+                    successEl.textContent = '¡Cuenta creada! Iniciando sesión...';
+                    setTimeout(() => {
+                        tabLogin.click();
+                        document.getElementById('mobile-username').value = username;
+                        document.getElementById('mobile-password').focus();
+                    }, 1500);
+                } else {
+                    errorEl.textContent = 'Error al crear la cuenta';
+                }
+            } catch (e) {
+                errorEl.textContent = 'Error de conexión';
+                console.error('Error registrando:', e);
+            } finally {
+                btnRegister.textContent = 'Crear Cuenta';
+                btnRegister.disabled = false;
             }
         });
     }

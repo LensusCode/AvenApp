@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (StatusBar) {
                 await StatusBar.setStyle({ style: 'DARK' });
                 await StatusBar.setBackgroundColor({ color: '#0a0a0a' });
+                // Prevent web content from overlaying under status bar
+                // This ensures proper spacing on Android devices
+                await StatusBar.setOverlaysWebView({ overlay: false });
             }
 
             // Hide Splash Screen after load
