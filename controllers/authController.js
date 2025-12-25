@@ -58,6 +58,17 @@ exports.logout = (req, res) => {
     res.json({ success: true });
 };
 
+exports.getMe = (req, res) => {
+    // req.user is populated by authenticateToken middleware
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Fetch full user details to be sure (optional, but good for data consistency)
+    db.get(`SELECT id, username, display_name, bio, avatar, is_admin, is_verified, is_premium FROM users WHERE id = ?`, [req.user.id], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: 'User not found' });
+        res.json(row);
+    });
+};
+
 exports.checkUsername = (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: 'Vacío' });

@@ -15,6 +15,8 @@ const imageStorage = new CloudinaryStorage({
     params: {
         folder: 'social-network/images',
         allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
+        format: 'webp', // Force conversion to WebP
+        transformation: [{ flags: 'strip_profile' }] // Ensure metadata is removed
     }
 });
 

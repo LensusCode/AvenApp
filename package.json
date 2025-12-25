@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "dev": "node server.js",
     "android": "npx cap open android",
     "sync": "npx cap sync",
     "build:android": "npx cap sync && cd android && gradlew.bat assembleDebug",

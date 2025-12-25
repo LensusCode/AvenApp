@@ -13,6 +13,7 @@ const userRoutes = require('./routes/userRoutes');
 const channelRoutes = require('./routes/channelRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const storyRoutes = require('./routes/storyRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -38,7 +39,7 @@ const server = http.createServer(app);
                 scriptSrcElem: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
                 scriptSrcAttr: ["'none'"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-                imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com"],
+                imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com", "https://i.pravatar.cc"],
                 mediaSrc: ["'self'", "blob:", "data:", "https://res.cloudinary.com"],
                 connectSrc: ["'self'", "https://*.giphy.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "ws:", "wss:", "data:", "https://*.turso.io"],
                 upgradeInsecureRequests: null,
@@ -54,12 +55,13 @@ const server = http.createServer(app);
 
     app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
-    app.use('/api', authRoutes);
-    app.use('/api', userRoutes);
+    app.use('/api/auth', authRoutes);
+    app.use('/api/users', userRoutes);
     app.use('/api/admin', require('./routes/adminRoutes'));
     app.use('/api/channels', channelRoutes);
-    app.use('/api', messageRoutes);
+    app.use('/api/messages', messageRoutes);
     app.use('/api/contacts', contactRoutes);
+    app.use('/api/stories', storyRoutes);
     app.use('/api/emojis', require('./routes/emojiRoutes'));
 
     app.get('/admin', (req, res) => {

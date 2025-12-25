@@ -61,29 +61,105 @@
 
     <div class="chat-container">
         <!-- Sidebar -->
+        <!-- Sidebar (Adapted from listaChats.html reference) -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="header-left">
-                    <h1>AvenApp</h1>
+            <header class="brand-header">
+                <div class="brand-title">AvenApp</div>
+                <div class="user-pill" id="sidebarMyProfileBtn" title="Perfil">
+                    <span id="headerProfileName">Dylan</span>
+                    <!-- Avatar loaded via JS or default -->
+                    <div id="headerProfileAvatar" class="pill-avatar" style="background-image: url('profile.png');">
+                    </div>
                 </div>
-                <div class="header-right">
-                    <button id="profileBtn" class="profile-btn hidden" title="Perfil">
-                        <div id="myAvatar" class="my-avatar"></div>
-                    </button>
+            </header>
+
+            <!-- FAVORITES / STORIES SECTION -->
+            <div class="favorites-section">
+                <div class="fav-item add-new">
+                    <div class="fav-avatar-wrapper">
+                        <div class="fav-avatar" style="background-image: url('profile.png');">
+                            <div class="add-story-icon-overlay"
+                                style="position: absolute; bottom: -5px; right: -5px; background: #3b82f6; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #000;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white"
+                                    stroke-width="3">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="fav-name">Tu historia</span>
                 </div>
+                <!-- Real stories will be rendered here by JS -->
             </div>
-            <div class="search-wrap">
-                <div class="search-unified-container">
-                    <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
-                        class="text-gray-400" stroke="currentColor" stroke-width="2">
+
+            <!-- SEARCH -->
+            <div class="search-trigger">
+                <div class="fake-search">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input id="searchUsers" placeholder="Buscar..." autocomplete="off" />
+                    <!-- Actual input for functionality, styled to blend in or replace text -->
+                    <input id="searchUsers" placeholder="Buscar..." autocomplete="off"
+                        style="background:transparent; border:none; color:white; font-size:14px; outline:none; width:100%;">
                 </div>
             </div>
+
+            <!-- CHAT LIST -->
             <ul id="usersList" class="users-list"></ul>
+
+            <!-- BOTTOM DOCK (Navigation) -->
+            <div class="floating-dock-container">
+                <nav class="floating-dock">
+                    <div class="dock-icon active" id="navChatBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="dock-icon" id="navCallsBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path
+                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <!-- Main Action Button -->
+                    <div class="dock-main-action" id="navPlusBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+
+                    <div class="dock-icon" id="navContactsBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div class="dock-icon" id="navSettingsBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg>
+                    </div>
+                </nav>
+            </div>
         </aside>
+
+        <!-- Hidden elements required by JS or legacy support -->
+        <button id="profileBtn" class="hidden" style="display:none;"></button>
 
         <!-- MI PERFIL MODAL -->
         <div id="profileModal" class="profile-modal hidden" aria-hidden="true">
@@ -99,17 +175,7 @@
                         </svg>
                     </button>
                     <span class="nav-title">Perfil</span>
-                    <button id="profileOptionsBtn" class="nav-icon-btn">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path
-                                d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z">
-                            </path>
-                        </svg>
-                    </button>
-                    <!-- Menú desplegable opciones (Logout) -->
-                    <div id="profileOptionsMenu" class="profile-options-menu hidden">
-                        <button id="profileLogout">Cerrar sesión</button>
-                    </div>
+                    <div style="width: 40px;"></div>
                 </div>
 
                 <!-- Avatar Central -->
@@ -131,22 +197,122 @@
                 <!-- Lista de Datos -->
                 <div class="profile-details-list">
 
-                    <div class="detail-item">
-                        <label class="detail-label">Nombre</label>
-                        <div class="detail-value big-text" id="profileRealName">Cargando...</div>
-                    </div>
+                    <div class="profile-info-group">
+                        <div class="detail-item">
+                            <label class="detail-label">Nombre</label>
+                            <div class="value-row">
+                                <div class="detail-value big-text" id="profileRealName">Cargando...</div>
+                                <button class="edit-btn" id="editNameBtn" data-target="profileRealName"
+                                    data-field="display_name">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
 
-                    <div class="detail-item">
-                        <label class="detail-label">Usuario</label>
-                        <div class="detail-value link-text" id="profileHandle">@usuario</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <label class="detail-label">Biografía</label>
-                        <div class="detail-value bio-text" id="profileBio">
-                            Sin biografía.
+                        <div class="detail-item">
+                            <label class="detail-label">Usuario</label>
+                            <div class="value-row">
+                                <div class="detail-value link-text" id="profileHandle">@usuario</div>
+                                <button class="edit-btn" id="editUserBtn" data-target="profileHandle"
+                                    data-field="username" data-prefix="@">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="profile-info-group">
+                        <div class="detail-item">
+                            <label class="detail-label">Biografía</label>
+                            <div class="value-row">
+                                <div class="detail-value bio-text" id="profileBio">
+                                    Sin biografía.
+                                </div>
+                                <button class="edit-btn" id="editBioBtn" data-target="profileBio" data-field="bio">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRUPO DE AJUSTES -->
+                    <div class="profile-info-group">
+                        <!-- Notificaciones -->
+                        <div class="settings-row">
+                            <div class="settings-left">
+                                <div class="settings-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                    </svg>
+                                </div>
+                                <span>Notificaciones</span>
+                            </div>
+                            <div class="settings-right">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Privacidad -->
+                        <div class="settings-row clickable">
+                            <div class="settings-left">
+                                <div class="settings-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </div>
+                                <span>Privacidad</span>
+                            </div>
+                            <div class="settings-right">
+                                <svg class="chevron-right" viewBox="0 0 24 24" fill="none" stroke="#666"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Apariencia -->
+                        <div class="settings-row clickable" id="openThemeModalBtn">
+                            <div class="settings-left">
+                                <div class="settings-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                    </svg>
+                                </div>
+                                <span>Apariencia</span>
+                            </div>
+                            <div class="settings-right">
+                                <svg class="chevron-right" viewBox="0 0 24 24" fill="none" stroke="#666"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botón Cerrar Sesión -->
+                    <button id="profileLogout" class="logout-btn-full">
+                        Cerrar Sesión
+                    </button>
 
                 </div>
             </div>
@@ -252,22 +418,28 @@
                 <div class="profile-details-list">
 
                     <!-- Nombre (Al hacer click aquí se editará el Apodo) -->
-                    <div class="detail-item">
-                        <label class="detail-label">Nombre</label>
-                        <div id="contactInfoName" class="detail-value big-text">Cargando...</div>
-                        <p style="font-size: 11px; color: #666; margin-top: 5px;">Toca para asignar un apodo personal.
-                        </p>
+                    <!-- Nombre y Usuario Agrupados -->
+                    <div class="profile-info-group">
+                        <div class="detail-item">
+                            <label class="detail-label">Nombre</label>
+                            <div id="contactInfoName" class="detail-value big-text">Cargando...</div>
+                            <p style="font-size: 11px; color: #666; margin-top: 5px;">Toca para asignar un apodo
+                                personal.
+                            </p>
+                        </div>
+
+                        <div class="detail-item">
+                            <label class="detail-label">Usuario</label>
+                            <div id="contactRealUsername" class="detail-value link-text">@usuario</div>
+                        </div>
                     </div>
 
-                    <div class="detail-item">
-                        <label class="detail-label">Usuario</label>
-                        <div id="contactRealUsername" class="detail-value link-text">@usuario</div>
-                    </div>
-
-                    <div class="detail-item">
-                        <label class="detail-label">Biografía</label>
-                        <div id="contactInfoBio" class="detail-value bio-text">
-                            Sin biografía.
+                    <div class="profile-info-group">
+                        <div class="detail-item">
+                            <label class="detail-label">Biografía</label>
+                            <div id="contactInfoBio" class="detail-value bio-text">
+                                Sin biografía.
+                            </div>
                         </div>
                     </div>
 
@@ -365,7 +537,8 @@
                     </svg>
                 </div>
                 <h2 style="margin-top: 15px; color: #fff;">¡Felicidades!</h2>
-                <p style="color: #a1a1aa; margin-bottom: 25px;">Tu cuenta ha sido verificada correctamente. Ahora tienes
+                <p style="color: #a1a1aa; margin-bottom: 25px;">Tu cuenta ha sido verificada correctamente. Ahora
+                    tienes
                     la insignia oficial.</p>
                 <button id="acceptVerifiedBtn" class="btn"
                     style="background: #3b82f6; width: 100%; color: white; padding: 12px;">Aceptar</button>
@@ -454,7 +627,8 @@
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                        </path>
                     </svg>
                     <span>Eliminar</span>
                 </button>
@@ -1342,7 +1516,8 @@
     </div>
 
     <!-- BOTÓN FLOTANTE NUEVO CHAT -->
-    <div class="fab-container">
+    <!-- BOTÓN FLOTANTE NUEVO CHAT (OCULTO/REMOVIDO por nueva UI) -->
+    <div class="fab-container" style="display:none;">
         <button id="fabNewChat" class="fab-btn">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -1350,6 +1525,32 @@
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
         </button>
+    </div>
+
+    <!-- COMING SOON MODAL -->
+    <div id="comingSoonModal" class="profile-modal hidden">
+        <div class="profile-card modern-profile"
+            style="text-align: center; justify-content: center; min-height: 250px;">
+            <div class="profile-nav-header">
+                <button id="closeComingSoon" class="nav-icon-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div
+                style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 40px;">
+                <svg viewBox="0 0 24 24" width="64" height="64" stroke="#a1a1aa" stroke-width="1.5" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <h2 style="color: #fff; margin: 0 0 10px 0;">Coming Soon</h2>
+                <p style="color: #666; font-size: 14px;">Esta funcionalidad estará disponible pronto.</p>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL DE FLUJO DE CREACIÓN -->
@@ -1488,8 +1689,8 @@
     <!-- Android back button handler -->
     <script src="android-back-handler.js"></script>
     <!-- Socket.io desde CDN para que funcione en móvil -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"
-        crossorigin="anonymous"></script>
+    <!-- Socket.io local serve -->
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 

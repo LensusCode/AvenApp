@@ -16,9 +16,10 @@ let isUserValid = false;
 let isPassValid = false;
 
 // Redirección si ya logueado
-if (localStorage.getItem('chatUser')) {
-    window.location.href = '/';
-}
+// Redirección si ya logueado - ELIMINADO PARA EVITAR BUCLE INFINITO
+// if (localStorage.getItem('chatUser')) {
+//    window.location.href = '/';
+// }
 
 
 function showToast(message, type = 'info') {
@@ -67,7 +68,7 @@ regUser.addEventListener('input', debounce(async (e) => {
     if (username.length < 3) return;
 
     try {
-        const res = await fetch('/api/check-username', {
+        const res = await fetch('/api/auth/check-username', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
@@ -135,7 +136,7 @@ registerForm.addEventListener('submit', async (e) => {
         btnRegister.textContent = 'Creando...';
         btnRegister.disabled = true;
 
-        const res = await fetch('/api/register', {
+        const res = await fetch('/api/auth/register', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password, firstName, lastName })
         });
@@ -171,7 +172,7 @@ loginForm.addEventListener('submit', async (e) => {
     btn.textContent = 'Verificando...';
 
     try {
-        const res = await fetch('/api/login', {
+        const res = await fetch('/api/auth/login', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });

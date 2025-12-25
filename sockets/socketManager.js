@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 let io;
+let emitUsersTimeout = null;
 
 const initSocket = (server) => {
     io = new Server(server);
@@ -46,7 +47,11 @@ const initSocket = (server) => {
         socket.join(`user_${userId}`);
         let msgCount = 0; setInterval(() => { msgCount = 0; }, 1000);
 
-        db.get(`SELECT avatar FROM users WHERE id = ?`, [userId], (err, row) => { if (row) socket.data.avatar = row.avatar; emitUsers(); });
+        db.get(`SELECT avatar FROM users WHERE id = ?`, [userId], (err, row) => {
+            if (row) socket.data.avatar = row.avatar;
+            scheduleEmitUsers();
+        });
+
         db.all(`SELECT target_user_id, nickname FROM nicknames WHERE user_id = ?`, [userId], (err, rows) => {
             if (!err && rows) { const map = {}; rows.forEach(r => map[r.target_user_id] = r.nickname); socket.emit('nicknames', map); }
         });
@@ -239,7 +244,7 @@ const initSocket = (server) => {
 
         socket.on('typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('typing', { fromUserId: userId, username: socket.data.username }));
         socket.on('stop typing', ({ toUserId }) => socket.to(`user_${toUserId}`).emit('stop typing', { fromUserId: userId }));
-        socket.on('disconnect', () => { emitUsers(); });
+        socket.on('disconnect', () => { scheduleEmitUsers(); });
     });
 
     return io;
@@ -249,6 +254,11 @@ const getIo = () => {
     if (!io) throw new Error("Socket.io not initialized!");
     return io;
 };
+
+function scheduleEmitUsers() {
+    if (emitUsersTimeout) clearTimeout(emitUsersTimeout);
+    emitUsersTimeout = setTimeout(emitUsers, 500); // 500ms debounce
+}
 
 function emitUsers() {
     if (!io) return;
@@ -261,33 +271,61 @@ function emitUsers() {
     }
 
     if (io.of("/")) {
+        // Collect all distinct user IDs that need updating
+        // Ideally we would optimize this to not run N queries, but for now we debounce it.
+        // We will add detailed error logging.
+
         for (let [id, socket] of io.of("/").sockets) {
             const userId = socket.data.userId;
             if (!userId) continue;
 
+            // Simplified and robustness improvements
+            // Note: Turso/LibSQL might have latency, so debounce helps alot.
             db.all(
-                `SELECT u.id, u.username, u.display_name, u.bio, u.avatar, u.is_verified, u.is_admin, u.is_premium
+                `SELECT u.id, u.username, u.display_name, u.bio, u.avatar, u.is_verified, u.is_admin, u.is_premium,
+                (SELECT content FROM messages WHERE (from_user_id = c.user_id AND to_user_id = u.id) OR (from_user_id = u.id AND to_user_id = c.user_id) ORDER BY id DESC LIMIT 1) as last_message,
+                (SELECT timestamp FROM messages WHERE (from_user_id = c.user_id AND to_user_id = u.id) OR (from_user_id = u.id AND to_user_id = c.user_id) ORDER BY id DESC LIMIT 1) as last_message_time,
+                (SELECT type FROM messages WHERE (from_user_id = c.user_id AND to_user_id = u.id) OR (from_user_id = u.id AND to_user_id = c.user_id) ORDER BY id DESC LIMIT 1) as last_message_type
                  FROM contacts c
                  JOIN users u ON c.contact_user_id = u.id
                  WHERE c.user_id = ?`,
                 [userId],
                 (err, rows) => {
                     if (err) {
-                        console.error('Error getting contacts for user:', userId, err);
+                        console.error('Error getting contacts for user:', userId, err.message);
                         return;
                     }
 
-                    const contacts = rows.map(row => ({
-                        userId: row.id,
-                        username: row.username,
-                        display_name: row.display_name,
-                        bio: row.bio,
-                        avatar: row.avatar || '/profile.png',
-                        online: onlineUserIds.has(row.id),
-                        is_verified: row.is_verified,
-                        is_admin: row.is_admin,
-                        is_premium: row.is_premium
-                    }));
+                    const contacts = rows.map(row => {
+                        let lastMsg = null;
+                        if (row.last_message) {
+                            if (row.last_message_type === 'image') lastMsg = '📷 Foto';
+                            else if (row.last_message_type === 'sticker') lastMsg = '✨ Sticker';
+                            else if (row.last_message_type === 'audio') lastMsg = '🎤 Mensaje de voz';
+                            else {
+                                try {
+                                    lastMsg = decrypt(row.last_message);
+                                } catch (e) {
+                                    lastMsg = '🔒 Mensaje';
+                                }
+                            }
+                        }
+
+                        // Fallback logic could be added here if needed, but 'null' is handled by client as Status
+                        return {
+                            userId: row.id,
+                            username: row.username,
+                            display_name: row.display_name,
+                            bio: row.bio,
+                            avatar: row.avatar || '/profile.png',
+                            online: onlineUserIds.has(row.id),
+                            is_verified: row.is_verified,
+                            is_admin: row.is_admin,
+                            is_premium: row.is_premium,
+                            lastMessage: lastMsg,
+                            lastMessageTime: row.last_message_time
+                        };
+                    });
 
                     socket.emit('users', contacts);
                 }

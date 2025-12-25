@@ -1,8 +1,16 @@
 :root {
+    --bg-color: #050505;
+    /* Use this new one or map --bg to it */
     --bg: #050505;
     --panel-bg: rgba(20, 20, 25, 0.6);
+    --purple-deep: #2e1065;
     --accent: #6366f1;
+    --success: #10b981;
+    --glass-dock: rgba(15, 15, 20, 0.85);
+    --border-light: rgba(255, 255, 255, 0.06);
     --text: #ececec;
+    --text-main: #ffffff;
+    --text-dim: #9ca3af;
     --muted: #a1a1aa;
     --border: rgba(255, 255, 255, 0.08);
     --input-bg: rgba(255, 255, 255, 0.07);

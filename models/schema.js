@@ -23,6 +23,12 @@ async function initDatabase() {
 
         await client.execute(`CREATE TABLE IF NOT EXISTS contacts (user_id INTEGER, contact_user_id INTEGER, added_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id, contact_user_id))`);
 
+        // Stories Feature
+        await client.execute(`CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, media_url TEXT, caption TEXT, type TEXT DEFAULT 'image', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, expires_at DATETIME)`);
+        await client.execute(`CREATE TABLE IF NOT EXISTS story_views (story_id INTEGER, viewer_id INTEGER, viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(story_id, viewer_id))`);
+
+        await addColumnSafe('stories', 'is_hidden INTEGER DEFAULT 0');
+
         await addColumnSafe('users', 'created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
         await addColumnSafe('users', 'is_admin INTEGER DEFAULT 0');
         await addColumnSafe('users', 'is_verified INTEGER DEFAULT 0');
@@ -39,6 +45,21 @@ async function initDatabase() {
         await addColumnSafe('channels', 'is_public INTEGER DEFAULT 0');
         await addColumnSafe('channels', 'handle TEXT');
         await addColumnSafe('channels', 'invite_link TEXT');
+
+        // Indexes for Search Optimization
+        try {
+            await client.execute(`DROP INDEX IF EXISTS idx_users_username`);
+            await client.execute(`DROP INDEX IF EXISTS idx_channels_name`);
+            await client.execute(`DROP INDEX IF EXISTS idx_channels_handle`);
+        } catch (e) { }
+
+        await client.execute(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)`);
+        await client.execute(`CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name COLLATE NOCASE)`);
+        await client.execute(`CREATE INDEX IF NOT EXISTS idx_channels_handle ON channels(handle COLLATE NOCASE)`);
+
+        // Critical for contact list performance
+        await client.execute(`CREATE INDEX IF NOT EXISTS idx_messages_users ON messages(from_user_id, to_user_id)`);
+        await client.execute(`CREATE INDEX IF NOT EXISTS idx_messages_users_reverse ON messages(to_user_id, from_user_id)`);
 
         console.log("✅ Base de datos verificada y actualizada.");
     } catch (error) {

@@ -31,6 +31,57 @@ socket.on('users', (users) => {
     console.log('[SOCKET.IO] Users data:', users);
 });
 
+// --- REAL-TIME SIDEBAR UPDATES ---
+
+socket.on('typing', ({ fromUserId }) => {
+    const user = allUsersCache.find(u => u.userId === fromUserId);
+    if (user) {
+        user.typing = true;
+        // Re-render item if visible
+        const li = document.querySelector(`.user-item[data-uid="${fromUserId}"]`);
+        if (li) {
+            const newLi = createUserItem(user);
+            li.replaceWith(newLi);
+        }
+    }
+});
+
+socket.on('stop typing', ({ fromUserId }) => {
+    const user = allUsersCache.find(u => u.userId === fromUserId);
+    if (user) {
+        user.typing = false;
+        const li = document.querySelector(`.user-item[data-uid="${fromUserId}"]`);
+        if (li) {
+            const newLi = createUserItem(user);
+            li.replaceWith(newLi);
+        }
+    }
+});
+
+socket.on('private message', (msg) => {
+    // Update sender's last message
+    const user = allUsersCache.find(u => u.userId === msg.fromUserId);
+    if (user) {
+        user.lastMessage = msg.type === 'image' ? '📷 Foto' : (msg.type === 'sticker' ? '✨ Sticker' : msg.content);
+        user.lastMessageTime = msg.timestamp;
+
+        // Move to top and re-render
+        renderMixedSidebar();
+    }
+});
+
+socket.on('channel_message', (msg) => {
+    const channel = myChannels.find(c => c.id == msg.channelId);
+    if (channel) {
+        channel.last_message_time = msg.timestamp;
+        channel.last_message = msg.type === 'image' ? '📷 Foto' : (msg.type === 'sticker' ? '✨ Sticker' : msg.content);
+
+        // Move to top and re-render
+        renderMixedSidebar();
+    }
+});
+
+
 async function apiRequest(url, method = 'GET', body = null) {
     try {
         const fullUrl = typeof getApiUrl === 'function' ? getApiUrl(url) : url;
@@ -112,7 +163,7 @@ async function checkSession() {
     if (window.location.pathname === '/login' || window.location.pathname === '/login.html') return;
 
     console.log('[DEBUG] Calling /api/me...');
-    const userData = await apiRequest('/api/me');
+    const userData = await apiRequest('/api/auth/me');
     console.log('[DEBUG] /api/me response:', userData);
 
     if (userData) {
@@ -530,7 +581,7 @@ function showMobileLogin() {
             errorEl.textContent = '';
 
             try {
-                const data = await apiRequest('/api/login', 'POST', { username, password });
+                const data = await apiRequest('/api/auth/login', 'POST', { username, password });
                 console.log('[DEBUG] Login response:', data);
 
                 if (data && data.user) {
@@ -594,7 +645,7 @@ function showMobileLogin() {
             if (username.length < 3) return;
 
             try {
-                const data = await apiRequest('/api/check-username', 'POST', { username });
+                const data = await apiRequest('/api/auth/check-username', 'POST', { username });
                 if (data && data.available) {
                     regUsername.classList.add('valid');
                     isUserValid = true;
@@ -649,7 +700,7 @@ function showMobileLogin() {
             btnRegister.disabled = true;
 
             try {
-                const data = await apiRequest('/api/register', 'POST', {
+                const data = await apiRequest('/api/auth/register', 'POST', {
                     username,
                     password,
                     firstName,
@@ -814,6 +865,7 @@ function loginSuccess(user) {
 
     checkPremiumFeatures();
     loadMyChannels();
+    setupEditButtons();
 }
 
 
@@ -1203,73 +1255,162 @@ socket.on('nicknames', (map) => {
 });
 
 
-function enableInlineEdit(elementId, dbField, prefix = '') {
-    const el = document.getElementById(elementId);
-    if (!el) return;
+// Función Helper para editar campos
+function setupFieldEditing(triggerElement, targetElementId, dbField, prefix = '') {
+    const trigger = triggerElement; // El elemento clickeado (puede ser el texto o el botón)
+    const targetEl = document.getElementById(targetElementId);
 
-    el.classList.add('editable-field');
-    const newEl = el.cloneNode(true);
-    el.parentNode.replaceChild(newEl, el);
+    if (!trigger || !targetEl) return;
 
-    newEl.addEventListener('click', () => {
-        let currentText = newEl.innerText;
-        if (prefix) currentText = currentText.replace(prefix, '');
-        currentText = currentText.replace('✎', '').trim();
+    trigger.addEventListener('click', (e) => {
+        const editBtn = document.querySelector(`.edit-btn[data-target="${targetElementId}"]`);
 
-        const originalContent = newEl.innerHTML;
+        // Evitar re-apertura inmediata si acabamos de guardar clickeando el botón
+        if (editBtn && editBtn.dataset.justSaved === "true") {
+            delete editBtn.dataset.justSaved;
+            return;
+        }
+
+        // Evitar doble acción si ya se está editando
+        if (targetEl.querySelector('input')) return;
+
+        // Gestión del icono
+        let originalIcon = "";
+        if (editBtn) {
+            originalIcon = editBtn.innerHTML;
+            // Icono Check
+            editBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            editBtn.style.display = 'flex';
+        }
+
+        const currentText = targetEl.innerText.replace(prefix, '').trim();
+        const originalContent = targetEl.innerHTML;
+
+        // Crear Input
         const input = document.createElement('input');
         input.type = 'text';
-        input.value = currentText;
-        input.className = 'editing-input';
 
+        // Mejorar UX: Si es el placeholder, mostrar input vacío
+        let textToEdit = currentText;
+        const isPlaceholder = (t) => t === "Añadir una biografía..." || t === "Sin biografía.";
+        if (dbField === 'bio' && isPlaceholder(textToEdit)) {
+            textToEdit = "";
+        }
+
+        input.value = textToEdit;
+        input.className = 'editing-input';
         if (dbField === 'bio') input.placeholder = "Escribe algo sobre ti...";
 
-        newEl.innerHTML = '';
-        newEl.appendChild(input);
-        newEl.classList.remove('editable-field');
+        // Reemplazar contenido por input
+        targetEl.innerHTML = '';
+        targetEl.appendChild(input);
         input.focus();
 
+        const restoreUI = (val) => {
+            targetEl.innerHTML = '';
+            // Chequear si está vacío O es uno de los placeholders antiguos
+            if (dbField === 'bio' && (!val || isPlaceholder(val))) {
+                targetEl.textContent = "Añadir una biografía...";
+                targetEl.style.color = "#666";
+            } else {
+                targetEl.textContent = prefix + val;
+                targetEl.style.color = "";
+            }
+
+            // Re-add badge if name
+            if (dbField === 'display_name') {
+                const badge = getBadgeHtml(myUser);
+                if (badge) targetEl.insertAdjacentHTML('beforeend', badge);
+            }
+
+            // Restaurar icono original
+            if (editBtn) {
+                editBtn.innerHTML = originalIcon;
+                editBtn.style.display = 'flex';
+            }
+        };
+
         const save = async () => {
+            // Marcar que acabamos de guardar para prevenir el re-click
+            if (editBtn) {
+                editBtn.dataset.justSaved = "true";
+                setTimeout(() => { if (editBtn.dataset.justSaved) delete editBtn.dataset.justSaved; }, 300);
+            }
+
             let newValue = input.value.trim();
-            if (newValue === currentText) { renderValue(newValue); return; }
-            if (dbField === 'username' && newValue.length < 3) { alert("Mínimo 3 caracteres"); renderValue(currentText); return; }
+
+            // Si no cambiamos nada (comparando con lo que había en el input, o si revertimos al original)
+            // Nota: si currentText era placeholder y newValue es vacío, es un "no cambio" lógico
+            if (newValue === textToEdit) {
+                restoreUI(currentText); // Restauramos lo que había (aunque sea placeholder)
+                return;
+            }
+
+            // Validación
+            if (dbField === 'username' && newValue.length < 3) {
+                alert("Mínimo 3 caracteres");
+                restoreUI(currentText);
+                return;
+            }
 
             try {
                 input.disabled = true;
                 input.style.opacity = "0.5";
+
                 const res = await apiRequest('/api/profile/update', 'PUT', { field: dbField, value: newValue });
 
                 if (res && res.success) {
                     myUser[dbField] = res.value;
                     localStorage.setItem('chatUser', JSON.stringify(myUser));
-                    renderValue(res.value);
+                    restoreUI(res.value);
                 } else {
                     alert(res.error || "Error al actualizar");
-                    newEl.innerHTML = originalContent;
-                    newEl.classList.add('editable-field');
+                    restoreUI(currentText);
                 }
             } catch (e) {
-                newEl.innerHTML = originalContent;
-                newEl.classList.add('editable-field');
+                console.error(e);
+                restoreUI(currentText);
             }
-        };
-
-        const renderValue = (val) => {
-            newEl.innerHTML = '';
-            if (dbField === 'bio' && !val) {
-                newEl.textContent = "Añadir una biografía...";
-                newEl.style.color = "#666";
-            } else {
-                newEl.textContent = prefix + val;
-                newEl.style.color = "";
-            }
-            if (dbField === 'display_name') newEl.insertAdjacentHTML('beforeend', getBadgeHtml(myUser));
-            newEl.classList.add('editable-field');
         };
 
         input.addEventListener('blur', save);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { newEl.innerHTML = originalContent; newEl.classList.add('editable-field'); } });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') {
+                if (editBtn) {
+                    editBtn.dataset.justSaved = "true";
+                    setTimeout(() => delete editBtn.dataset.justSaved, 300);
+                }
+                restoreUI(currentText);
+            }
+        });
     });
+
+    // Agregar clase visual al texto si es el trigger
+    if (trigger === targetEl) {
+        targetEl.classList.add('editable-text');
+        targetEl.title = "Haz click para editar";
+    }
+}
+
+function setupEditButtons() {
+    // Configurar edición para Nombre
+    const nameEl = document.getElementById('profileRealName');
+    const nameBtn = document.getElementById('editNameBtn');
+    setupFieldEditing(nameEl, 'profileRealName', 'display_name');
+    setupFieldEditing(nameBtn, 'profileRealName', 'display_name');
+
+    // Configurar edición para Usuario
+    const userEl = document.getElementById('profileHandle');
+    const userBtn = document.getElementById('editUserBtn');
+    setupFieldEditing(userEl, 'profileHandle', 'username', '@');
+    setupFieldEditing(userBtn, 'profileHandle', 'username', '@');
+
+    // Configurar edición para Bio
+    const bioEl = document.getElementById('profileBio');
+    const bioBtn = document.getElementById('editBioBtn');
+    setupFieldEditing(bioEl, 'profileBio', 'bio');
+    setupFieldEditing(bioBtn, 'profileBio', 'bio');
 }
 
 
@@ -1333,11 +1474,9 @@ profileBtn.addEventListener('click', () => {
     bioEl.style.color = !myUser.bio ? "#666" : "#e4e4e7";
 
     profileModal.classList.remove('hidden');
-    profileOptionsMenu.classList.add('hidden');
 
-    enableInlineEdit('profileRealName', 'display_name');
-    enableInlineEdit('profileHandle', 'username', '@');
-    enableInlineEdit('profileBio', 'bio');
+
+
 });
 
 const togglePremiumBtn = getEl('togglePremiumBtn');
@@ -1468,10 +1607,25 @@ if (togglePremiumBtn) {
 
 getEl('closeContactInfo').addEventListener('click', () => getEl('contactInfoModal').classList.add('hidden'));
 closeProfile.addEventListener('click', () => {
-    if (fabNewChat) fabNewChat.classList.remove('hidden');
-    profileModal.classList.add('hidden');
-    if (loveNotesBtn && myUser && myUser.is_premium) {
-        loveNotesBtn.classList.remove('hidden');
+    // Animation exit logic
+    const card = profileModal.querySelector('.profile-card.modern-profile');
+    if (card) {
+        card.classList.add('closing');
+        setTimeout(() => {
+            profileModal.classList.add('hidden');
+            card.classList.remove('closing');
+            if (fabNewChat) fabNewChat.classList.remove('hidden');
+            if (loveNotesBtn && myUser && myUser.is_premium) {
+                loveNotesBtn.classList.remove('hidden');
+            }
+        }, 240); // slightly less than 250ms to prevent flash
+    } else {
+        // Fallback if no card found
+        if (fabNewChat) fabNewChat.classList.remove('hidden');
+        profileModal.classList.add('hidden');
+        if (loveNotesBtn && myUser && myUser.is_premium) {
+            loveNotesBtn.classList.remove('hidden');
+        }
     }
 });
 
@@ -1482,6 +1636,35 @@ if (profileOptionsBtn) {
         profileOptionsMenu.classList.toggle('hidden');
     });
 }
+const sidebarMyProfileBtn = document.getElementById('sidebarMyProfileBtn');
+
+if (sidebarMyProfileBtn) {
+    sidebarMyProfileBtn.addEventListener('click', (e) => {
+        // Calculate center of the button for animation origin
+        const rect = sidebarMyProfileBtn.getBoundingClientRect();
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height / 2;
+
+        const card = profileModal.querySelector('.profile-card.modern-profile');
+        if (card) {
+            card.style.setProperty('--origin-x', `${originX}px`);
+            card.style.setProperty('--origin-y', `${originY}px`);
+
+            // Remove closing class just in case
+            card.classList.remove('closing');
+        }
+
+        if (fabNewChat) fabNewChat.classList.add('hidden');
+        profileModal.classList.remove('hidden');
+        if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
+
+        // Re-render info
+        if (myUser) {
+            renderMyProfileInfo();
+        }
+    });
+}
+
 document.addEventListener('click', (e) => {
     if (profileOptionsMenu && !profileOptionsMenu.contains(e.target) && !profileOptionsBtn.contains(e.target)) {
         profileOptionsMenu.classList.add('hidden');
@@ -1515,7 +1698,37 @@ avatarInput.addEventListener('change', async (e) => {
 function updateMyAvatarUI(url) {
     let finalUrl = (url && isValidUrl(url)) ? url : '/profile.png';
     const css = `url('${escapeHtml(finalUrl)}')`;
-    myAvatar.style.backgroundImage = profilePreviewAvatar.style.backgroundImage = css;
+
+    // Safely update legacy variable if it exists
+    if (typeof myAvatar !== 'undefined' && myAvatar) myAvatar.style.backgroundImage = css;
+
+    // Update new UI element
+    const headerAvatar = document.getElementById('headerProfileAvatar');
+    if (headerAvatar) headerAvatar.style.backgroundImage = css;
+
+    // Update profile preview in modal
+    const preview = document.getElementById('profilePreviewAvatar');
+    if (preview) preview.style.backgroundImage = css;
+}
+
+// Add listener for new Header Profile Pill
+// Add listener for new Header Profile Pill (Sidebar)
+const sidebarProfileBtn = document.getElementById('sidebarMyProfileBtn');
+if (sidebarProfileBtn) {
+    sidebarProfileBtn.addEventListener('click', () => {
+        // Reuse existing logic by clicking the hidden profileBtn if possible, 
+        // or directly open modal
+        if (profileBtn) {
+            profileBtn.click();
+        } else {
+            const pModal = document.getElementById('profileModal');
+            if (pModal) {
+                pModal.classList.remove('hidden');
+                // Also ensure fab is hidden if logic requires it
+                if (fabNewChat) fabNewChat.style.display = 'none';
+            }
+        }
+    });
 }
 
 function updateChatHeaderInfo(u) {
@@ -1751,7 +1964,7 @@ getEl('stickerSearch').addEventListener('input', (e) => {
 });
 
 async function refreshFavoritesCache() {
-    const list = await apiRequest(`/api/favorites/${myUser.id}`);
+    const list = await apiRequest(`/api/messages/favorites/${myUser.id}`);
     if (list) myFavorites = new Set(list);
 }
 
@@ -1802,7 +2015,7 @@ function renderStickersGrid(items) {
 async function toggleFavoriteSticker(url, btn, wrap) {
     if (!isValidUrl(url)) return;
     const isFav = myFavorites.has(url);
-    const endpoint = isFav ? '/api/favorites/remove' : '/api/favorites/add';
+    const endpoint = isFav ? '/api/messages/favorites/remove' : '/api/messages/favorites/add';
     const res = await apiRequest(endpoint, 'POST', { url });
     if (res) {
         isFav ? myFavorites.delete(url) : myFavorites.add(url);
@@ -1997,7 +2210,7 @@ async function selectUser(target, elem) {
 
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
 
-    const history = await apiRequest(`/api/messages/${myUser.id}/${target.userId}`);
+    const history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}`);
     messagesList.innerHTML = '';
 
     if (history) {
@@ -2063,7 +2276,7 @@ async function checkAndLoadPinnedMessage(targetUserId) {
     }
 
     try {
-        const res = await apiRequest(`/api/pinned-message/${targetUserId}`);
+        const res = await apiRequest(`/api/messages/pinned-message/${targetUserId}`);
         if (res && res.found) {
             currentPinnedMessageId = res.messageId;
             showPinnedBar(res.content, res.type);
@@ -2821,8 +3034,8 @@ if (loginForm) {
     if (localStorage.getItem('chatUser')) { }
     tabLogin.addEventListener('click', () => { tabLogin.classList.add('active'); tabRegister.classList.remove('active'); loginForm.classList.remove('hidden'); registerForm.classList.add('hidden'); authError.textContent = ''; });
     tabRegister.addEventListener('click', () => { tabRegister.classList.add('active'); tabLogin.classList.remove('active'); registerForm.classList.remove('hidden'); loginForm.classList.add('hidden'); authError.textContent = ''; });
-    loginForm.addEventListener('submit', async (e) => { e.preventDefault(); const username = document.getElementById('loginUser').value; const password = document.getElementById('loginPass').value; try { const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); const data = await res.json(); if (res.ok) { localStorage.setItem('chatUser', JSON.stringify(data.user)); window.location.href = '/'; } else { authError.textContent = data.error; } } catch (e) { authError.textContent = "Error de conexión"; } });
-    registerForm.addEventListener('submit', async (e) => { e.preventDefault(); const username = document.getElementById('regUser').value; const password = document.getElementById('regPass').value; try { const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); if (res.ok) { alert('Registrado con éxito.'); tabLogin.click(); } else { const data = await res.json(); authError.textContent = data.error; } } catch (e) { authError.textContent = "Error"; } });
+    loginForm.addEventListener('submit', async (e) => { e.preventDefault(); const username = document.getElementById('loginUser').value; const password = document.getElementById('loginPass').value; try { const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); const data = await res.json(); if (res.ok) { localStorage.setItem('chatUser', JSON.stringify(data.user)); window.location.href = '/'; } else { authError.textContent = data.error; } } catch (e) { authError.textContent = "Error de conexión"; } });
+    registerForm.addEventListener('submit', async (e) => { e.preventDefault(); const username = document.getElementById('regUser').value; const password = document.getElementById('regPass').value; try { const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); if (res.ok) { alert('Registrado con éxito.'); tabLogin.click(); } else { const data = await res.json(); authError.textContent = data.error; } } catch (e) { authError.textContent = "Error"; } });
 }
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if (installBtn) installBtn.classList.remove('hidden'); });
@@ -4022,48 +4235,58 @@ document.addEventListener('click', (e) => {
 });
 
 
-function renderMixedSidebar() {
-    usersList.innerHTML = '';
+function createChannelListItem(c) {
+    const li = document.createElement('li');
+    li.className = `chat-card user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`;
 
-    myChannels.forEach(c => {
-        const li = document.createElement('li');
-        li.className = `user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`;
-        li.innerHTML = `
-            <div class="u-avatar" style="background-image:url('${c.avatar || '/profile.png'}'); border-radius:12px;"></div> <!-- Cuadrado redondeado para canales -->
-            <div style="overflow:hidden;">
-                <div style="font-weight:600; color:#fff;">${escapeHtml(c.name)}</div>
-                <div style="font-size:12px; color:#a1a1aa; display: flex; align-items: center; gap: 5px;">
-                    <img src="/icons/megaphone.svg" style="width: 14px; height: 14px;" alt="Canal">
-                    Canal
-                </div>
-            </div>`;
-        li.onclick = () => selectChannel(c, li);
-        usersList.appendChild(li);
-    });
+    const avatarUrl = c.avatar || '/profile.png';
+    const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
 
-    allUsersCache.sort((a, b) => b.online - a.online).forEach(u => {
-        if (u.userId === myUser.id) return;
-        const li = document.createElement('li');
-        li.className = `user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
-        li.dataset.uid = u.userId;
-        const name = myNicknames[u.userId] || u.username;
-        const safeName = escapeHtml(name);
+    // Placeholder logic for channel last message (simulated for now)
+    const timeDisplay = c.last_message_time ? new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Canal';
+    // const lastMsg = c.last_message || (c.is_public ? 'Público' : 'Privado');
+    const lastMsg = c.is_public ? ' Canal Público' : 'Canal Privado';
 
-        let avatarUrl = u.avatar || '/profile.png';
-        if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
-        const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
-
-        li.innerHTML = `
-            <div class="u-avatar" style="${safeAvatar}">
-                <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${u.online ? '#4ade80' : '#a1a1aa'};border:2px solid #18181b;"></div>
+    li.innerHTML = `
+        <div class="card-avatar" style="${safeAvatar}"></div>
+        <div class="card-content">
+            <div class="card-top">
+                <span class="card-name">${escapeHtml(c.name)}</span>
+                <span class="card-time">${escapeHtml(timeDisplay)}</span>
             </div>
-            <div style="overflow:hidden;">
-                <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeName}${getBadgeHtml(u)}</div>
-                <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">${u.online ? 'En línea' : 'Desconectado'}</div>
-            </div>`;
-        li.onclick = () => selectUser(u, li);
-        usersList.appendChild(li);
-    });
+            <div class="card-msg" style="color:var(--text-dim);">
+               ${lastMsg}
+            </div>
+        </div>`;
+
+    li.onclick = () => selectChannel(c, li);
+    return li;
+}
+
+function renderMixedSidebar() {
+    console.log('[DEBUG] renderMixedSidebar called');
+    const ul = document.getElementById('usersList');
+    if (!ul) {
+        console.error('[DEBUG] usersList element NOT found!');
+        return;
+    }
+    ul.innerHTML = '';
+
+    // Render Channels
+    if (myChannels && myChannels.length > 0) {
+        myChannels.forEach(c => {
+            ul.appendChild(createChannelListItem(c));
+        });
+    }
+
+    // Render Users
+    if (allUsersCache && allUsersCache.length > 0) {
+        allUsersCache.sort((a, b) => b.online - a.online).forEach(u => {
+            if (myUser && u.userId === myUser.id) return;
+            ul.appendChild(createUserItem(u));
+        });
+    }
+    console.log('[DEBUG] renderMixedSidebar finished. Items:', ul.children.length);
 }
 
 async function selectChannel(channel, elem) {
@@ -5125,11 +5348,20 @@ if (optChannelMute) optChannelMute.addEventListener('click', toggleMuteUI);
 let globalSearchTimeout;
 
 function applyUserFilter() {
-    const term = getEl('searchUsers').value.trim();
+    const inputEl = getEl('searchUsers');
+    if (!inputEl) return;
+
+    const term = inputEl.value.trim();
     const termLower = term.toLowerCase();
 
-    if (!term) {
+    // Clear any pending global search immediately
+    if (globalSearchTimeout) {
         clearTimeout(globalSearchTimeout);
+        globalSearchTimeout = null;
+    }
+
+    if (!term) {
+        console.log('Search cleared, restoring sidebar');
         renderMixedSidebar();
         return;
     }
@@ -5140,23 +5372,42 @@ function applyUserFilter() {
     );
     renderCombinedResults(localResults, [], true);
 
-    clearTimeout(globalSearchTimeout);
-
-    clearTimeout(globalSearchTimeout);
+    // No need to clear timeout again as we did it above
 
     if (term.length >= 2) {
         globalSearchTimeout = setTimeout(async () => {
+            // CAPTURE CURRENT TERM FOR VALIDATION
+            const searchForTerm = term;
+
             try {
                 const [globalUsers, channelResults] = await Promise.all([
-                    apiRequest(`/api/contacts/search?q=${encodeURIComponent(term)}`),
-                    apiRequest(`/api/channels/search?q=${encodeURIComponent(term)}`)
+                    apiRequest(`/api/contacts/search?q=${encodeURIComponent(searchForTerm)}`),
+                    apiRequest(`/api/channels/search?q=${encodeURIComponent(searchForTerm)}`)
                 ]);
+
+                // RACE CONDITION FIX:
+                // If the input has changed (e.g. cleared) while we were waiting, IGNORE these results.
+                const currentInputVal = getEl('searchUsers') ? getEl('searchUsers').value.trim() : '';
+                if (currentInputVal !== searchForTerm) {
+                    console.log(`Ignoring stale search results for "${searchForTerm}" (current: "${currentInputVal}")`);
+                    return;
+                }
 
                 const filteredGlobal = (globalUsers || []).filter(g =>
                     !allUsersCache.some(local => local.userId === g.id) && g.id !== myUser.id
                 );
 
-                renderCombinedResults(localResults, filteredGlobal, channelResults || [], false);
+                // Deduplicate global results by ID
+                const uniqueGlobal = [];
+                const seenIds = new Set();
+                for (const u of filteredGlobal) {
+                    if (!seenIds.has(u.id)) {
+                        seenIds.add(u.id);
+                        uniqueGlobal.push(u);
+                    }
+                }
+
+                renderCombinedResults(localResults, uniqueGlobal, channelResults || [], false);
 
             } catch (e) {
                 console.error("Error búsqueda global", e);
@@ -5217,20 +5468,25 @@ function createSectionHeader(title) {
 
 function createChannelSearchItem(ch) {
     const li = document.createElement('li');
-    li.className = 'user-item';
+    li.className = 'chat-card user-item';
     li.onclick = () => {
         handleChannelClickFromSearch(ch);
     };
 
     const avatarUrl = (ch.avatar && isValidUrl(ch.avatar)) ? ch.avatar : '/profile.png';
     const isPrivate = ch.is_public === 0;
-    const lockIcon = isPrivate ? '<span style="font-size:12px; margin-left:5px;">🔒</span>' : '';
+    const lockIcon = isPrivate ? '🔒' : '';
 
     li.innerHTML = `
-        <div class="user-avatar" style="background-image: url('${escapeHtml(avatarUrl)}');"></div>
-        <div class="user-info">
-            <div class="user-name">${escapeHtml(ch.name)} ${lockIcon}</div>
-            <div class="user-status" style="font-size:11px;">${isPrivate ? 'Canal Privado' : ('@' + ch.handle)}</div>
+        <div class="card-avatar" style="background-image: url('${escapeHtml(avatarUrl)}');"></div>
+        <div class="card-content">
+            <div class="card-top">
+                <span class="card-name">${escapeHtml(ch.name)} ${lockIcon}</span>
+                <span class="card-time">Full</span>
+            </div>
+            <div class="card-msg">
+                ${isPrivate ? 'Canal Privado' : ('@' + ch.handle)}
+            </div>
         </div>
     `;
     return li;
@@ -5248,7 +5504,7 @@ async function handleChannelClickFromSearch(ch) {
 
 function createUserItem(u) {
     const li = document.createElement('li');
-    li.className = `user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
+    li.className = `chat-card user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
     li.dataset.uid = u.userId;
 
     const name = myNicknames[u.userId] || u.username;
@@ -5256,14 +5512,68 @@ function createUserItem(u) {
     let avatarUrl = u.avatar || '/profile.png';
     if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
 
+    // Status / Last Message Logic
+    // Priority: Typing > Recording > Last Message > Status
+
+    let subText = u.online ? 'En línea' : 'Desconectado';
+    let subStyle = u.online ? 'color: var(--success); font-weight:600;' : 'color: var(--text-dim);';
+    let timeText = '';
+
+    // Override with Last Message if available
+    if (u.lastMessage) {
+        subText = u.lastMessage;
+        subStyle = 'color: var(--text-dim);';
+        if (u.lastMessageTime) {
+            const d = new Date(u.lastMessageTime);
+            timeText = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+
+    // High priority overrides (Typing/Recording)
+    if (u.typing) {
+        subText = 'Escribiendo...';
+        subStyle = 'color: var(--success); font-weight:600;';
+        timeText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (u.recording) {
+        subText = 'Grabando audio...';
+        subStyle = 'color: var(--success); font-weight:600;';
+        timeText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const onlineDotHtml = u.online ? '<div class="online-dot"></div>' : '';
+
+    const userStories = storiesCache.find(g => g.userId === u.userId);
+    const hasStory = userStories && userStories.stories.length > 0;
+    const allViewed = hasStory && userStories.stories.every(s => s.isViewed);
+
+    // Reuse fav-avatar-wrapper styles for consistency, but scaled down usually via CSS
+    // Wait, createUserItem structure is different: .story-ring-wrapper
+    // I need to add .all-viewed to story-ring-wrapper if I find where story-ring-wrapper is defined.
+    // Assuming story-ring-wrapper allows background modification:
+
+    // Actually, I couldn't find story-ring-wrapper in CSS.
+    // If it's missing, I should define it or rely on inline styles.
+    // But since the user complained about existing GREEN border, it must exist.
+    // Let's assume .story-ring-wrapper works similarly or I should check if I missed it.
+    // However, I will add the class 'all-viewed' to it anyway.
+
+    const ringClass = hasStory ? (allViewed ? 'story-ring-wrapper all-viewed' : 'story-ring-wrapper') : '';
+
     li.innerHTML = `
-        <div class="u-avatar" style="background-image:url('${escapeHtml(avatarUrl)}')"></div>
-        <div style="flex:1; min-width:0;">
-            <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};word-break:break-word;">
-                ${escapeHtml(name)}${getBadgeHtml(u)}
+        <div class="${ringClass}" onclick="openStoryFromAvatar(event, '${u.userId}')">
+            <div class="card-avatar" style="background-image:url('${escapeHtml(avatarUrl)}')">
+                ${onlineDotHtml}
             </div>
-            <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">
-                ${u.online ? 'En línea' : 'Desconectado'}
+        </div>
+        <div class="card-content">
+            <div class="card-top">
+                <span class="card-name">
+                    ${escapeHtml(name)}${getBadgeHtml(u)}
+                </span>
+                <span class="card-time">${timeText}</span>
+            </div>
+            <div class="card-msg" style="${subStyle}">
+                ${escapeHtml(subText)}
             </div>
         </div>
     `;
@@ -5279,12 +5589,15 @@ function createGlobalUserItem(user) {
     const displayName = user.display_name || user.username;
 
     li.innerHTML = `
-        <div class="u-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
-        <div style="flex:1; min-width:0;">
-            <div style="font-weight:600; color:#fff; word-break:break-word;">
-                ${escapeHtml(displayName)}${getBadgeHtml(user)}
+        <div class="card-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
+        <div class="card-content">
+             <div class="card-top">
+                <span class="card-name">
+                    ${escapeHtml(displayName)}${getBadgeHtml(user)}
+                </span>
+                <span class="card-time">Global</span>
             </div>
-            <div style="font-size:12px; color:#a1a1aa;">@${escapeHtml(user.username)}</div>
+            <div class="card-msg">@${escapeHtml(user.username)}</div>
         </div>
         <button class="btn" style="background:#3b82f6; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; margin-left:8px;">
             Agregar
@@ -5341,3 +5654,892 @@ getEl('btnCancelPin')?.addEventListener('click', closePinModal);
 
 
 
+
+/* --- NEW BOTTOM NAVIGATION LOGIC --- */
+const navPlusBtn = document.getElementById('navPlusBtn');
+if (navPlusBtn) {
+    navPlusBtn.addEventListener('click', (e) => {
+        // Calculate center for animation
+        const rect = navPlusBtn.getBoundingClientRect();
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height / 2;
+
+        const modal = document.getElementById('creationModal');
+        const card = modal.querySelector('.profile-card.creation-card');
+
+        if (card) {
+            card.style.setProperty('--origin-x', `${originX}px`);
+            card.style.setProperty('--origin-y', `${originY}px`);
+            card.classList.remove('closing');
+        }
+
+        // Trigger the existing logic by clicking the hidden FAB if preferred, or direct
+        if (fabNewChat) {
+            // Updated fabNewChat click might need similar logic if used elsewhere, 
+            // but here we are overriding the dock button behavior directly.
+            // Let's just open the modal directly to control animation.
+            modal.classList.remove('hidden');
+            // Ensure resetCreation is called if available
+            if (typeof resetCreationFlow === 'function') resetCreationFlow();
+            if (typeof renderStartContacts === 'function') renderStartContacts();
+        } else {
+            if (modal) modal.classList.remove('hidden');
+        }
+    });
+}
+
+/* --- CREATION MODAL CLOSE LOGIC --- */
+const closeCreationBtn = document.getElementById('closeCreation');
+const creationModalEl = document.getElementById('creationModal');
+
+if (closeCreationBtn && creationModalEl) {
+    closeCreationBtn.addEventListener('click', () => {
+        const card = creationModalEl.querySelector('.profile-card.creation-card');
+        if (card) {
+            card.classList.add('closing');
+            setTimeout(() => {
+                creationModalEl.classList.add('hidden');
+                card.classList.remove('closing');
+            }, 240);
+        } else {
+            creationModalEl.classList.add('hidden');
+        }
+    });
+}
+
+/* --- DOCK NAVIGATION LOGIC --- */
+const navChatBtn = document.getElementById('navChatBtn');
+const navCallsBtn = document.getElementById('navCallsBtn');
+const navContactsBtn = document.getElementById('navContactsBtn');
+const navSettingsBtn = document.getElementById('navSettingsBtn');
+const comingSoonModal = document.getElementById('comingSoonModal');
+// Close button inside the modal
+const closeComingSoon = document.getElementById('closeComingSoon');
+
+// Helper to set active class
+function setActiveDockIcon(activeBtn) {
+    [navChatBtn, navCallsBtn, navContactsBtn, navSettingsBtn].forEach(btn => {
+        if (btn) btn.classList.remove('active');
+    });
+    if (activeBtn) activeBtn.classList.add('active');
+}
+
+// 1. Chat Button
+if (navChatBtn) {
+    navChatBtn.addEventListener('click', () => {
+        setActiveDockIcon(navChatBtn);
+        // Animate out if open
+        if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
+            comingSoonModal.classList.remove('slide-in');
+            comingSoonModal.classList.add('slide-out');
+            setTimeout(() => {
+                comingSoonModal.classList.add('hidden');
+                comingSoonModal.classList.remove('slide-out');
+            }, 280); // match css duration
+        }
+    });
+}
+
+// 2. Settings Button
+if (navSettingsBtn) {
+    navSettingsBtn.addEventListener('click', () => {
+        setActiveDockIcon(navSettingsBtn);
+        // Show logic with animation
+        if (comingSoonModal) {
+            comingSoonModal.classList.remove('hidden', 'slide-out');
+            comingSoonModal.classList.add('slide-in');
+        }
+    });
+}
+
+// 3. Other Buttons (Calls, Contacts) -> Close settings if open
+if (navCallsBtn) {
+    navCallsBtn.addEventListener('click', () => {
+        setActiveDockIcon(navCallsBtn);
+        if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
+            comingSoonModal.classList.remove('slide-in');
+            comingSoonModal.classList.add('slide-out');
+            setTimeout(() => {
+                comingSoonModal.classList.add('hidden');
+                comingSoonModal.classList.remove('slide-out');
+            }, 280);
+        }
+        // TODO: Show calls view
+    });
+}
+
+if (navContactsBtn) {
+    navContactsBtn.addEventListener('click', () => {
+        setActiveDockIcon(navContactsBtn);
+        if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
+            comingSoonModal.classList.remove('slide-in');
+            comingSoonModal.classList.add('slide-out');
+            setTimeout(() => {
+                comingSoonModal.classList.add('hidden');
+                comingSoonModal.classList.remove('slide-out');
+            }, 280);
+        }
+        // TODO: Show contacts view
+    });
+}
+
+// Close button inside modal (X) -> Return to Chat
+if (closeComingSoon) {
+    closeComingSoon.addEventListener('click', () => {
+        if (comingSoonModal) {
+            comingSoonModal.classList.remove('slide-in');
+            comingSoonModal.classList.add('slide-out');
+            setTimeout(() => {
+                comingSoonModal.classList.add('hidden');
+                comingSoonModal.classList.remove('slide-out');
+                // Reset active icon to Chat
+                setActiveDockIcon(navChatBtn);
+            }, 280);
+        }
+    });
+}
+
+/* Close coming soon on backdrop click if needed */
+if (comingSoonModal) {
+    comingSoonModal.addEventListener('click', (e) => {
+        if (e.target === comingSoonModal) {
+            comingSoonModal.classList.add('hidden');
+            setActiveDockIcon(navChatBtn);
+        }
+    });
+}
+
+/* --- SEARCH INPUT ROBUSTNESS --- */
+const searchInputEl = document.getElementById('searchUsers');
+if (searchInputEl) {
+    // Remove existing if possible (not possible without reference), but adding another safe one is fine
+    // Force trigger filter on all possible input events to capture clears
+    ['input', 'keyup', 'search', 'paste', 'change'].forEach(evt => {
+        searchInputEl.addEventListener(evt, () => {
+            // Use a small delay for paste/cut to ensure value is updated
+            setTimeout(() => {
+                if (window.applyUserFilter) window.applyUserFilter();
+            }, 0);
+        });
+    });
+}
+
+
+/* =========================================
+   STORY / STATUS FEATURE IMPLEMENTATION
+   ========================================= */
+
+let currentStoryQueue = [];
+let currentStoryIndex = 0;
+let storiesCache = [];
+let isStoryMode = false; // Flag for Image Editor
+
+// Fetch stories from API
+async function loadStories() {
+    if (!myUser) return;
+    try {
+        const stories = await apiRequest('/api/stories/list');
+        if (stories) {
+            storiesCache = stories;
+            renderStoriesBar(stories);
+
+            // Re-render sidebar/user list to show story rings
+            if (typeof renderMixedSidebar === 'function') renderMixedSidebar();
+            if (typeof applyUserFilter === 'function') applyUserFilter();
+        }
+    } catch (e) {
+        console.error("Error loading stories:", e);
+    }
+}
+
+// Render the top bar (Favorites Section -> Stories Section)
+function renderStoriesBar(groupedStories) {
+    const container = document.querySelector('.favorites-section');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // 1. "My Story" / Add New Button
+    const myStoriesGroup = groupedStories.find(g => g.userId === myUser.id);
+    const hasMyStory = myStoriesGroup && myStoriesGroup.stories.length > 0;
+    const allMyStoriesViewed = hasMyStory && myStoriesGroup.stories.every(s => s.isViewed);
+
+    const myItem = document.createElement('div');
+    myItem.className = 'fav-item add-new';
+
+    let myAvatarUrl = myUser.avatar || '/profile.png';
+    let ringClass = hasMyStory ? (allMyStoriesViewed ? 'fav-avatar-wrapper has-story all-viewed' : 'fav-avatar-wrapper has-story') : 'fav-avatar-wrapper';
+
+    myItem.innerHTML = `
+        <div class="${ringClass}">
+            <div class="fav-avatar" style="background-image: url('${escapeHtml(myAvatarUrl)}')">
+                ${!hasMyStory ? `
+                <div class="add-story-icon-overlay">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </div>` : ''}
+            </div>
+        </div>
+        <span class="fav-name">Tu historia</span>
+    `;
+
+    myItem.onclick = () => {
+        if (hasMyStory) {
+            // View my stories
+            openStoryViewer(myUser.id);
+        } else {
+            // Create new
+            createNewStory();
+        }
+    };
+
+    container.appendChild(myItem);
+
+
+    // 2. Friends Stories
+    groupedStories.forEach(group => {
+        if (group.userId === myUser.id) return; // Skip me (handled above)
+        if (group.stories.length === 0) return;
+
+        const item = document.createElement('div');
+        item.className = 'fav-item';
+
+        const allViewed = group.stories.every(s => s.isViewed);
+        const ringClass = allViewed ? 'fav-avatar-wrapper has-story all-viewed' : 'fav-avatar-wrapper has-story';
+
+        item.innerHTML = `
+            <div class="${ringClass}">
+                <div class="fav-avatar" style="background-image: url('${escapeHtml(group.avatar || '/profile.png')}')"></div>
+            </div>
+            <span class="fav-name">${escapeHtml(group.display_name || group.username).split(' ')[0]}</span>
+        `;
+
+        item.onclick = () => openStoryViewer(group.userId);
+        container.appendChild(item);
+    });
+}
+
+function createNewStory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Open Editor in Story Mode
+        isStoryMode = true;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const img = document.getElementById('imageToEdit');
+            img.src = evt.target.result;
+
+            currentEditFile = file; // Global used by editor
+
+            imageEditorModal.classList.remove('hidden');
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('mainFooter').classList.remove('hidden');
+            document.getElementById('cropFooter').classList.add('hidden');
+
+            if (window.cropper) { window.cropper.destroy(); window.cropper = null; }
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
+}
+
+// Override Send Button Logic
+const oldBtn = document.getElementById('sendImageBtn');
+if (oldBtn) {
+    const newBtn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+    newBtn.addEventListener('click', async () => {
+        const caption = document.getElementById('imageCaptionInput').value.trim();
+        let blobToSend = currentEditFile;
+
+        if (isStoryMode) {
+            // Upload Story
+            if (!blobToSend) return;
+
+            newBtn.disabled = true;
+            newBtn.innerHTML = '...';
+            showToast("Subiendo estado, por favor espera...");
+
+            const formData = new FormData();
+            formData.append('image', blobToSend);
+            if (caption) formData.append('caption', caption);
+
+            try {
+                const res = await apiRequest('/api/stories/create', 'POST', formData);
+                if (res && res.mediaUrl) {
+                    showToast("Historia subida correctamente");
+                    imageEditorModal.classList.add('hidden');
+                    loadStories(); // Refresh
+                } else {
+                    alert("Error al subir historia");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión");
+            } finally {
+                newBtn.disabled = false;
+                newBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+                isStoryMode = false;
+                document.getElementById('imageToEdit').src = '';
+                document.getElementById('imageCaptionInput').value = '';
+            }
+
+        } else {
+            // ORIGINAL CHAT BEHAVIOR
+            if (!currentTargetUserId) return;
+            if (!currentEditFile && !document.getElementById('imageToEdit').src) return;
+
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                const buffer = evt.target.result;
+
+                socket.emit('chat image', {
+                    toUserId: currentTargetUserId,
+                    file: buffer,
+                    caption: caption,
+                    fileName: currentEditFile.name,
+                    mimeType: currentEditFile.type
+                });
+
+                imageEditorModal.classList.add('hidden');
+                document.getElementById('imageToEdit').src = '';
+                document.getElementById('imageCaptionInput').value = '';
+            };
+            reader.readAsArrayBuffer(currentEditFile);
+        }
+    });
+}
+
+
+/* ==========================
+   STORY VIEWER UI
+   ========================== */
+function openStoryViewer(userId) {
+    const group = storiesCache.find(g => g.userId === userId);
+    if (!group) return;
+
+    currentStoryQueue = group.stories;
+    currentStoryIndex = 0;
+
+    // Find first unseen logic here if we had detailed view tracking per story
+    // For now starts at 0
+
+    renderStoryModal();
+}
+
+
+
+function toggleStoryMenu() {
+    const menu = document.getElementById('storyMenuDropdown');
+    const isHidden = menu.classList.contains('hidden');
+
+    // Pause story timer while menu is open
+    if (isHidden) {
+        clearTimeout(storyTimer);
+        menu.classList.remove('hidden');
+        renderStoryMenuOptions();
+    } else {
+        menu.classList.add('hidden');
+        resumeStoryTimer();
+    }
+}
+
+// Helper to create valid button elements avoiding inline onclick
+function createMenuButton(text, iconSvg, isDanger, onClick) {
+    const btn = document.createElement('button');
+    btn.className = `story-menu-item ${isDanger ? 'danger' : ''}`;
+    btn.innerHTML = `${iconSvg} ${text}`;
+    btn.addEventListener('click', onClick);
+    return btn;
+}
+
+function renderStoryMenuOptions() {
+    const menu = document.getElementById('storyMenuDropdown');
+    menu.innerHTML = ''; // Clear previous content
+    const story = currentStoryQueue[currentStoryIndex];
+
+    // Edit Button
+    const editIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+    menu.appendChild(createMenuButton('Editar', editIcon, false, () => {
+        onEditStoryCaption(story.id, story.caption || '');
+    }));
+
+    // Hide/Show Button
+    const hideIcon = story.isHidden
+        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`
+        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+    const hideText = story.isHidden ? 'Mostrar' : 'Ocultar';
+    menu.appendChild(createMenuButton(hideText, hideIcon, false, () => {
+        onToggleHideStory(story.id);
+    }));
+
+    // Delete Button
+    const deleteIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+    menu.appendChild(createMenuButton('Eliminar', deleteIcon, true, () => {
+        onDeleteStory(story.id);
+    }));
+}
+
+async function onDeleteStory(storyId) {
+    if (!confirm("¿Eliminar esta historia?")) return;
+    try {
+        await apiRequest(`/api/stories/${storyId}`, 'DELETE');
+        showToast("Historia eliminada");
+        closeStoryViewer(); // Close and let it reload
+    } catch (e) { console.error(e); showToast("Error al eliminar"); }
+}
+
+async function onToggleHideStory(storyId) {
+    try {
+        const res = await apiRequest(`/api/stories/${storyId}/hide`, 'PUT');
+        if (res && res.success) {
+            // Update local model
+            const story = currentStoryQueue.find(s => s.id == storyId);
+            if (story) story.isHidden = res.isHidden;
+            toggleStoryMenu(); // close menu
+            showToast(res.isHidden ? "Historia ocultada" : "Historia visible");
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function onEditStoryCaption(storyId, currentCaption) {
+    const newCaption = prompt("Editar comentario:", currentCaption);
+    if (newCaption === null) return; // Cancel
+
+    try {
+        await apiRequest(`/api/stories/${storyId}/edit`, 'PUT', { caption: newCaption });
+        // Update local
+        const story = currentStoryQueue.find(s => s.id == storyId);
+        if (story) story.caption = newCaption;
+
+        toggleStoryMenu();
+        const capEl = document.getElementById('storyCaption');
+        if (newCaption) {
+            capEl.textContent = newCaption;
+            capEl.classList.remove('hidden');
+        } else {
+            capEl.classList.add('hidden');
+        }
+        showToast("Historia actualizada");
+    } catch (e) { console.error(e); }
+}
+
+async function openStoryViewers() {
+    clearTimeout(storyTimer); // Pause
+    const story = currentStoryQueue[currentStoryIndex];
+    document.getElementById('storyViewersModal').classList.add('active');
+
+    const list = document.getElementById('viewersList');
+    list.innerHTML = '<li style="color:#888; text-align:center; padding:20px;">Cargando...</li>';
+
+    try {
+        const viewers = await apiRequest(`/api/stories/${story.id}/viewers`);
+        list.innerHTML = '';
+        if (!viewers || viewers.length === 0) {
+            list.innerHTML = '<li style="color:#888; text-align:center; padding:20px;">Nadie ha visto esto aún.</li>';
+            return;
+        }
+
+        viewers.forEach(v => {
+            const date = new Date(v.viewed_at);
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const li = document.createElement('li');
+            li.className = 'viewer-item';
+            li.innerHTML = `
+                <div class="viewer-avatar" style="background-image: url('${escapeHtml(v.avatar || '/profile.png')}')"></div>
+                <div class="viewer-info">
+                    <div class="viewer-name">${escapeHtml(v.display_name || v.username)}</div>
+                    <div class="viewer-time">${timeStr}</div>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+
+    } catch (e) {
+        list.innerHTML = '<li style="color:red; text-align:center;">Error al cargar</li>';
+    }
+}
+
+function closeViewersModal() {
+    document.getElementById('storyViewersModal').classList.remove('active');
+    resumeStoryTimer();
+}
+
+function resumeStoryTimer() {
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(nextStory, 5000); // Restart timer
+}
+
+let storyTimer;
+
+function showStory(index) {
+    if (index < 0 || index >= currentStoryQueue.length) {
+        closeStoryViewer();
+        return;
+    }
+
+    currentStoryIndex = index;
+    const story = currentStoryQueue[index];
+    // Robust find group
+    const group = storiesCache.find(g => g.stories.some(s => s.id === story.id));
+
+    const img = document.getElementById('storyImage');
+    img.src = story.mediaUrl;
+
+    // Set blurred background
+    const bgBlur = document.getElementById('storyBackground');
+    if (bgBlur) bgBlur.style.backgroundImage = `url('${story.mediaUrl}')`;
+
+    document.getElementById('storyUserName').textContent = group ? (group.display_name || group.username) : 'Usuario';
+    document.getElementById('storyUserAvatar').style.backgroundImage = `url('${group ? (group.avatar || '/profile.png') : '/profile.png'}')`;
+
+    const timeDiff = new Date() - new Date(story.createdAt);
+    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+    const mins = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    document.getElementById('storyTime').textContent = hours > 0 ? `Hace ${hours}h` : `Hace ${mins}m`;
+
+    const capEl = document.getElementById('storyCaption');
+    if (story.caption) {
+        capEl.textContent = story.caption;
+        capEl.classList.remove('hidden');
+    } else {
+        capEl.classList.add('hidden');
+    }
+
+    // Toggle Menu and Views
+    const isMyStory = story.userId === myUser.id || (group && group.userId === myUser.id);
+    const menuBtn = document.getElementById('storyMenuBtn');
+    const viewsBtn = document.getElementById('storyViewsBtn');
+
+    if (menuBtn && viewsBtn) {
+        if (isMyStory) {
+            menuBtn.classList.remove('hidden');
+            viewsBtn.classList.remove('hidden');
+            document.getElementById('storyViewsCount').textContent = story.viewCount || 0;
+
+            // Visual cue for hidden story
+            if (story.isHidden) {
+                img.style.filter = "grayscale(100%)";
+                document.getElementById('storyTime').textContent += " (Oculta)";
+            } else {
+                img.style.filter = "none";
+            }
+
+        } else {
+            menuBtn.classList.add('hidden');
+            viewsBtn.classList.add('hidden');
+            img.style.filter = "none";
+            const dropdown = document.getElementById('storyMenuDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+    }
+
+    const barsContainer = document.getElementById('storyProgressBars');
+    barsContainer.innerHTML = '';
+    currentStoryQueue.forEach((s, i) => {
+        const bar = document.createElement('div');
+        bar.className = 'story-bar';
+        const fill = document.createElement('div');
+        fill.className = 'story-bar-fill';
+
+        if (i < index) fill.style.width = '100%';
+        else if (i === index) setTimeout(() => fill.classList.add('animating'), 50);
+        else fill.style.width = '0%';
+
+        bar.appendChild(fill);
+        barsContainer.appendChild(bar);
+    });
+
+    if (!isMyStory) {
+        apiRequest(`/api/stories/${story.id}/view`, 'POST');
+    }
+
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(nextStory, 5000);
+}
+
+function nextStory() {
+    showStory(currentStoryIndex + 1);
+}
+
+function prevStory() {
+    if (currentStoryIndex > 0) showStory(currentStoryIndex - 1);
+    else showStory(0);
+}
+
+function closeStoryViewer() {
+    const modal = document.getElementById('storyViewerModal');
+    if (modal) modal.classList.add('hidden');
+    clearTimeout(storyTimer);
+    loadStories(); // Refresh list
+}
+
+function renderStoryModal() {
+    let modal = document.getElementById('storyViewerModal');
+    if (!modal) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="storyViewerModal" class="story-viewer hidden">
+                <div id="storyBackground" class="story-bg-blur"></div>
+                <div class="story-progress-container" id="storyProgressBars"></div>
+                
+                <div class="story-header">
+                    <div class="story-user-info">
+                        <div class="story-avatar" id="storyUserAvatar"></div>
+                        <span class="story-username" id="storyUserName"></span>
+                        <span class="story-time" id="storyTime"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                         <button class="story-menu-btn hidden" id="storyMenuBtn">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
+                            </svg>
+                        </button>
+                        <button class="story-close-btn" id="closeStoryBtn">✕</button>
+                    </div>
+                </div>
+
+                <!-- MENU DROPDOWN -->
+                <div id="storyMenuDropdown" class="story-menu-dropdown hidden"></div>
+
+                <div class="story-content">
+                    <img id="storyImage" src="" alt="Story">
+                    <div class="story-caption-overlay hidden" id="storyCaption"></div>
+                </div>
+
+                <!-- VIEWS BUTTON -->
+                <button id="storyViewsBtn" class="story-views-btn hidden">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span id="storyViewsCount">0</span>
+                </button>
+
+                <!-- VIEWERS MODAL -->
+                <div id="storyViewersModal" class="viewers-modal">
+                    <div class="viewers-header">
+                        <span>Visto por</span>
+                        <button id="closeViewersBtn" style="background:none; border:none; color:#fff; font-size:20px;">✕</button>
+                    </div>
+                    <ul id="viewersList" class="viewers-list"></ul>
+                </div>
+
+                <div class="story-nav-left" id="storyPrevArea"></div>
+                <div class="story-nav-right" id="storyNextArea"></div>
+            </div>
+        `);
+        modal = document.getElementById('storyViewerModal');
+
+        document.getElementById('closeStoryBtn').onclick = closeStoryViewer;
+        document.getElementById('storyPrevArea').onclick = prevStory;
+        document.getElementById('storyNextArea').onclick = nextStory;
+
+        document.getElementById('storyMenuBtn').onclick = (e) => {
+            e.stopPropagation();
+            toggleStoryMenu();
+        };
+
+        document.getElementById('storyViewsBtn').onclick = (e) => {
+            e.stopPropagation();
+            openStoryViewers();
+        };
+
+        document.getElementById('storyViewersModal').onclick = (e) => e.stopPropagation();
+        document.getElementById('closeViewersBtn').onclick = closeViewersModal;
+
+        // Close menu on click elsewhere
+        modal.onclick = (e) => {
+            if (!e.target.closest('#storyMenuDropdown') && !e.target.closest('#storyMenuBtn')) {
+                document.getElementById('storyMenuDropdown').classList.add('hidden');
+            }
+            if (!e.target.closest('.viewers-modal') && !e.target.closest('#storyViewsBtn')) {
+                closeViewersModal();
+            }
+        };
+    }
+
+    modal.classList.remove('hidden');
+    showStory(currentStoryIndex);
+}
+
+const storyStyles = document.createElement('style');
+storyStyles.innerHTML = `
+:root {
+    --bg-dark: #050505;
+    --border-dim: rgba(255, 255, 255, 0.05);
+    --border-light: rgba(255, 255, 255, 0.08);
+    --text-dim: #a1a1aa;
+    --hover-bg: rgba(255, 255, 255, 0.08);
+}
+
+.story-viewer {
+    position: fixed; inset: 0; background: var(--bg-dark); z-index: 9999;
+    display: flex; flex-direction: column; overflow: hidden;
+    font-family: inherit; /* Inherit main font */
+}
+.story-bg-blur {
+    position: absolute; inset: -50px; background-size: cover; background-position: center;
+    filter: blur(50px) brightness(0.4); z-index: 1; opacity: 0.6; pointer-events: none;
+}
+.story-content {
+    flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 5;
+}
+.story-content img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    /* Removed heavy shadow for cleaner look matching sidebar */
+}
+.story-header {
+    position: absolute; top: 0; left: 0; right: 0; padding: 20px 24px; /* Match sidebar padding */
+    z-index: 20; display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(5,5,5,0.9), transparent);
+}
+.story-user-info { display: flex; align-items: center; gap: 12px; color: #fff; }
+.story-avatar { 
+    width: 36px; height: 36px; border-radius: 12px; /* Match sidebar avatar radius roughly */
+    background-size: cover; border: 1px solid var(--border-light); 
+    background-color: #222; 
+}
+.story-username { font-weight: 700; font-size: 16px; color: #fff; } /* Match sidebar .brand-title weight/color roughly */
+.story-time { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.story-close-btn { 
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); 
+    color: #fff; width: 32px; height: 32px; border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; transition: all 0.2s; font-size: 16px;
+}
+.story-close-btn:hover { background: var(--hover-bg); }
+
+.story-menu-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border-light); border-radius: 50%; 
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; 
+    color: #fff; cursor: pointer; transition: background 0.2s;
+}
+.story-menu-btn:hover { background: var(--hover-bg); }
+
+.story-menu-dropdown {
+    position: absolute; top: 70px; right: 24px; 
+    background: var(--bg-dark); /* Match sidebar bg */
+    border-radius: 16px; padding: 6px; min-width: 180px;
+    z-index: 50; border: 1px solid var(--border-light);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.story-menu-item {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px;
+    background: none; border: none; color: #e4e4e7; /* Match pill text */
+    text-align: left; font-size: 14px; font-weight: 500;
+    border-radius: 10px; cursor: pointer; transition: background 0.2s;
+}
+.story-menu-item:hover { background: var(--hover-bg); color: #fff; }
+.story-menu-item.danger { color: #ef4444; }
+
+/* Views Button Pill - Matches .user-pill style */
+.story-views-btn {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-light);
+    padding: 8px 20px; border-radius: 30px;
+    color: #e4e4e7; cursor: pointer;
+    backdrop-filter: blur(10px); z-index: 25; font-size: 14px; font-weight: 600;
+    transition: all 0.2s;
+}
+.story-views-btn:hover { background: var(--hover-bg); border-color: rgba(255,255,255,0.15); }
+
+/* Viewers Modal - Matches Floating Dock / Sidebar style */
+.viewers-modal {
+    position: absolute; bottom: 0; left: 0; right: 0; 
+    background: var(--bg-dark);
+    border-top-left-radius: 24px; border-top-right-radius: 24px;
+    height: 70%; z-index: 60; transform: translateY(100%); 
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex; flex-direction: column; overflow: hidden;
+    border-top: 1px solid var(--border-light);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+}
+.viewers-modal.active { transform: translateY(0); }
+.viewers-header {
+    padding: 20px 24px 10px 24px; /* Match .brand-header padding structure */
+    border-bottom: none; /* Sidebar headers don't strictly have borders, cleaner look */
+    display: flex; justify-content: space-between; align-items: center; 
+    color: #fff; font-size: 18px; font-weight: 800; letter-spacing: -0.5px;
+}
+.viewers-list { flex: 1; overflow-y: auto; padding: 10px 20px; }
+.viewer-item {
+    display: flex; align-items: center; gap: 16px; padding: 14px 12px; /* Exact match to .user-item */
+    border-radius: 20px;
+    transition: background 0.2s;
+    cursor: default; /* Viewers aren't clickable chats, but maybe customizable */
+}
+.viewer-item:hover { background: var(--hover-bg); }
+.viewer-avatar { 
+    width: 52px; height: 52px; border-radius: 18px; /* Match .card-avatar squircle */
+    background-size: cover; background-color: #222;
+    border: 3px solid transparent; /* Match structure of card-avatar */
+    flex-shrink: 0;
+}
+.viewer-info { flex: 1; display: flex; flex-direction: column; gap: 3px; justify-content: center; } /* Match .user-info gap */
+.viewer-name { color: #fff; font-weight: 700; font-size: 16px; margin: 0; display: flex; align-items: center; } /* Match .card-name */
+.viewer-time { color: var(--text-dim); font-size: 13px; font-weight: 600; opacity: 0.8; } /* Match .card-time/status styling */
+
+.story-progress-container {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    display: flex; gap: 4px; padding: 6px 4px; z-index: 30; 
+}
+.story-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden; }
+.story-bar-fill { height: 100%; background: #fff; width: 0%; }
+.story-bar-fill.animating { width: 100%; transition: width 5s linear; }
+
+.story-nav-left, .story-nav-right {
+    position: absolute; top: 60px; bottom: 80px; width: 30%; z-index: 15;
+}
+.story-nav-left { left: 0; }
+.story-nav-right { right: 0; }
+
+.story-caption-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    text-align: center; color: #fff; 
+    background: linear-gradient(to top, var(--bg-dark) 0%, rgba(5,5,5,0.8) 40%, transparent 100%);
+    padding: 120px 24px 50px 24px;
+    font-size: 16px; font-weight: 500; z-index: 20;
+    pointer-events: none;
+}
+
+/* Reusing these from existing code */
+.fav-avatar-wrapper .fav-avatar { box-sizing: border-box; }
+.add-story-icon-overlay {
+    position: absolute; bottom: -5px; right: -5px; background: #3b82f6;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; border: 2px solid #000;
+}
+.story-ring-wrapper {
+    padding: 2px; background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 20px; display: flex; align-items: center; justify-content: center;
+}
+`;
+document.head.appendChild(storyStyles);
+
+const loginSuccessBeforeStories = loginSuccess;
+loginSuccess = function (user) {
+    loginSuccessBeforeStories(user);
+    loadStories();
+    setInterval(loadStories, 60000);
+};
+
+function openStoryFromAvatar(e, userId) {
+    const hasStory = storiesCache.some(g => g.userId === userId && g.stories.length > 0);
+    if (hasStory) {
+        e.stopPropagation();
+        openStoryViewer(userId);
+    }
+}

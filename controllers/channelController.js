@@ -116,14 +116,36 @@ exports.createChannel = (req, res) => {
 
 exports.getMyChannels = (req, res) => {
     const sql = `
-        SELECT c.*, c.private_hash FROM channels c 
+        SELECT c.*, c.private_hash,
+        (SELECT content FROM messages WHERE channel_id = c.id AND is_deleted = 0 ORDER BY timestamp DESC LIMIT 1) as last_message,
+        (SELECT timestamp FROM messages WHERE channel_id = c.id AND is_deleted = 0 ORDER BY timestamp DESC LIMIT 1) as last_message_time,
+        (SELECT type FROM messages WHERE channel_id = c.id AND is_deleted = 0 ORDER BY timestamp DESC LIMIT 1) as last_message_type
+        FROM channels c 
         JOIN channel_members cm ON c.id = cm.channel_id 
         WHERE cm.user_id = ? 
         ORDER BY c.created_at DESC`;
 
     db.all(sql, [req.user.id], (err, rows) => {
         if (err) return res.status(500).json({ error: "DB Error" });
-        res.json(rows);
+
+        const channels = rows.map(row => {
+            let lastMsg = null;
+            if (row.last_message) {
+                if (row.last_message_type === 'image') lastMsg = '📷 Foto';
+                else if (row.last_message_type === 'sticker') lastMsg = '✨ Sticker';
+                else if (row.last_message_type === 'audio') lastMsg = '🎤 Mensaje de voz';
+                else {
+                    try {
+                        lastMsg = decrypt(row.last_message);
+                    } catch (e) {
+                        lastMsg = '🔒 Mensaje';
+                    }
+                }
+            }
+            return { ...row, last_message: lastMsg };
+        });
+
+        res.json(channels);
     });
 };
 
@@ -285,31 +307,50 @@ exports.checkHandle = (req, res) => {
 };
 
 exports.searchChannels = (req, res) => {
-    const query = req.query.q || '';
-    const userId = req.user.id;
+    try {
+        const query = req.query.q || '';
 
-    if (!query || query.length < 2) return res.json([]);
+        // Detailed Debugging
+        console.log(`[DEBUG] searchChannels called with q="${query}"`);
+        if (!req.user) {
+            console.error("[ERROR] searchChannels: req.user is MISSING!");
+            return res.status(401).json({ error: "User not authenticated" });
+        }
+        const userId = req.user.id;
+        console.log(`[DEBUG] searchChannels user=${userId}`);
 
-    const term = `%${query.toLowerCase()}%`;
+        if (!query || query.length < 2) return res.json([]);
 
+        const term = `${query.toLowerCase()}%`;
 
-    const sql = `
-        SELECT c.id, c.name, c.avatar, c.is_public, c.handle, c.private_hash
-        FROM channels c
-        LEFT JOIN channel_members cm ON c.id = cm.channel_id AND cm.user_id = ?
-        WHERE (LOWER(c.name) LIKE ? OR LOWER(c.handle) LIKE ?)
-        AND (
-            c.is_public = 1 
-            OR 
-            (c.is_public = 0 AND (c.owner_id = ? OR cm.user_id IS NOT NULL))
-        )
-        LIMIT 20
-    `;
+        // Using standard parameter binding.
+        // Ensure that explicit ordering matches the ? placeholders.
+        const sql = `
+            SELECT c.id, c.name, c.avatar, c.is_public, c.handle, c.private_hash
+            FROM channels c
+            LEFT JOIN channel_members cm ON c.id = cm.channel_id AND cm.user_id = ?
+            WHERE (c.name LIKE ? OR c.handle LIKE ?)
+            AND (
+                c.is_public = 1 
+                OR 
+                (c.is_public = 0 AND (c.owner_id = ? OR cm.user_id IS NOT NULL))
+            )
+            LIMIT 20
+        `;
 
-    db.all(sql, [userId, term, term, userId], (err, rows) => {
-        if (err) return res.status(500).json({ error: "DB Error" });
-        res.json(rows);
-    });
+        db.all(sql, [userId, term, term, userId], (err, rows) => {
+            if (err) {
+                console.error("SEARCH CHANNELS SQL ERROR:", err);
+                console.error("SQL Was:", sql);
+                console.error("Params:", [userId, term, term, userId]);
+                return res.status(500).json({ error: "DB Error" });
+            }
+            res.json(rows);
+        });
+    } catch (e) {
+        console.error("SEARCH CHANNELS EXCEPTION:", e);
+        res.status(500).json({ error: "Server Exception" });
+    }
 };
 
 exports.getChannelPreview = (req, res) => {
