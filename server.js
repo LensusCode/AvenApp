@@ -48,6 +48,30 @@ const server = http.createServer(app);
         crossOriginEmbedderPolicy: false
     }));
 
+    // CORS Middleware for Mobile App
+    app.use((req, res, next) => {
+        const allowedOrigins = [
+            'https://localhost',
+            'capacitor://localhost',
+            'http://localhost',
+            'http://localhost:3000',
+            'http://localhost:5173'
+        ];
+        const origin = req.headers.origin;
+        if (allowedOrigins.includes(origin)) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        }
+
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+        res.header('Access-Control-Allow-Credentials', 'true');
+
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
+        }
+        next();
+    });
+
     app.use(express.json({ limit: '10kb' }));
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser());

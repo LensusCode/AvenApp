@@ -82,6 +82,31 @@ socket.on('channel_message', (msg) => {
 });
 
 
+// Helper to resolve image URLs for mobile
+function resolveImageUrl(url) {
+    if (!url) return '/profile.png';
+    const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
+
+    // If native and url starts with https://localhost, replace origin with API_BASE_URL
+    if (isNative && url.startsWith('https://localhost')) {
+        if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+            return url.replace('https://localhost', API_BASE_URL);
+        }
+    }
+
+    // If it's a full URL (http, blob, data), return it
+    // Note: checking after localhost check
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+        return url;
+    }
+
+    // If we are native and it's a relative path, prepend API URL
+    if (isNative && typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+        return API_BASE_URL + (url.startsWith('/') ? '' : '/') + url;
+    }
+    return url;
+}
+
 async function apiRequest(url, method = 'GET', body = null) {
     try {
         const fullUrl = typeof getApiUrl === 'function' ? getApiUrl(url) : url;
@@ -104,18 +129,25 @@ async function apiRequest(url, method = 'GET', body = null) {
                     // En este caso usaremos fetch normal
                     const res = await fetch(fullUrl, {
                         method,
-                        body
+                        body,
+                        credentials: 'include' // IMPORTANTE: Enviar cookies de sesión
                     });
+
                     if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('chatUser');
-                        window.location.href = '/login';
+                        return null; // El manejo de login lo hará el caller o se podría redirigir aquí
+                    }
+                    // Retornar JSON si es posible, o null si falla
+                    try {
+                        return res.ok ? await res.json() : null;
+                    } catch (err) {
                         return null;
                     }
-                    return res.ok ? await res.json() : null;
                 } else {
                     options.data = JSON.parse(JSON.stringify(body));
                 }
             }
+
+
 
             const response = await window.Capacitor.Plugins.CapacitorHttp.request(options);
 
@@ -4033,7 +4065,7 @@ function renderStartContacts() {
         if (u.userId === myUser.id) return;
         const li = document.createElement('li');
         li.className = 'user-item';
-        li.innerHTML = `<div class="u-avatar" style="background-image:url('${u.avatar || '/profile.png'}')"></div><div>${u.display_name || u.username}</div>`;
+        li.innerHTML = `<div class="u-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div><div>${u.display_name || u.username}</div>`;
         li.onclick = () => { selectUser(u); creationModal.classList.add('hidden'); };
         list.appendChild(li);
     });
@@ -4049,7 +4081,7 @@ function renderMemberSelection() {
         li.className = `user-select-item ${selectedMembers.has(u.userId) ? 'selected' : ''}`;
         li.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
-                <div class="u-avatar" style="background-image:url('${u.avatar || '/profile.png'}')"></div>
+                <div class="u-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div>
                 <span>${u.display_name || u.username}</span>
             </div>
             <div class="select-circle"></div>
@@ -4192,7 +4224,7 @@ function renderJoinModal(channel) {
     if (channel.is_public === 0) privLabel.style.display = 'block';
     else privLabel.style.display = 'none';
 
-    const avatarUrl = (channel.avatar && isValidUrl(channel.avatar)) ? channel.avatar : '/profile.png';
+    const avatarUrl = resolveImageUrl(channel.avatar);
     avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
 
     modal.classList.remove('hidden');
@@ -4239,7 +4271,7 @@ function createChannelListItem(c) {
     const li = document.createElement('li');
     li.className = `chat-card user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`;
 
-    const avatarUrl = c.avatar || '/profile.png';
+    const avatarUrl = resolveImageUrl(c.avatar);
     const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
 
     // Placeholder logic for channel last message (simulated for now)
@@ -4424,7 +4456,7 @@ async function openChannelProfile() {
         bioEl.style.color = "#666";
     }
 
-    let avatarUrl = channel.avatar || '/profile.png';
+    let avatarUrl = resolveImageUrl(channel.avatar);
     avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
 
     if (channel.owner_id === myUser.id) {
@@ -4485,7 +4517,7 @@ btnEditChannel.addEventListener('click', () => {
     const channel = currentTargetUserObj;
     editChannelName.value = channel.name;
     editChannelBio.value = channel.description || '';
-    editChannelAvatarPreview.style.backgroundImage = `url('${channel.avatar || '/profile.png'}')`;
+    editChannelAvatarPreview.style.backgroundImage = `url('${resolveImageUrl(channel.avatar)}')`;
     editChannelFile = null;
 
     channelEditModal.classList.remove('hidden');
@@ -4603,8 +4635,7 @@ headerBtn.onclick = (e) => {
             bioEl.style.color = "#666";
         }
 
-        let avatarUrl = currentTargetUserObj.avatar || '/profile.png';
-        if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
+        let avatarUrl = resolveImageUrl(currentTargetUserObj.avatar);
         avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
 
         if (myUser?.is_admin) {
@@ -5006,7 +5037,7 @@ async function loadSubscribersList() {
         const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         li.innerHTML = `
-            <div class="simple-avatar" style="background-image:url('${u.avatar || '/profile.png'}')"></div>
+            <div class="simple-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div>
             <div class="simple-info">
                 <div class="simple-name">${escapeHtml(u.display_name || u.username)}</div>
                 <div class="simple-meta">se unió el ${dateStr}</div>
@@ -5047,7 +5078,7 @@ async function loadBannedList() {
         const li = document.createElement('li');
         li.className = 'simple-user-item';
         li.innerHTML = `
-            <div class="simple-avatar" style="background-image:url('${u.avatar || '/profile.png'}')"></div>
+            <div class="simple-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div>
             <div class="simple-info">
                 <div class="simple-name">${escapeHtml(u.display_name || u.username)}</div>
                 <div class="simple-meta">Expulsado</div>
@@ -5145,7 +5176,7 @@ async function renderAvailableContacts(filterText = '') {
         }
 
         const name = escapeHtml(myNicknames[u.userId] || u.username);
-        const avatarUrl = (u.avatar && isValidUrl(u.avatar)) ? u.avatar : '/profile.png';
+        const avatarUrl = resolveImageUrl(u.avatar);
 
         li.innerHTML = `
             <div class="u-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
@@ -5473,7 +5504,7 @@ function createChannelSearchItem(ch) {
         handleChannelClickFromSearch(ch);
     };
 
-    const avatarUrl = (ch.avatar && isValidUrl(ch.avatar)) ? ch.avatar : '/profile.png';
+    const avatarUrl = resolveImageUrl(ch.avatar);
     const isPrivate = ch.is_public === 0;
     const lockIcon = isPrivate ? '🔒' : '';
 
@@ -5509,8 +5540,7 @@ function createUserItem(u) {
 
     const name = myNicknames[u.userId] || u.username;
 
-    let avatarUrl = u.avatar || '/profile.png';
-    if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
+    const avatarUrl = resolveImageUrl(u.avatar);
 
     // Status / Last Message Logic
     // Priority: Typing > Recording > Last Message > Status
@@ -5585,7 +5615,7 @@ function createGlobalUserItem(user) {
     const li = document.createElement('li');
     li.className = 'user-item';
 
-    const avatarUrl = (user.avatar && isValidUrl(user.avatar)) ? user.avatar : '/profile.png';
+    const avatarUrl = resolveImageUrl(user.avatar);
     const displayName = user.display_name || user.username;
 
     li.innerHTML = `
@@ -5921,7 +5951,35 @@ function renderStoriesBar(groupedStories) {
     });
 }
 
-function createNewStory() {
+async function createNewStory() {
+    // Check if Capacitor Camera is available
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera) {
+        try {
+            const image = await window.Capacitor.Plugins.Camera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: 'uri',
+                source: 'PROMPT' // Prompts for Photo or Camera
+            });
+
+            const imageUrl = image.webPath;
+            // Fetch the blob from webPath to prepare for upload
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+
+            // Name it somewhat randomly or use default
+            const file = new File([blob], `story_${Date.now()}.jpg`, { type: blob.type });
+
+            openEditorWithFile(file, imageUrl);
+
+        } catch (error) {
+            console.error('Camera cancelled or failed:', error);
+            // Don't show alert if cancelled, just return
+        }
+        return;
+    }
+
+    // Fallback for Web
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -5929,26 +5987,30 @@ function createNewStory() {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Open Editor in Story Mode
-        isStoryMode = true;
-
         const reader = new FileReader();
         reader.onload = (evt) => {
-            const img = document.getElementById('imageToEdit');
-            img.src = evt.target.result;
-
-            currentEditFile = file; // Global used by editor
-
-            imageEditorModal.classList.remove('hidden');
-            document.getElementById('mainHeader').classList.remove('hidden');
-            document.getElementById('mainFooter').classList.remove('hidden');
-            document.getElementById('cropFooter').classList.add('hidden');
-
-            if (window.cropper) { window.cropper.destroy(); window.cropper = null; }
+            openEditorWithFile(file, evt.target.result);
         };
         reader.readAsDataURL(file);
     };
     input.click();
+}
+
+function openEditorWithFile(file, srcUrl) {
+    // Open Editor in Story Mode
+    isStoryMode = true;
+
+    const img = document.getElementById('imageToEdit');
+    img.src = srcUrl;
+
+    currentEditFile = file; // Global used by editor
+
+    imageEditorModal.classList.remove('hidden');
+    document.getElementById('mainHeader').classList.remove('hidden');
+    document.getElementById('mainFooter').classList.remove('hidden');
+    document.getElementById('cropFooter').classList.add('hidden');
+
+    if (window.cropper) { window.cropper.destroy(); window.cropper = null; }
 }
 
 // Override Send Button Logic
@@ -5980,11 +6042,14 @@ if (oldBtn) {
                     imageEditorModal.classList.add('hidden');
                     loadStories(); // Refresh
                 } else {
-                    alert("Error al subir historia");
+                    // Fallback para debug
+                    console.error("Upload failed", res);
+                    const statusStr = res ? JSON.stringify(res) : "null response";
+                    alert("Error al subir historia. Detalles: " + statusStr);
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error de conexión");
+                alert("Error de conexión: " + e.message);
             } finally {
                 newBtn.disabled = false;
                 newBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
