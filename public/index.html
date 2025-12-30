@@ -34,16 +34,16 @@
     <link rel="stylesheet" href="style.css">
 
     <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-192.png">
-    <link rel="shortcut icon" type="image/png" href="/icons/icon-192.png">
-    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/icon-192.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/icons/icon-192.png">
+    <link rel="icon" href="/assets/icons/icon-192.png">
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://media.giphy.com">
@@ -52,7 +52,7 @@
     <!-- 2. PRELOAD: Prioridad máxima para CSS y JS crítico -->
     <link rel="preload" href="style.css" as="style">
     <link rel="preload" href="script.js" as="script">
-    <link rel="preload" href="/profile.png" as="image">
+    <link rel="preload" href="/assets/profile.png" as="image">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 </head>
@@ -63,51 +63,78 @@
         <!-- Sidebar -->
         <!-- Sidebar (Adapted from listaChats.html reference) -->
         <aside class="sidebar">
-            <header class="brand-header">
-                <div class="brand-title">AvenApp</div>
-                <div class="user-pill" id="sidebarMyProfileBtn" title="Perfil">
-                    <span id="headerProfileName">Dylan</span>
-                    <!-- Avatar loaded via JS or default -->
-                    <div id="headerProfileAvatar" class="pill-avatar" style="background-image: url('profile.png');">
-                    </div>
-                </div>
-            </header>
+            <div class="sidebar-main-panel">
+                <header class="brand-header">
+                    <div class="brand-title">AvenApp</div>
+                    <div style="flex:1;"></div> <!-- Spacer -->
 
-            <!-- FAVORITES / STORIES SECTION -->
-            <div class="favorites-section">
-                <div class="fav-item add-new">
-                    <div class="fav-avatar-wrapper">
-                        <div class="fav-avatar" style="background-image: url('profile.png');">
-                            <div class="add-story-icon-overlay"
-                                style="position: absolute; bottom: -5px; right: -5px; background: #3b82f6; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #000;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white"
-                                    stroke-width="3">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
+                    <!-- New Chat Button (Desktop Only) -->
+                    <button id="headerNewChatBtn" class="nav-icon-btn desktop-only" title="Nuevo Chat"
+                        style="margin-right: 10px;">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+
+                    <div class="user-pill" id="sidebarMyProfileBtn" title="Perfil">
+                        <span id="headerProfileName">Dylan</span>
+                        <!-- Avatar loaded via JS or default -->
+                        <div id="headerProfileAvatar" class="pill-avatar"
+                            style="background-image: url('assets/profile.png');">
                         </div>
                     </div>
-                    <span class="fav-name">Tu historia</span>
-                </div>
-                <!-- Real stories will be rendered here by JS -->
-            </div>
+                </header>
 
-            <!-- SEARCH -->
-            <div class="search-trigger">
-                <div class="fake-search">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <!-- Actual input for functionality, styled to blend in or replace text -->
-                    <input id="searchUsers" placeholder="Buscar..." autocomplete="off"
-                        style="background:transparent; border:none; color:white; font-size:14px; outline:none; width:100%;">
+                <!-- FAVORITES / STORIES SECTION -->
+                <div class="favorites-section">
+                    <div class="fav-item add-new">
+                        <div class="fav-avatar-wrapper">
+                            <div class="fav-avatar" style="background-image: url('assets/profile.png');">
+                                <div class="add-story-icon-overlay"
+                                    style="position: absolute; bottom: -5px; right: -5px; background: #3b82f6; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #000;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white"
+                                        stroke-width="3">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="fav-name">Tu historia</span>
+                    </div>
+                    <!-- Real stories will be rendered here by JS -->
+                </div>
+
+                <!-- SEARCH -->
+                <div class="search-trigger">
+                    <div class="fake-search">
+                        <svg id="searchIconMagnifier" class="search-icon" width="18" height="18" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <svg id="searchIconBack" class="search-back-btn" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        <!-- Actual input for functionality, styled to blend in or replace text -->
+                        <input id="searchUsers" placeholder="Buscar..." autocomplete="off"
+                            style="background:transparent; border:none; color:white; font-size:14px; outline:none; width:100%;">
+                    </div>
+                </div>
+
+                <!-- CHAT LIST -->
+                <ul id="usersList" class="users-list"></ul>
+
+                <!-- SETTINGS VIEW (Hidden by default) -->
+                <div id="settingsView" class="settings-view hidden">
+                    <!-- Dynamic Content -->
                 </div>
             </div>
-
-            <!-- CHAT LIST -->
-            <ul id="usersList" class="users-list"></ul>
 
             <!-- BOTTOM DOCK (Navigation) -->
             <div class="floating-dock-container">
@@ -119,11 +146,28 @@
                         </svg>
                     </div>
                     <div class="dock-icon" id="navCallsBtn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
-                            stroke-linejoin="round">
+                        <!-- Calls Icon (Mobile) -->
+                        <svg class="mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-linecap="round" stroke-linejoin="round">
                             <path
                                 d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
                             </path>
+                        </svg>
+
+                        <!-- Stories Icon (Desktop) - Camera/Plus style -->
+                        <svg class="desktop-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <defs>
+                                <linearGradient id="storyGradientIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                            </path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                            <line x1="12" y1="11" x2="12" y2="15"></line>
+                            <line x1="10" y1="13" x2="14" y2="13"></line>
                         </svg>
                     </div>
 
@@ -763,6 +807,11 @@
 
             <main class="chat-main">
                 <div id="emptyState" class="empty-state">Selecciona un contacto</div>
+                <div id="settingsMainPlaceholder" class="empty-state hidden"
+                    style="display: none; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: #fff; margin-bottom: 10px;">Ajustes</div>
+                    <div style="color: #a1a1aa;">Configura tu perfil y preferencias</div>
+                </div>
                 <ul id="messages" class="messages hidden"></ul>
             </main>
 

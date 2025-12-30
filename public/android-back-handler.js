@@ -55,7 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 2. Check if we're in a chat view
+                // 2. Check if search is active
+                if (document.body.classList.contains('mobile-search-active')) {
+                    if (window.exitMobileSearch) {
+                        window.exitMobileSearch();
+                    } else {
+                        document.body.classList.remove('mobile-search-active');
+                        document.getElementById('searchUsers')?.blur();
+                    }
+                    return;
+                }
+
+                // 3. Check if we're in a chat view
                 const chatContainer = document.querySelector('.chat-container');
                 const isChatActive = chatContainer && chatContainer.classList.contains('mobile-chat-active');
 

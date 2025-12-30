@@ -4,16 +4,16 @@ const http = require('http');
 const path = require('path');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const { initDatabase, fixChannelTables, migrateExistingMessagesToContacts } = require('./models/schema');
-const { initSocket } = require('./sockets/socketManager');
+const { initDatabase, fixChannelTables, migrateExistingMessagesToContacts } = require('./src/models/schema');
+const { initSocket } = require('./src/sockets/socketManager');
 
 // Routes
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const channelRoutes = require('./routes/channelRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-const contactRoutes = require('./routes/contactRoutes');
-const storyRoutes = require('./routes/storyRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const channelRoutes = require('./src/routes/channelRoutes');
+const messageRoutes = require('./src/routes/messageRoutes');
+const contactRoutes = require('./src/routes/contactRoutes');
+const storyRoutes = require('./src/routes/storyRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -39,7 +39,7 @@ const server = http.createServer(app);
                 scriptSrcElem: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
                 scriptSrcAttr: ["'none'"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-                imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com", "https://i.pravatar.cc"],
+                imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com", "https://i.pravatar.cc", "https://raw.githubusercontent.com"],
                 mediaSrc: ["'self'", "blob:", "data:", "https://res.cloudinary.com"],
                 connectSrc: ["'self'", "https://*.giphy.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "ws:", "wss:", "data:", "https://*.turso.io"],
                 upgradeInsecureRequests: null,
@@ -81,12 +81,13 @@ const server = http.createServer(app);
 
     app.use('/api/auth', authRoutes);
     app.use('/api/users', userRoutes);
-    app.use('/api/admin', require('./routes/adminRoutes'));
+    app.use('/api/admin', require('./src/routes/adminRoutes'));
     app.use('/api/channels', channelRoutes);
     app.use('/api/messages', messageRoutes);
     app.use('/api/contacts', contactRoutes);
     app.use('/api/stories', storyRoutes);
-    app.use('/api/emojis', require('./routes/emojiRoutes'));
+    app.use('/api/emojis', require('./src/routes/emojiRoutes'));
+    app.use('/api/stickers-proxy', require('./src/routes/stickerRoutes'));
 
     app.get('/admin', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'admin.html'));

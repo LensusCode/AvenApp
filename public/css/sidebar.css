@@ -10,6 +10,14 @@
     /* overflow: hidden; Removed to allow dock to float above settings */
 }
 
+.sidebar-main-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    width: 100%;
+}
+
 /* --- BRAND HEADER --- */
 .brand-header {
     padding: 20px 24px 10px 24px;
@@ -478,4 +486,65 @@
     .sidebar {
         border-right: none;
     }
+}
+
+/* --- SETTINGS VIEW --- */
+.settings-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+    gap: 10px;
+}
+
+.settings-header-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 20px;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #fff;
+}
+
+.settings-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.settings-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a1a1aa;
+}
+
+.settings-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.settings-sub {
+    font-size: 13px;
+    color: #a1a1aa;
 }

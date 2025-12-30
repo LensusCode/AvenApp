@@ -84,7 +84,7 @@ socket.on('channel_message', (msg) => {
 
 // Helper to resolve image URLs for mobile
 function resolveImageUrl(url) {
-    if (!url) return '/profile.png';
+    if (!url) return '/assets/profile.png';
     const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
 
     // If native and url starts with https://localhost, replace origin with API_BASE_URL
@@ -525,7 +525,7 @@ function showMobileLogin() {
             <div class="auth-container">
                 <div class="auth-card">
                     <div class="auth-logo">
-                        <img src="/logo.png" alt="Logo" onerror="this.style.display='none'">
+                        <img src="/assets/logo.png" alt="Logo" onerror="this.style.display='none'">
                         <h1>AvenApp</h1>
                         <p id="auth-subtitle">Inicia sesión para continuar</p>
                     </div>
@@ -853,6 +853,39 @@ const isValidUrl = (string) => {
 // Esperar a que todo cargue antes de verificar sesión
 window.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, checking session...');
+
+    // INSTANT LOAD FROM CACHE
+    try {
+        const cachedUser = localStorage.getItem('chatUser');
+        if (cachedUser) {
+            console.log('[CACHE] Found cached user, loading UI instantly...');
+            myUser = JSON.parse(cachedUser);
+
+            // Restore Admin/UI state immediately
+            if (myUser.is_admin) document.body.classList.add('is-admin');
+            updateMyAvatarUI(myUser.avatar); // Assumes this function exists and works
+
+            // Load Users
+            const cachedUsers = localStorage.getItem('cachedUsers');
+            if (cachedUsers) {
+                allUsersCache = JSON.parse(cachedUsers);
+            }
+
+            // Load Channels
+            const cachedChannels = localStorage.getItem('cachedChannels');
+            if (cachedChannels) {
+                myChannels = JSON.parse(cachedChannels);
+            }
+
+            // Render Sidebar Immediately
+            if (allUsersCache.length > 0 || myChannels.length > 0) {
+                renderMixedSidebar();
+            }
+        }
+    } catch (err) {
+        console.error('[CACHE] Error loading cached data:', err);
+    }
+
     // Pequeño delay para asegurar que config.js se cargó
     setTimeout(() => {
         checkSession();
@@ -1714,9 +1747,20 @@ if (newLogoutBtn) {
 }
 
 getEl('confirmYes').addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
+    // Use apiRequest for consistent header/url handling
+    // Try both endpoints just in case, or stick to the one matching auth flow
+    await apiRequest('/api/auth/logout', 'POST');
     localStorage.removeItem('chatUser');
-    window.location.href = '/login';
+
+    // Check if mobile
+    const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
+
+    if (isNative) {
+        // App is SPA-like on mobile, reload to trigger checkSession -> showMobileLogin
+        window.location.reload();
+    } else {
+        window.location.href = '/login';
+    }
 });
 getEl('confirmNo').addEventListener('click', () => { getEl('confirmModal').classList.add('hidden'); profileModal.classList.remove('hidden'); });
 
@@ -1724,11 +1768,11 @@ avatarInput.addEventListener('change', async (e) => {
     if (!e.target.files[0]) return;
     const fd = new FormData();
     fd.append('avatar', e.target.files[0]);
-    await apiRequest('/api/upload-avatar', 'POST', fd);
+    await apiRequest('/api/users/upload-avatar', 'POST', fd);
 });
 
 function updateMyAvatarUI(url) {
-    let finalUrl = (url && isValidUrl(url)) ? url : '/profile.png';
+    let finalUrl = (url && isValidUrl(url)) ? url : '/assets/profile.png';
     const css = `url('${escapeHtml(finalUrl)}')`;
 
     // Safely update legacy variable if it exists
@@ -1888,11 +1932,28 @@ async function loadEmojis() {
 
     const res = await apiRequest('/api/emojis');
 
-
     if (currentPanelMode !== 'emojis') return;
 
     if (res && res.success) {
-        emojiCache = res.data;
+        // Fix for mobile/relative paths: Ensure we use GitHub URLs
+        const GH_BASE = 'https://raw.githubusercontent.com/LensusCode/animated-emojis/main';
+        const fixedData = {};
+
+        for (const [cat, files] of Object.entries(res.data)) {
+            fixedData[cat] = files.map(f => {
+                if (typeof f === 'string' && f.startsWith('/')) {
+                    // Transform local path to GitHub URL
+                    // Remove /Animated-Emojis/ or leading slash
+                    const cleanPath = f.replace(/^\/Animated-Emojis\//, '').replace(/^\//, '');
+                    // Encode components to handle spaces correctly
+                    const encodedPath = cleanPath.split('/').map(p => encodeURIComponent(p)).join('/');
+                    return `${GH_BASE}/${encodedPath}`;
+                }
+                return f;
+            });
+        }
+
+        emojiCache = fixedData;
 
         const keys = Object.keys(emojiCache);
         if (keys.length > 0) currentEmojiCategory = keys[0];
@@ -1934,44 +1995,51 @@ function renderEmojiCategories(data) {
 
 function renderEmojiGrid(urls) {
     stickerResults.innerHTML = '';
-
-
     stickerResults.className = 'sticker-grid emoji-grid-mode';
 
-    urls.forEach(url => {
-        const wrap = document.createElement('div');
-        wrap.className = 'sticker-item-wrapper emoji-item';
+    const BATCH_SIZE = 30; // Render 30 emojis per frame
+    let currentIndex = 0;
 
+    function renderBatch() {
+        const batchEnd = Math.min(currentIndex + BATCH_SIZE, urls.length);
+        const fragment = document.createDocumentFragment();
 
-        const canvas = document.createElement('canvas');
-        canvas.className = 'sticker-thumb emoji-canvas';
+        for (let i = currentIndex; i < batchEnd; i++) {
+            const url = urls[i];
+            const wrap = document.createElement('div');
+            wrap.className = 'sticker-item-wrapper emoji-item';
 
-        canvas.width = 64;
-        canvas.height = 64;
+            const img = document.createElement('img');
+            img.className = 'sticker-thumb emoji-img';
+            img.src = url;
+            img.loading = "lazy";
+            img.style.objectFit = "contain";
+            img.style.width = "64px";
+            img.style.height = "64px";
 
-        const img = new Image();
-        img.src = url;
-        img.crossOrigin = "Anonymous";
+            wrap.onclick = (e) => {
+                e.stopPropagation();
+                insertEmojiAtCursor(url);
+                stickerPanel.classList.add('hidden');
+                updateButtonState();
+            };
 
-        img.onload = () => {
+            wrap.appendChild(img);
+            fragment.appendChild(wrap);
+        }
 
-            const ctx = canvas.getContext('2d');
+        stickerResults.appendChild(fragment);
+        currentIndex += BATCH_SIZE;
 
-            ctx.drawImage(img, 0, 0, 64, 64);
-        };
+        if (currentIndex < urls.length) {
+            // Check if user switched categories mid-render to abort
+            if (stickerResults.className.includes('emoji-grid-mode')) {
+                requestAnimationFrame(renderBatch);
+            }
+        }
+    }
 
-
-        wrap.onclick = (e) => {
-            e.stopPropagation();
-            insertEmojiAtCursor(url);
-            stickerPanel.classList.add('hidden');
-
-            updateButtonState();
-        };
-
-        wrap.appendChild(canvas);
-        stickerResults.appendChild(wrap);
-    });
+    renderBatch();
 }
 
 
@@ -2084,12 +2152,29 @@ getEl('btnStickerFavAction')?.addEventListener('click', async () => {
 function openStickerOptions(url) { toggleStickerModal(true, url); }
 
 
-function setReply(msgId, content, type, ownerId) {
+function setReply(msgId, content, type, ownerId, forceName = null) {
     if (isEditing) {
         cancelEditing();
     }
     currentReplyId = msgId;
-    let name = ownerId === myUser.id ? "Tú" : (myNicknames[ownerId] || allUsersCache.find(u => u.userId == ownerId)?.username || "Usuario");
+    let name = forceName;
+    if (!name) {
+        if (ownerId === myUser.id) {
+            name = "Tú";
+        } else {
+            // Try resolving from nicknames or user cache
+            const user = allUsersCache.find(u => u.userId == ownerId);
+            name = myNicknames[ownerId] || (user ? (user.display_name || user.username) : null);
+
+            // If not found, check if it's a channel
+            if (!name && typeof myChannels !== 'undefined') {
+                const channel = myChannels.find(c => c.id == ownerId || 'c_' + c.id == ownerId);
+                if (channel) name = channel.name;
+            }
+
+            if (!name) name = "Usuario";
+        }
+    }
     replyToName.textContent = escapeHtml(name);
     replyToImagePreview.classList.add('hidden');
     replyToImagePreview.style.backgroundImage = 'none';
@@ -2121,6 +2206,7 @@ getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSu
 
 socket.on('users', (users) => {
     allUsersCache = users;
+    localStorage.setItem('cachedUsers', JSON.stringify(users));
 
     if (currentTargetUserId && !currentTargetUserObj?.isChannel) {
         const updated = users.find(u => u.userId === currentTargetUserId);
@@ -2253,7 +2339,8 @@ async function selectUser(target, elem) {
                 let rContent = msg.reply_content;
                 if (msg.reply_type === 'image') rContent = ICONS.replyImage;
                 else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
-                rd = { username: rName, content: rContent, type: msg.reply_type };
+                // FIX: Add id: msg.reply_to_id
+                rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
             }
             let fixedDate = msg.timestamp;
             if (typeof fixedDate === 'string' && fixedDate.includes(' ')) {
@@ -2269,7 +2356,9 @@ async function selectUser(target, elem) {
                 rd,
                 msg.is_deleted,
                 msg.caption,
-                msg.is_edited
+                msg.is_edited,
+                msg.from_user_id,
+                msg.username || (msg.user ? msg.user.username : null)
             );
         });
         scrollToBottom(false);
@@ -2404,8 +2493,9 @@ function sendMessage(content, type, replyId = null) {
     if ((type === 'image' || type === 'sticker') && !isValidUrl(content)) { return alert("Error de seguridad"); }
     socket.emit('private message', { content, toUserId: currentTargetUserId, type, replyToId: replyId }, (res) => {
         if (res?.id) {
-            let rd = replyId ? { username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null;
-            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption, 0);
+            // FIX: Add id: replyId to replyData object so click-to-scroll works
+            let rd = replyId ? { id: replyId, username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null;
+            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption, 0, myUser.id, "Tú");
             messagesList.scrollTop = messagesList.scrollHeight;
             scrollToBottom(true);
         }
@@ -2426,11 +2516,12 @@ socket.on('private message', (msg) => {
             if (msg.reply_type === 'image') rText = ICONS.replyImage;
             else if (msg.reply_type === 'sticker') rText = "✨ Sticker";
             else if (msg.reply_type === 'audio') rText = ICONS.replyAudio || "Mensaje de voz";
-            rd = { username: rName, content: rText, type: msg.reply_type };
+            // FIX: Add id: msg.replyToId
+            rd = { id: msg.replyToId, username: rName, content: rText, type: msg.reply_type };
         }
 
 
-        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0);
+        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0, msg.fromUserId, msg.username);
 
 
         if (isAtBottom) {
@@ -2496,7 +2587,7 @@ function linkify(text) {
     return safeText;
 }
 
-function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0) {
+function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0, senderId = null, senderName = null) {
     renderDateDivider(dateStr);
 
     if (currentChatType === 'channel') {
@@ -2511,6 +2602,8 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     li.className = `message-row ${ownerType}`;
     if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
+    li.dataset.senderId = senderId || (ownerType === 'me' ? myUser.id : currentTargetUserId);
+    if (senderName) li.dataset.senderName = senderName;
 
 
     let layoutClass = 'layout-col';
@@ -2601,12 +2694,10 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     const safeReplyName = replyData ? escapeHtml(replyData.username) : '';
     const safeReplyText = replyData ? (replyData.type === 'text' || !replyData.type ? escapeHtml(replyData.content) : replyData.content) : '';
-    const quoteHtml = replyData ? `<div class="quoted-message"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
+
+    // START CHANGE: Add data-reply-id and styling class
+    const quoteHtml = replyData ? `<div class="quoted-message" data-reply-id="${replyData.id || ''}"><div class="quoted-name">${safeReplyName}</div><div class="quoted-text">${safeReplyText}</div></div>` : '';
     const deletedLabel = isDeleted ? `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>` : '';
-
-
-
-
 
     li.innerHTML = `
         <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
@@ -2616,6 +2707,27 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
         </div>`;
 
     messagesList.appendChild(li);
+
+    // Click handler for reply scrolling
+    if (replyData && replyData.id) {
+        const quoteEl = li.querySelector('.quoted-message');
+        if (quoteEl) {
+            quoteEl.style.cursor = "pointer";
+            quoteEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const targetMsg = document.getElementById(`msg-${replyData.id}`);
+                if (targetMsg) {
+                    targetMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add highlight animation
+                    targetMsg.classList.add('highlight-reply-target');
+                    setTimeout(() => targetMsg.classList.remove('highlight-reply-target'), 2000);
+                } else {
+                    if (window.showToast) window.showToast("El mensaje original no está cargado");
+                }
+            });
+        }
+    }
 
 
 
@@ -2659,7 +2771,8 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     addLongPressEvent(wrapper, msgId);
 
-    addSwipeEvent(li, wrapper, msgId, content, msgType, ownerType === 'me' ? myUser.id : currentTargetUserId);
+    // Use the senderId stored in dataset (or calculated above) to ensure groups work correctly
+    addSwipeEvent(li, wrapper, msgId, content, msgType, li.dataset.senderId);
 
 
     if (msgType === 'text') {
@@ -2844,7 +2957,11 @@ getEl('ctxReplyBtn').addEventListener('click', () => {
     const msgEl = document.getElementById(`msg-${currentContextMessageId}`);
     if (msgEl) {
 
-        let content = msgEl.innerText;
+        const clone = msgEl.cloneNode(true);
+        const garbage = clone.querySelectorAll('.meta, .meta-row, .quoted-message, .deleted-label, .audio-meta-row, .swipe-reply-icon');
+        garbage.forEach(el => el.remove());
+
+        let content = clone.innerText.trim();
         let type = 'text';
 
 
@@ -2856,7 +2973,12 @@ getEl('ctxReplyBtn').addEventListener('click', () => {
             type = 'sticker';
         }
 
-        setReply(currentContextMessageId, content, type, 'unknown');
+        // CORRECTION: The dataset attributes are on the row (li), not the wrapper (div)
+        const rowEl = document.getElementById(`row-${currentContextMessageId}`);
+        const senderId = rowEl ? (rowEl.dataset.senderId || 'unknown') : 'unknown';
+        const senderName = rowEl ? (rowEl.dataset.senderName || null) : null;
+
+        setReply(currentContextMessageId, content, type, senderId, senderName);
     }
     closeContextMenu();
 });
@@ -3729,8 +3851,10 @@ document.getElementById('pinnedBarContent').addEventListener('click', () => {
     const msgEl = document.getElementById(`msg-${currentPinnedMessageId}`);
     if (msgEl) {
         msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        msgEl.style.transition = 'background 0.5s';
-        setTimeout(() => { msgEl.style.background = originalBg; }, 1000);
+        msgEl.classList.remove('message-flash');
+        void msgEl.offsetWidth;
+        msgEl.classList.add('message-flash');
+        setTimeout(() => msgEl.classList.remove('message-flash'), 2000);
     } else {
         showToast("El mensaje fijado es antiguo y no está cargado.");
     }
@@ -4065,7 +4189,21 @@ function renderStartContacts() {
         if (u.userId === myUser.id) return;
         const li = document.createElement('li');
         li.className = 'user-item';
-        li.innerHTML = `<div class="u-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div><div>${u.display_name || u.username}</div>`;
+
+        const avatarUrl = resolveImageUrl(u.avatar);
+        const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
+        const displayName = myNicknames[u.userId] || u.username;
+        const safeName = escapeHtml(displayName);
+
+        li.innerHTML = `
+            <div class="u-avatar" style="${safeAvatar}">
+                <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${u.online ? '#4ade80' : '#a1a1aa'};border:2px solid #18181b;"></div>
+            </div>
+            <div style="overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-weight:600;color:${u.online ? '#fff' : '#e4e4e7'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;">${safeName}${getBadgeHtml(u)}</div>
+                <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">${u.online ? 'En línea' : 'Desconectado'}</div>
+            </div>`;
+
         li.onclick = () => { selectUser(u); creationModal.classList.add('hidden'); };
         list.appendChild(li);
     });
@@ -4113,6 +4251,7 @@ async function loadMyChannels() {
     const channels = await apiRequest('/api/channels/my-channels');
     if (channels) {
         myChannels = channels;
+        localStorage.setItem('cachedChannels', JSON.stringify(channels));
         renderMixedSidebar();
         checkUrlIntent();
     }
@@ -4367,8 +4506,17 @@ async function selectChannel(channel, elem) {
 
     if (msgs) {
         msgs.forEach(msg => {
+            let rd = null;
+            if (msg.reply_to_id) {
+                let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
+                let rContent = msg.reply_content;
+                if (msg.reply_type === 'image') rContent = ICONS.replyImage;
+                else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
+                rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
+            }
+
             const isMe = msg.from_user_id === myUser.id;
-            appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, null, msg.is_deleted, msg.caption);
+            appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption, msg.is_edited, msg.from_user_id, msg.username);
         });
         scrollToBottom(false);
     }
@@ -4392,7 +4540,7 @@ sendMessage = function (content, type, replyId = null) {
 socket.on('channel_message', (msg) => {
     if (currentChatType === 'channel' && currentTargetUserObj.id === msg.channelId) {
         const isMe = msg.fromUserId === myUser.id;
-        appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, null, 0, msg.caption);
+        appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, null, 0, msg.caption, 0, msg.fromUserId, msg.username);
         scrollToBottom(true);
     }
 });
@@ -4405,6 +4553,8 @@ const originalLoginSuccess = loginSuccess;
 loginSuccess = function (user) {
     originalLoginSuccess(user);
     loadMyChannels();
+    // Preload emojis for instant access
+    setTimeout(() => loadEmojis(), 1000);
 }
 
 const channelProfileModal = document.getElementById('channelProfileModal');
@@ -5718,6 +5868,27 @@ if (navPlusBtn) {
     });
 }
 
+/* --- DESKTOP NEW CHAT BUTTON LOGIC --- */
+const headerNewChatBtn = document.getElementById('headerNewChatBtn');
+if (headerNewChatBtn) {
+    headerNewChatBtn.addEventListener('click', () => {
+        // Simple open for desktop, centered modal
+        const modal = document.getElementById('creationModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            const card = modal.querySelector('.profile-card.creation-card');
+            if (card) {
+                // Reset animation origin to center or remove it
+                card.style.removeProperty('--origin-x');
+                card.style.removeProperty('--origin-y');
+                card.classList.remove('closing');
+            }
+            if (typeof resetCreationFlow === 'function') resetCreationFlow();
+            if (typeof renderStartContacts === 'function') renderStartContacts();
+        }
+    });
+}
+
 /* --- CREATION MODAL CLOSE LOGIC --- */
 const closeCreationBtn = document.getElementById('closeCreation');
 const creationModalEl = document.getElementById('creationModal');
@@ -5758,6 +5929,37 @@ function setActiveDockIcon(activeBtn) {
 if (navChatBtn) {
     navChatBtn.addEventListener('click', () => {
         setActiveDockIcon(navChatBtn);
+
+        // Restore Views
+        if (settingsView) settingsView.classList.add('hidden');
+        if (usersListEl) usersListEl.classList.remove('hidden');
+        if (brandHeaderEl) brandHeaderEl.style.display = '';
+        if (favoritesSectionEl) favoritesSectionEl.style.display = '';
+        if (searchTriggerEl) searchTriggerEl.style.display = '';
+
+        // --- MAIN COLUMN RESTORE ---
+        const settingsMainPlaceholder = document.getElementById('settingsMainPlaceholder');
+        const emptyStateEl = document.getElementById('emptyState');
+        const messagesEl = document.getElementById('messages');
+        const chatHeaderEl = document.querySelector('.chat-header');
+        const composerEl = document.querySelector('.composer');
+
+        if (settingsMainPlaceholder) settingsMainPlaceholder.classList.add('hidden');
+
+        if (currentTargetUserId) {
+            // Chat Active
+            if (messagesEl) messagesEl.classList.remove('hidden');
+            if (chatHeaderEl) chatHeaderEl.classList.remove('hidden');
+            if (composerEl) composerEl.classList.remove('hidden');
+            if (emptyStateEl) emptyStateEl.classList.add('hidden');
+        } else {
+            // No Chat Active
+            if (emptyStateEl) emptyStateEl.classList.remove('hidden');
+            if (messagesEl) messagesEl.classList.add('hidden');
+            if (chatHeaderEl) chatHeaderEl.classList.add('hidden');
+            if (composerEl) composerEl.classList.add('hidden');
+        }
+
         // Animate out if open
         if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
             comingSoonModal.classList.remove('slide-in');
@@ -5770,14 +5972,47 @@ if (navChatBtn) {
     });
 }
 
+const settingsView = document.getElementById('settingsView');
+const usersListEl = document.getElementById('usersList');
+const brandHeaderEl = document.querySelector('.brand-header');
+const favoritesSectionEl = document.querySelector('.favorites-section');
+const searchTriggerEl = document.querySelector('.search-trigger');
+
 // 2. Settings Button
 if (navSettingsBtn) {
     navSettingsBtn.addEventListener('click', () => {
         setActiveDockIcon(navSettingsBtn);
-        // Show logic with animation
-        if (comingSoonModal) {
-            comingSoonModal.classList.remove('hidden', 'slide-out');
-            comingSoonModal.classList.add('slide-in');
+        if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
+            comingSoonModal.classList.add('hidden');
+        }
+
+        // Hide Main Sidebar Elements
+        if (usersListEl) usersListEl.classList.add('hidden');
+        if (brandHeaderEl) brandHeaderEl.style.display = 'none';
+        if (favoritesSectionEl) favoritesSectionEl.style.display = 'none';
+        if (searchTriggerEl) searchTriggerEl.style.display = 'none';
+
+        // Show Settings
+        if (settingsView) {
+            settingsView.classList.remove('hidden');
+            renderSettingsView();
+        }
+
+        // --- MAIN COLUMN TOGGLE ---
+        const settingsMainPlaceholder = document.getElementById('settingsMainPlaceholder');
+        const emptyStateEl = document.getElementById('emptyState');
+        const messagesEl = document.getElementById('messages');
+        const chatHeaderEl = document.querySelector('.chat-header');
+        const composerEl = document.querySelector('.composer');
+
+        if (emptyStateEl) emptyStateEl.classList.add('hidden');
+        if (messagesEl) messagesEl.classList.add('hidden');
+        if (chatHeaderEl) chatHeaderEl.classList.add('hidden');
+        if (composerEl) composerEl.classList.add('hidden');
+
+        if (settingsMainPlaceholder) {
+            settingsMainPlaceholder.classList.remove('hidden');
+            settingsMainPlaceholder.style.display = 'flex';
         }
     });
 }
@@ -5785,6 +6020,13 @@ if (navSettingsBtn) {
 // 3. Other Buttons (Calls, Contacts) -> Close settings if open
 if (navCallsBtn) {
     navCallsBtn.addEventListener('click', () => {
+        // Desktop: Post Status / Story
+        if (window.innerWidth > 768) {
+            createNewStory();
+            return;
+        }
+
+        // Mobile: Calls Logic
         setActiveDockIcon(navCallsBtn);
         if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
             comingSoonModal.classList.remove('slide-in');
@@ -5841,7 +6083,48 @@ if (comingSoonModal) {
 
 /* --- SEARCH INPUT ROBUSTNESS --- */
 const searchInputEl = document.getElementById('searchUsers');
+const searchBackBtn = document.getElementById('searchIconBack');
+
+function exitMobileSearch() {
+    if (searchInputEl) {
+        searchInputEl.value = '';
+        searchInputEl.blur();
+        if (window.applyUserFilter) window.applyUserFilter();
+    }
+    document.body.classList.remove('mobile-search-active');
+
+    // Reset transform after small delay to avoid jump? No, allow CSS transition back.
+}
+window.exitMobileSearch = exitMobileSearch;
+
 if (searchInputEl) {
+    // Mobile search behavior: Expand on focus
+    searchInputEl.addEventListener('focus', () => {
+        // Calculate exact height to slide up using Summation (More Stable)
+        const header = document.querySelector('.brand-header');
+        const favs = document.querySelector('.favorites-section');
+
+        let totalH = 0;
+        if (header) totalH += header.offsetHeight;
+        if (favs) totalH += favs.offsetHeight;
+
+        // We set this variable for CSS to use in transform calculation
+        document.documentElement.style.setProperty('--search-move-up', `${totalH}px`);
+
+        document.body.classList.add('mobile-search-active');
+    });
+
+    // Do NOT remove on blur automatically to allow interaction with back button and results
+    // searchInputEl.addEventListener('blur', () => { ... }); 
+
+    if (searchBackBtn) {
+        searchBackBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            exitMobileSearch();
+        });
+    }
+
     // Remove existing if possible (not possible without reference), but adding another safe one is fine
     // Force trigger filter on all possible input events to capture clears
     ['input', 'keyup', 'search', 'paste', 'change'].forEach(evt => {
@@ -6607,4 +6890,61 @@ function openStoryFromAvatar(e, userId) {
         e.stopPropagation();
         openStoryViewer(userId);
     }
+}
+
+// --- SETTINGS LOGIC ---
+function renderSettingsView() {
+    if (!settingsView) return;
+    settingsView.innerHTML = `
+        <div class="settings-header-title">Configuración</div>
+        
+        <div class="settings-item">
+            <div class="settings-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div class="settings-info">
+                <div class="settings-label">Mi Cuenta</div>
+                <div class="settings-sub">Privacidad, seguridad, cambiar número</div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            </div>
+            <div class="settings-info">
+                <div class="settings-label">Notificaciones</div>
+                <div class="settings-sub">Mensajes, grupos, llamadas</div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </div>
+            <div class="settings-info">
+                <div class="settings-label">Privacidad</div>
+                <div class="settings-sub">Bloqueados, última vez, online</div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+            <div class="settings-info">
+                <div class="settings-label">Ayuda</div>
+                <div class="settings-sub">Centro de ayuda, contáctanos</div>
+            </div>
+        </div>
+
+        <div class="settings-item" onclick="logout()" style="margin-top:20px; color:#ef4444;">
+             <div class="settings-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </div>
+            <div class="settings-info">
+                <div class="settings-label">Cerrar Sesión</div>
+            </div>
+        </div>
+    `;
 }

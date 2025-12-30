@@ -1,0 +1,394 @@
+@media (min-width: 769px) {
+
+    /* Layout Principal */
+    .chat-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        background: #000;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        border-right: 1px solid #1f1f23;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Sidebar Container now acts as the Side Rail + List wrapper */
+    .sidebar {
+        width: 45% !important;
+        /* User requested equal size to main/empty-state */
+        /* Slightly wider to accommodate rail */
+        flex-shrink: 0;
+        border-right: 1px solid var(--border);
+        display: flex !important;
+        /* Force visible */
+        flex-direction: row !important;
+        /* Side-by-Side: Rail | Content */
+        z-index: 2;
+        background: var(--bg);
+        position: relative;
+        overflow: visible;
+        /* Inherit layout */
+    }
+
+    /* Show Desktop Specific Elements */
+    .desktop-only {
+        display: inline-flex !important;
+    }
+
+    /* 1. LEFT RAIL (Navigation) */
+    .floating-dock-container {
+        position: relative !important;
+        order: -1;
+        /* Move to Start (Left) */
+        width: 72px !important;
+        height: 100% !important;
+        bottom: auto !important;
+        left: auto !important;
+        transform: none !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        border-right: 1px solid var(--border);
+        background-color: #09090b;
+        /* Darker rail background */
+        z-index: 10;
+        margin: 0 !important;
+        max-width: none !important;
+    }
+
+    .floating-dock {
+        flex-direction: column !important;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 0 !important;
+        padding: 20px 0 !important;
+        justify-content: flex-start !important;
+        background: transparent !important;
+        border-top: none !important;
+        box-shadow: none !important;
+        gap: 15px !important;
+        backdrop-filter: none !important;
+    }
+
+    /* Rail Icons */
+    .dock-icon {
+        width: 48px !important;
+        height: 48px !important;
+        border-radius: 14px !important;
+        margin: 0 auto;
+    }
+
+    .dock-main-action {
+        display: none !important;
+        /* Hide old Plus Button on Desktop */
+    }
+
+    /* 2. SIDEBAR CONTENT (List, Header, Favs) */
+    .sidebar-main-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-width: 0;
+        border-top: 1px solid var(--border);
+        /* Prevent overflow */
+        background-color: var(--bg);
+    }
+
+    /* Adjust specific elements inside the panel */
+    /* Adjust specific elements inside the panel */
+    .brand-header,
+    .favorites-section,
+    .search-trigger {
+        padding-left: 15px;
+        /* Adjust padding if needed */
+        padding-right: 15px;
+    }
+
+    /* Styled Plus Button for Desktop Header */
+    #headerNewChatBtn {
+        width: 36px !important;
+        height: 36px !important;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin-right: 15px !important;
+        /* Added spacing */
+    }
+
+    #headerNewChatBtn:hover {
+        /* No transform */
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+    }
+
+    #headerNewChatBtn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .users-list {
+        padding-bottom: 20px !important;
+        /* Reset nav bottom padding */
+    }
+
+
+    /* Columna Principal (Chat) a la derecha */
+    .main-column {
+        flex: 1;
+        display: flex !important;
+        /* Force visible */
+        flex-direction: column;
+        background: #000;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Ocultar botón 'Atrás' en desktop */
+    .back-btn {
+        display: none !important;
+    }
+
+    /* Ajustes del Header del Chat */
+    .chat-header {
+        height: 75px;
+        padding: 0 30px;
+        background: rgba(0, 0, 0, 0.8);
+    }
+
+    /* Ocultar elementos móviles */
+    .mobile-only {
+        display: none !important;
+    }
+
+    /* Scrollbars mejoradas */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Ajustes Modales Desktop */
+    .profile-modal,
+    .confirm-modal,
+    .image-editor-modal {
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        background-color: rgba(0, 0, 0, 0.7) !important;
+        /* Dimmed background */
+        backdrop-filter: blur(6px);
+        /* Glass effect */
+    }
+
+    .profile-card,
+    .profile-card.modern-profile,
+    .profile-card.creation-card,
+    /* Added Creation Card explicitly */
+    #profileModal .profile-card,
+    #creationModal .profile-card {
+        /* Added ID path for specificity */
+        width: 440px !important;
+        /* Slightly wider for comfort */
+        height: auto !important;
+        max-height: 80vh !important;
+        /* Don't touch edges */
+        border-radius: 28px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: #09090b !important;
+        /* Solid dark background */
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto !important;
+        /* Enable Scroll */
+        overflow-x: hidden;
+        position: relative !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        /* Fix Gap above Sticky Header */
+        top: auto !important;
+        left: auto !important;
+        transform: none !important;
+        animation: none !important;
+        /* Reset conflicting animations if any */
+    }
+
+    /* Ensure internal content scrolls properly */
+    .profile-card>*,
+    .profile-card.modern-profile>*,
+    .profile-card.creation-card>* {
+        max-width: 100%;
+    }
+
+    /* Sticky Header for Profile Card */
+    .profile-nav-header {
+        position: sticky !important;
+        top: 0;
+        z-index: 10;
+        background-color: #09090b;
+        /* Match card bg */
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        /* Subtle separator */
+    }
+
+    /* Custom Scrollbar for Profile Card to respect Rounded Corners */
+    .profile-card::-webkit-scrollbar {
+        width: 5px;
+        /* Thinner */
+    }
+
+    .profile-card::-webkit-scrollbar-track {
+        background: transparent;
+        margin-top: 60px;
+        /* Push down below rounded header corner approx */
+        margin-bottom: 20px;
+        /* Push up above rounded bottom corner */
+    }
+
+    .profile-card::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+    }
+
+    .profile-card::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Add padding to the creation body content so it doesn't touch edges */
+    .creation-body,
+    .creation-view {
+        padding: 10px !important;
+    }
+
+    /* --- SEARCH ICONS DESKTOP FIX --- */
+    .fake-search {
+        position: relative;
+    }
+
+    .search-icon,
+    .search-back-btn {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        margin: 0;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Default: Magnifier Visible, Back Arrow Hidden */
+    .search-icon {
+        opacity: 1;
+        transform: translateY(-50%) rotate(0deg) scale(1);
+    }
+
+    .search-back-btn {
+        opacity: 0;
+        transform: translateY(-50%) rotate(-90deg) scale(0.5);
+        pointer-events: none;
+    }
+
+    /* Active State: Magnifier Hidden, Back Arrow Visible */
+    body.mobile-search-active .search-icon {
+        opacity: 0;
+        transform: translateY(-50%) rotate(90deg) scale(0.5);
+    }
+
+    body.mobile-search-active .search-back-btn {
+        opacity: 1;
+        transform: translateY(-50%) rotate(0deg) scale(1);
+        pointer-events: auto;
+    }
+
+    .fake-search input {
+        padding-left: 28px;
+    }
+
+    /* --- SEARCH SLIDE UP EFFECT FOR DESKTOP --- */
+    /* Collapse Header and Favorites when search is active */
+    body.mobile-search-active .brand-header {
+        margin-top: calc(var(--search-move-up, 140px) * -1);
+        opacity: 0;
+        pointer-events: none;
+        transition: margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    }
+
+    body.mobile-search-active .favorites-section {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    /* Add top padding to search input so it doesn't hit the top edge */
+    .search-trigger {
+        padding-top: 20px !important;
+    }
+
+    /* Ensure transitions exist on base elements for smooth revert */
+    .brand-header {
+        transition: margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    }
+
+    .favorites-section {
+        transition: opacity 0.2s ease;
+    }
+
+    .fake-search input {
+        padding-left: 28px;
+    }
+
+    .profile-card>*,
+    .profile-card.modern-profile>* {
+        max-width: 100%;
+    }
+
+    /* Sticker Panel Position for Desktop */
+    .sticker-panel {
+        position: absolute;
+        /* Relative to main-column or body */
+        width: 400px;
+        /* Fixed width */
+        left: 450px;
+        /* Rail (72) + Sidebar (348) approx + margin */
+        bottom: 90px;
+        border-radius: 16px;
+        z-index: 3000;
+    }
+
+    /* Tweak Sidebar List Items for desktop comfort */
+    .user-item,
+    .chat-card {
+        padding: 12px 10px;
+    }
+
+    .user-item:hover,
+    .chat-card:hover {
+        background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .user-item.active,
+    .chat-card.active {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-left: 3px solid var(--accent);
+        /* Indicator */
+    }
+}

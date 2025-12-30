@@ -59,14 +59,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.endsWith('.webp') || url.pathname.includes('/Animated-Emojis/')) {
+  if (url.pathname.endsWith('.webp') || url.pathname.includes('/Animated-Emojis/') || url.hostname === 'raw.githubusercontent.com') {
     event.respondWith(
       caches.open(CACHE_EMOJI_NAME).then((cache) => {
         return cache.match(request).then((response) => {
           if (response) {
             return response;
           }
-          return fetch(request).then((networkRes) => {
+          return fetch(request, { mode: 'cors' }).then((networkRes) => {
             cache.put(request, networkRes.clone());
             return networkRes;
           });

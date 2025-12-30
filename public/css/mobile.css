@@ -1,3 +1,7 @@
+.desktop-only {
+    display: none !important;
+}
+
 @media (max-width: 768px) {
 
     body {
@@ -17,6 +21,9 @@
         border: none;
         display: flex;
         height: 100%;
+        overflow-y: hidden;
+        background-color: #050505;
+        /* isolation: isolate; REMOVED to fix stacking context for Dock vs Settings */
     }
 
     .main-column {
@@ -104,6 +111,8 @@
         bottom: 0;
         width: 100%;
         padding: 0;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+        will-change: transform;
     }
 
     .floating-dock {
@@ -120,5 +129,120 @@
         background: rgba(10, 10, 12, 0.95);
         /* Slightly darker/solid for nav bar */
         backdrop-filter: blur(20px);
+    }
+
+    /* --- MOBILE SEARCH BEHAVIOR (MARGIN-FIT) --- */
+
+    /*
+       WHY MARGIN?: "Transform" moves the element but leaves a gap at the bottom (Black Box)
+       because the container does not resize. To fill the screen (especially with keyboard),
+       we MUST physically collapse the header space.
+       
+       OPTIMIZATION: We use 'will-change: margin-top' to hint the browser.
+       We DO NOT change padding on the search bar during animation to avoid internal reflows.
+    */
+
+    .brand-header {
+        transition: margin-top 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out;
+        will-change: margin-top;
+        opacity: 1;
+        transform: translateZ(0);
+        /* GPU Hint */
+    }
+
+    .favorites-section {
+        transition: opacity 0.2s ease-out;
+        opacity: 1;
+        transform: translateZ(0);
+    }
+
+    body.mobile-search-active .brand-header {
+        /* This physically collapses the space, forcing the flex list to grow and fill the bottom gap */
+        margin-top: calc(var(--header-height, 140px) * -1);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    body.mobile-search-active .favorites-section {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Search Container */
+    .search-trigger {
+        /* Sticky ensures it latches to the top as we scroll/move */
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #050505;
+
+        transition: background 0.2s ease;
+        padding-bottom: 10px;
+        /* Keep padding stable */
+    }
+
+    body.mobile-search-active .search-trigger {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Users list grows automatically due to flex layout when header collapses */
+    body.mobile-search-active .users-list {
+        padding-bottom: 20px !important;
+        /* override the default 100px so no bottom gap */
+    }
+
+
+    /* Aggressively hide bottom elements so they don't float over keyboard */
+    body.mobile-search-active .floating-dock-container,
+    body.mobile-search-active .sticker-panel,
+    body.mobile-search-active .scroll-bottom-btn,
+    body.mobile-search-active .composer {
+        display: none !important;
+    }
+
+    /* --- ICON ANIMATION --- */
+    .fake-search {
+        position: relative;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .fake-search input {
+        margin-left: 28px;
+        width: calc(100% - 28px);
+        transition: all 0.2s ease;
+    }
+
+    .search-icon,
+    .search-back-btn {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        margin: 0;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Magnifier */
+    .search-icon {
+        opacity: 1;
+        transform: translateY(-50%) rotate(0deg) scale(1);
+    }
+
+    /* Back Arrow */
+    .search-back-btn {
+        opacity: 0;
+        transform: translateY(-50%) rotate(-90deg) scale(0.5);
+        pointer-events: none;
+    }
+
+    /* Active States */
+    body.mobile-search-active .search-icon {
+        opacity: 0;
+        transform: translateY(-50%) rotate(90deg) scale(0.5);
+    }
+
+    body.mobile-search-active .search-back-btn {
+        opacity: 1;
+        transform: translateY(-50%) rotate(0deg) scale(1);
+        pointer-events: auto;
     }
 }

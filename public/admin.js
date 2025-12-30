@@ -7,7 +7,7 @@ async function checkAuth() {
         if (!user.is_admin) window.location.href = '/';
 
         document.getElementById('adminNameDisplay').textContent = user.display_name || user.username;
-        const avatarUrl = (user.avatar && user.avatar.startsWith('http')) ? user.avatar : '/profile.png';
+        const avatarUrl = (user.avatar && user.avatar.startsWith('http')) ? user.avatar : '/assets/profile.png';
         document.getElementById('adminAvatarDisplay').style.backgroundImage = `url('${avatarUrl}')`;
 
     } catch (e) {
@@ -232,7 +232,7 @@ function renderReports(reports) {
         tr.innerHTML = `
             <td>
                 <div class="user-cell">
-                    <div class="u-avatar-sm" style="background-image: url('${r.reporter_avatar || '/profile.png'}')"></div>
+                    <div class="u-avatar-sm" style="background-image: url('${r.reporter_avatar || '/assets/profile.png'}')"></div>
                     <span>${r.reporter_username || 'Anon'}</span>
                 </div>
             </td>

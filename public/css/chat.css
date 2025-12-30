@@ -5,6 +5,7 @@
     align-items: center;
     padding: 0 20px;
     justify-content: space-between;
+    background: rgba(15, 15, 20, 0.85);
     backdrop-filter: blur(20px);
     z-index: 10;
 }
@@ -62,7 +63,7 @@
 
 .message {
     max-width: 100%;
-    padding: 10px 14px;
+    padding: 8px 12px;
     border-radius: 14px;
     font-size: 15px;
     line-height: 1.4;
@@ -85,7 +86,7 @@
 
 .message.other {
     align-self: flex-start;
-    background: #1f1f22;
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 18px 18px 18px 4px;
 }
@@ -131,7 +132,6 @@
 
 .composer {
     padding: 10px 15px 15px;
-    border-top: 1px solid var(--border);
     flex-shrink: 0;
     z-index: 20;
     padding-bottom: calc(15px + env(safe-area-inset-bottom));
@@ -1345,7 +1345,7 @@
 
 /* Pinned Message Bar */
 .pinned-message-bar {
-    z-index: 1;
+    z-index: 10;
     position: absolute;
     top: 64px;
     left: 0;
@@ -1532,4 +1532,20 @@
     justify-content: center;
     color: #333;
     font-size: 12px;
+}
+
+/* Blink animation for replied message target - Subtle transparent accent */
+@keyframes highlightPulse {
+    0% {
+        background-color: color-mix(in srgb, var(--accent), transparent 70%);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+
+.highlight-reply-target {
+    animation: highlightPulse 2s ease-out;
 }
