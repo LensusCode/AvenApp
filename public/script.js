@@ -1044,12 +1044,12 @@ function insertEmojiAtCursor(url) {
 
 
     const img = document.createElement('img');
+    img.crossOrigin = "Anonymous";
     img.src = url;
     img.className = 'inline-emoji';
     img.dataset.original = url;
 
 
-    img.crossOrigin = "Anonymous";
     freezeImage(img, false);
 
     const sel = window.getSelection();
@@ -2621,9 +2621,21 @@ function sendMessage(content, type, replyId = null) {
     appendMessageUI(content, 'me', new Date(), `temp-${tempId}`, type, rd, 0, null, 0, myUser.id, "Tú", 'sending');
     messagesList.scrollTop = messagesList.scrollHeight;
     scrollToBottom(true);
+
+    // Optimistic Sidebar Update
+    updateSidebarWithNewMessage(
+        String(currentTargetUserId).startsWith('c_') ? currentTargetUserId : currentTargetUserId,
+        content,
+        type,
+        new Date()
+    );
 }
 
 socket.on('private message', (msg) => {
+    console.log('[DEBUG] Received private message:', msg);
+    // Immediately mark as delivered since we received it via socket
+    socket.emit('mark messages delivered', { senderId: msg.fromUserId });
+
     if (currentTargetUserId === msg.fromUserId) {
 
         const scrollContainer = messagesList.parentNode;
@@ -2650,9 +2662,18 @@ socket.on('private message', (msg) => {
             scrollToBottom(true);
         }
     }
+
+    // Update sidebar for incoming message
+    // If it's a private message, fromUserId is the other person.
+    // If it is a channel message (which comes via 'channel_message' event, not this one usually), we handle there.
+    // But 'private message' event is also used for DM.
+
+    updateSidebarWithNewMessage(msg.fromUserId, msg.content, msg.type, msg.timestamp);
+
 });
 
 socket.on('messages delivered', ({ toUserId }) => {
+    console.log('[DEBUG] messages delivered event for user:', toUserId);
     // I am the sender, my messages to toUserId are now delivered
     // Update UI for all 'sent' messages to 'received'
     if (currentTargetUserId == toUserId) {
@@ -2666,11 +2687,14 @@ socket.on('messages delivered', ({ toUserId }) => {
 });
 
 socket.on('messages read', ({ toUserId }) => {
+    console.log('[DEBUG] messages read event for user:', toUserId);
     // I am the sender, my messages to toUserId are now read
     // Update UI for all unread messages
     if (currentTargetUserId == toUserId) {
         document.querySelectorAll('.message-row.me').forEach(row => {
             const icon = row.querySelector('.status-icon');
+            // Update anything that isn't already read
+            // Note: A 'received' message should also become 'read'
             if (icon && !icon.classList.contains('status-read')) {
                 icon.className = 'status-icon status-read';
             }
@@ -2679,19 +2703,153 @@ socket.on('messages read', ({ toUserId }) => {
 });
 
 socket.on('message deleted', ({ messageId }) => {
-    const el = getEl(`msg-${messageId}`);
-    if (!el) return;
-    const row = el.closest('.message-row');
-    if (myUser?.is_admin) {
-        const wrap = row.querySelector('.message-content-wrapper');
-        if (wrap && !wrap.classList.contains('deleted-msg')) {
-            wrap.classList.add('deleted-msg');
-            wrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
-            wrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>`);
+    console.log(`[SOCKET] DELETE EVENT. ID: ${messageId}, Type: ${typeof messageId}`);
+
+    // Check user status
+    const isAdmin = myUser && myUser.is_admin;
+    console.log(`[SOCKET] User Admin Status: ${isAdmin}`);
+
+    // Try finding elements
+    const rowId = `row-${messageId}`;
+    const wrapId = `msg-${messageId}`;
+    const row = document.getElementById(rowId);
+    const contentWrap = document.getElementById(wrapId);
+
+    console.log(`[SOCKET] Elements found? Row: ${!!row} (#${rowId}), Wrap: ${!!contentWrap} (#${wrapId})`);
+
+    // --- SIDEBAR UPDATE LOGIC ---
+    if (row) updateSidebarPreviewAfterDeletion(row, messageId);
+    else if (contentWrap) {
+        const parentRow = contentWrap.closest('.message-row');
+        if (parentRow) updateSidebarPreviewAfterDeletion(parentRow, messageId);
+    }
+
+    if (false) { // DISABLE OLD LOGIC
+        // If the deleted message is the last one in the current view, update the sidebar preview.
+        try {
+            if (currentTargetUserId) {
+                // Find the actual last message row (ignoring date dividers if any)
+                let lastRow = messagesList.lastElementChild;
+                // Iterate backwards to find a message row, skipping non-message rows
+                while (lastRow && (!lastRow.classList.contains('message-row') || lastRow.classList.contains('date-divider'))) {
+                    lastRow = lastRow.previousElementSibling;
+                }
+
+                // Check if the found lastRow is the one being deleted
+                // The row being deleted might be 'lastRow' if it hasn't been removed yet
+                // Or it might be 'contentWrap' inside 'lastRow'
+                const isDeletingLast = lastRow && (lastRow.id === rowId || (contentWrap && lastRow.contains(contentWrap)));
+
+                if (isDeletingLast) {
+                    console.log("[SOCKET] Deleted message was the last one. Finding new last message...");
+
+                    // Find the NEW last message (the one before the deleted one)
+                    let newLastRow = lastRow.previousElementSibling;
+                    while (newLastRow && (!newLastRow.classList.contains('message-row') || newLastRow.classList.contains('date-divider'))) {
+                        newLastRow = newLastRow.previousElementSibling;
+                    }
+
+                    let newPreview = '';
+                    let newTime = null;
+
+                    if (newLastRow) {
+                        // Extract content from newLastRow
+                        if (newLastRow.querySelector('.chat-image')) {
+                            newPreview = '📷 Foto';
+                        } else if (newLastRow.querySelector('.sticker-img')) {
+                            newPreview = '✨ Sticker';
+                        } else if (newLastRow.querySelector('.custom-audio-player')) {
+                            newPreview = '🎤 Audio';
+                        } else {
+                            // Text content
+                            // Clone to avoid modifying DOM
+                            const inner = newLastRow.querySelector('.message-inner');
+                            if (inner) {
+                                const clone = inner.cloneNode(true);
+                                // Remove meta (time, ticks)
+                                const meta = clone.querySelector('.meta-row');
+                                if (meta) meta.remove();
+                                // Remove quoted message if any
+                                const quote = clone.querySelector('.quoted-message');
+                                if (quote) quote.remove();
+
+                                newPreview = clone.innerText.trim();
+                            }
+                        }
+
+                        // Try to get timestamp
+                        if (newLastRow.dataset.timestamp) {
+                            newTime = parseInt(newLastRow.dataset.timestamp);
+                        }
+                    } else {
+                        // No more messages
+                        newPreview = '';
+                    }
+
+                    console.log(`[SOCKET] New sidebar preview: "${newPreview}"`);
+
+                    if (currentChatType === 'channel') {
+                        // Channel Logic
+                        const actualId = currentTargetUserId.startsWith('c_') ? currentTargetUserId.substring(2) : currentTargetUserId;
+                        const ch = myChannels.find(c => c.id == actualId);
+                        if (ch) {
+                            ch.last_message = newPreview;
+                            if (newTime) ch.last_message_time = newTime;
+                            renderMixedSidebar();
+                        }
+                    } else {
+                        // Direct Message Logic
+                        const u = allUsersCache.find(x => x.userId == currentTargetUserId);
+                        if (u) {
+                            u.lastMessage = newPreview;
+                            if (newTime) u.lastMessageTime = newTime;
+                            renderMixedSidebar();
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("[SOCKET] Error updating sidebar:", err);
+        }
+    } // END DISABLED OLD LOGIC
+    // -----------------------------
+
+    if (!messageId) return;
+
+    if (isAdmin) {
+        console.log("[SOCKET] Processing as ADMIN (Marking as deleted)");
+        if (contentWrap) {
+            if (!contentWrap.classList.contains('deleted-msg')) {
+                contentWrap.classList.add('deleted-msg');
+                contentWrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
+                contentWrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>`);
+                console.log("[SOCKET] Marked as deleted successfully");
+            } else {
+                console.log("[SOCKET] Already marked as deleted");
+            }
+        } else {
+            console.warn("[SOCKET] Could not find content wrapper to mark as deleted");
         }
     } else {
-        row.style.cssText = "opacity:0; transition: opacity 0.3s";
-        setTimeout(() => row.remove(), 300);
+        console.log("[SOCKET] Processing as USER (Removing)");
+        if (row) {
+            row.style.cssText = "opacity:0; transition: opacity 0.3s; transform: scale(0.9);";
+            setTimeout(() => {
+                row.remove();
+                console.log("[SOCKET] Row removed from DOM");
+            }, 300);
+        } else if (contentWrap) {
+            console.log("[SOCKET] Fallback: Removing via wrapper parent");
+            const parentRow = contentWrap.closest('.message-row');
+            if (parentRow) {
+                parentRow.style.cssText = "opacity:0; transition: opacity 0.3s; transform: scale(0.9);";
+                setTimeout(() => parentRow.remove(), 300);
+            } else {
+                console.warn("[SOCKET] Could not find parent row via wrapper");
+            }
+        } else {
+            console.warn("[SOCKET] Element not found for removal");
+        }
     }
 });
 
@@ -2759,14 +2917,14 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     if (senderName) li.dataset.senderName = senderName;
 
 
-    let layoutClass = 'layout-col';
+    let innerLayoutClass = '';
 
     if (msgType === 'text') {
 
         const visualContent = content.replace(/\[emoji:(.*?)\]/g, "xx");
 
-        if (visualContent.length < 32 && !content.includes('\n') && !replyData) {
-            layoutClass = 'layout-row';
+        if (visualContent.length < 30 && !content.includes('\n')) {
+            innerLayoutClass = 'row-align';
         }
     }
 
@@ -2788,6 +2946,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
             bodyHtml = `
                 <div class="skeleton-wrapper emoji-skeleton-large">
                     <img src="${escapeHtml(url)}" 
+                         crossorigin="anonymous"
                          class="animated-emoji-sticker hidden-media" 
                          data-original="${escapeHtml(url)}"
                          loading="lazy" 
@@ -2803,7 +2962,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
                     if (part) finalHtml += linkify(part);
                 } else {
-                    finalHtml += `<img src="${escapeHtml(part)}" class="inline-emoji" data-original="${escapeHtml(part)}" decoding="async">`;
+                    finalHtml += `<img src="${escapeHtml(part)}" crossorigin="anonymous" class="inline-emoji" data-original="${escapeHtml(part)}" decoding="async">`;
                 }
             }
             bodyHtml = `<span>${finalHtml}</span>`;
@@ -2864,8 +3023,11 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     li.innerHTML = `
         <div class="swipe-reply-icon"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
         
-        <div class="message-content-wrapper message ${ownerType} ${isDeleted ? 'deleted-msg' : ''} ${msgType === 'image' ? 'msg-image-wrapper' : ''} ${stickerBubbleClass} ${layoutClass}" id="msg-${msgId}" ${isDeleted ? 'style="border:1px dashed #ef4444;opacity:0.7"' : ''}>
-            ${deletedLabel}${quoteHtml}${bodyHtml}${meta}
+        <div class="message-content-wrapper message ${ownerType} ${isDeleted ? 'deleted-msg' : ''} ${msgType === 'image' ? 'msg-image-wrapper' : ''} ${stickerBubbleClass} layout-col" id="msg-${msgId}" ${isDeleted ? 'style="border:1px dashed #ef4444;opacity:0.7"' : ''}>
+            ${deletedLabel}${quoteHtml}
+            <div class="message-inner ${innerLayoutClass}">
+                ${bodyHtml}${meta}
+            </div>
         </div>`;
 
     messagesList.appendChild(li);
@@ -3014,7 +3176,21 @@ function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
         const diff = e.touches[0].clientX - startX;
         if (diff > 0 && diff < 200) { currentX = diff; wrap.style.transform = `translateX(${diff}px)`; const p = Math.min(diff / 70, 1); icon.style.opacity = p; icon.style.transform = `translateY(-50%) scale(${0.5 + p * 0.5})`; icon.style.left = '10px'; }
     }, { passive: true });
-    const end = () => { if (!isSwiping) return; isSwiping = false; wrap.style.transition = 'transform 0.2s ease'; icon.style.transition = 'all 0.2s'; if (currentX >= 70) { if (navigator.vibrate) navigator.vibrate(30); setReply(msgId, content, type, ownerId); } wrap.style.transform = 'translateX(0)'; icon.style.opacity = '0'; };
+    const end = () => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        wrap.style.transition = 'transform 0.2s ease';
+        icon.style.transition = 'all 0.2s';
+        if (currentX >= 70) {
+            if (navigator.vibrate) navigator.vibrate(30);
+            // FIX: Get current ID
+            let currentId = msgId;
+            if (wrap.id && wrap.id.startsWith('msg-')) currentId = wrap.id.substring(4);
+            setReply(currentId, content, type, ownerId);
+        }
+        wrap.style.transform = 'translateX(0)';
+        icon.style.opacity = '0';
+    };
     wrap.addEventListener('touchend', end); wrap.addEventListener('touchcancel', end);
 }
 function addLongPressEvent(el, msgId) {
@@ -3027,7 +3203,19 @@ function addLongPressEvent(el, msgId) {
         el.classList.add('pressing');
         const cx = e.clientX || e.touches[0].clientX;
         const cy = e.clientY || e.touches[0].clientY;
-        timer = setTimeout(() => openContextMenu(cx, cy, msgId), 600);
+
+        // FIX: Get current ID from element to avoid stale temp ID
+        let currentId = msgId;
+        if (el.id && el.id.startsWith('msg-')) {
+            currentId = el.id.substring(4); // Remove 'msg-'
+        } else if (el.closest('.message-row')) {
+            const row = el.closest('.message-row');
+            if (row.id && row.id.startsWith('row-')) {
+                currentId = row.id.substring(4);
+            }
+        }
+
+        timer = setTimeout(() => openContextMenu(cx, cy, currentId), 600);
     };
 
     const cancel = () => {
@@ -3197,13 +3385,36 @@ getEl('btnCancelDelete')?.addEventListener('click', closeDeleteModal);
 
 
 function removeMessageFromUI(msgId) {
-    const el = document.getElementById(`msg-${msgId}`);
-    if (el) {
-        const row = el.closest('.message-row');
+    // Intenta encontrar por fila completa primero
+    let row = document.getElementById(`row-${msgId}`);
+
+    // SIDEBAR UPDATE: Call before removing
+    if (row) {
+        updateSidebarPreviewAfterDeletion(row, msgId);
+    } else {
+        // Try to find via wrapper if row not found directly (though unlikely for valid rows)
+        const contentWrap = document.getElementById(`msg-${msgId}`);
+        if (contentWrap) {
+            const parentRow = contentWrap.closest('.message-row');
+            if (parentRow) updateSidebarPreviewAfterDeletion(parentRow, msgId);
+        }
+    }
+
+    // Fallback: intentar encontrar por wrapper de contenido
+    if (!row) {
+        const contentWrap = document.getElementById(`msg-${msgId}`);
+        if (contentWrap) {
+            row = contentWrap.closest('.message-row');
+        }
+    }
+
+    if (row) {
         row.style.transition = "all 0.3s ease";
         row.style.opacity = "0";
         row.style.transform = "scale(0.9)";
         setTimeout(() => row.remove(), 300);
+    } else {
+        console.warn("[UI] No se pudo encontrar el elemento para eliminar:", msgId);
     }
 }
 
@@ -4695,6 +4906,17 @@ sendMessage = function (content, type, replyId = null) {
             type,
             replyToId: replyId
         });
+
+        // Optimistic sidebar update for channels
+        updateSidebarWithNewMessage(channelId, content, type, new Date());
+
+        // Optimistic UI append for channels? 
+        // The original logic didn't seem to have it, relying on socket 'channel_message' 
+        // or maybe it assumed 'private message' callback would handle it?
+        // Actually, the original sendMessage (lines 2618) DOES optimistic append.
+        // But here we are bypassing it. 
+        // Let's at least add the sidebar update which is the request.
+
     } else {
         originalSendMessage(content, type, replyId);
     }
@@ -4706,6 +4928,9 @@ socket.on('channel_message', (msg) => {
         appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, null, 0, msg.caption, 0, msg.fromUserId, msg.username);
         scrollToBottom(true);
     }
+
+    // Update sidebar for channel message
+    updateSidebarWithNewMessage(msg.channelId, msg.content, msg.type, msg.timestamp);
 });
 
 socket.on('channels_update', () => {
@@ -7513,3 +7738,152 @@ if (document.readyState === 'loading') {
     setupSettingsNavigation();
 }
 
+
+// Helper to update sidebar when a message is deleted
+function updateSidebarPreviewAfterDeletion(deletedRow, deletedMsgId) {
+    try {
+        if (!currentTargetUserId) return;
+
+        // Find the actual last message row in the list
+        // We need to check if 'deletedRow' IS the last row.
+        let lastRow = messagesList.lastElementChild;
+        while (lastRow && (!lastRow.classList.contains('message-row') || lastRow.classList.contains('date-divider'))) {
+            lastRow = lastRow.previousElementSibling;
+        }
+
+        // Check if the row being deleted is indeed the last one
+        // Note: deletedRow might be the same object as lastRow
+        // Also check by ID if row references differ
+        const isDeletingLast = lastRow && (lastRow === deletedRow || lastRow.id === `row-${deletedMsgId}` || (deletedRow.contains && lastRow.contains(deletedRow)));
+
+        if (isDeletingLast) {
+            console.log("[SIDEBAR-UPDATE] Deleting last message. Updating preview...");
+
+            // Find the NEW last message (the one before the deleted one)
+            let newLastRow = lastRow.previousElementSibling;
+            while (newLastRow && (!newLastRow.classList.contains('message-row') || newLastRow.classList.contains('date-divider'))) {
+                newLastRow = newLastRow.previousElementSibling;
+            }
+
+            let newPreview = '';
+            let newTime = null;
+
+            if (newLastRow) {
+                // Extract content from newLastRow
+                const isImage = newLastRow.querySelector('.chat-image') || newLastRow.querySelector('.msg-image-wrapper');
+                const isSticker = newLastRow.querySelector('.sticker-img') || newLastRow.classList.contains('sticker-wrapper');
+                const isAudio = newLastRow.querySelector('.custom-audio-player');
+
+                if (isImage) {
+                    newPreview = '📷 Foto';
+                } else if (isSticker) {
+                    newPreview = '✨ Sticker';
+                } else if (isAudio) {
+                    newPreview = '🎤 Audio';
+                } else {
+                    // Text content
+                    const inner = newLastRow.querySelector('.message-inner');
+                    if (inner) {
+                        const clone = inner.cloneNode(true);
+                        // Remove meta, quotes, deleted labels
+                        const toRemove = clone.querySelectorAll('.meta-row, .quoted-message, .deleted-label, .edited-label');
+                        toRemove.forEach(el => el.remove());
+
+                        newPreview = clone.innerText.trim();
+                    }
+                }
+
+                if (newLastRow.dataset.timestamp) {
+                    newTime = parseInt(newLastRow.dataset.timestamp);
+                }
+            } else {
+                // Chat is now empty
+                newPreview = '';
+            }
+
+            console.log(`[SIDEBAR-UPDATE] New preview text: "${newPreview}"`);
+
+            if (currentChatType === 'channel') {
+                const actualId = currentTargetUserId.startsWith('c_') ? currentTargetUserId.substring(2) : currentTargetUserId;
+                const ch = myChannels.find(c => c.id == actualId);
+                if (ch) {
+                    ch.last_message = newPreview;
+                    if (newTime) ch.last_message_time = newTime;
+                    renderMixedSidebar();
+                }
+            } else {
+                const u = allUsersCache.find(x => x.userId == currentTargetUserId);
+                if (u) {
+                    u.lastMessage = newPreview;
+                    if (newTime) u.lastMessageTime = newTime;
+                    renderMixedSidebar();
+                }
+            }
+        }
+    } catch (err) {
+        console.error("[SIDEBAR-UPDATE] Error:", err);
+    }
+}
+
+// --- SIDEBAR UPDATE HELPER ---
+function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
+    try {
+        console.log(`[SIDEBAR-UPDATE] Updating for ${targetId}: ${content} (${type})`);
+
+        let preview = content;
+        if (type === 'image') preview = '📷 Foto';
+        else if (type === 'sticker') preview = '✨ Sticker';
+        else if (type === 'audio') preview = '🎤 Audio';
+
+        // Handle encrypted or special messages if needed
+        if (preview && typeof preview === 'string' && preview.startsWith('{"iv":')) preview = "🔒 Mensaje encriptado";
+
+        // Check if channel
+        // targetId might be 'c_123' or just '123' depending on context. 
+        // We need to handle both if possible, but usually pure ID is passed.
+        // Let's assume ID is passed without prefix, or handle prefix.
+
+        let isChannel = false;
+        let cleanId = targetId;
+
+        if (String(targetId).startsWith('c_')) {
+            isChannel = true;
+            cleanId = String(targetId).substring(2);
+        }
+
+        // Try to find in channels first if we suspect it might be a channel
+        // or check currentChatType if targetId matches currentTarget
+        if (!isChannel) {
+            const ch = myChannels.find(c => c.id == targetId);
+            if (ch) {
+                isChannel = true;
+                cleanId = targetId;
+            }
+        }
+
+        if (isChannel) {
+            const ch = myChannels.find(c => c.id == cleanId);
+            if (ch) {
+                ch.last_message = preview;
+                ch.last_message_time = new Date(timestamp).getTime();
+                // Move to top logic can be complex with channels mixed, 
+                // but usually renderMixedSidebar sorts by online/activity? 
+                // Currently it sorts users by online. Channels are just listed.
+                // If we want to sort channels by recent message, we might need to change renderMixedSidebar.
+                // For now, just updating text is enough.
+                renderMixedSidebar();
+            }
+        } else {
+            // It's a user
+            const u = allUsersCache.find(x => x.userId == targetId);
+            if (u) {
+                u.lastMessage = preview;
+                u.lastMessageTime = new Date(timestamp).getTime();
+                renderMixedSidebar();
+            }
+        }
+
+    } catch (e) {
+        console.error("[SIDEBAR-UPDATE] Error updating sidebar:", e);
+    }
+}
