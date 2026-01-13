@@ -1,7 +1,7 @@
-const CACHE_STATIC_NAME = 'aven-static-v2.0.0';
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v2.0.0';
-const CACHE_IMG_NAME = 'aven-images-v2.0.0';
-const CACHE_EMOJI_NAME = 'aven-emojis-v2.0.0';
+const CACHE_STATIC_NAME = 'aven-static-v2.0.2';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v2.0.2';
+const CACHE_IMG_NAME = 'aven-images-v2.0.2';
+const CACHE_EMOJI_NAME = 'aven-emojis-v2.0.2';
 const CACHE_LIMIT = 50;
 
 const urlsToCache = [
@@ -11,8 +11,7 @@ const urlsToCache = [
   '/script.js',
   '/manifest.json',
   '/offline.html',
-  '/profile.png',
-  '/profile.png'
+  '/assets/profile.png'
 ];
 
 const trimCache = (cacheName, maxItems) => {
@@ -63,12 +62,19 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE_EMOJI_NAME).then((cache) => {
         return cache.match(request).then((response) => {
-          if (response) {
-            return response;
-          }
-          return fetch(request, { mode: 'cors' }).then((networkRes) => {
-            cache.put(request, networkRes.clone());
+          if (response) return response;
+          // Force CORS and omit credentials to enable successful caching without opaque padding
+          return fetch(request, { mode: 'cors', credentials: 'omit' }).then((networkRes) => {
+            if (networkRes.status === 200) {
+              cache.put(request, networkRes.clone());
+            }
             return networkRes;
+          }).catch((err) => {
+            console.error('Fetch failed for:', request.url, err);
+            return new Response('Network error happened', {
+              status: 408,
+              headers: { 'Content-Type': 'text/plain' },
+            });
           });
         });
       })
@@ -81,7 +87,8 @@ self.addEventListener('fetch', (event) => {
       caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
         return fetch(request)
           .then((response) => {
-            if (response.status === 200) {
+            // Only cache successful, non-opaque responses
+            if (response.status === 200 && response.type !== 'opaque') {
               cache.put(request, response.clone());
               trimCache(CACHE_DYNAMIC_NAME, 30);
             }
@@ -101,13 +108,21 @@ self.addEventListener('fetch', (event) => {
         return cache.match(request).then((response) => {
           if (response) return response;
 
-          return fetch(request).then((networkResponse) => {
-            cache.put(request, networkResponse.clone());
-            trimCache(CACHE_IMG_NAME, 60);
-            return networkResponse;
-          }).catch(() => {
-            return caches.match('/assets/default-avatar.png');
-          });
+          // Attempt to fetch with CORS to avoid opaque response padding
+          return fetch(request.url, { mode: 'cors', credentials: 'omit' })
+            .then((networkResponse) => {
+              if (networkResponse.status === 200) {
+                cache.put(request, networkResponse.clone());
+                trimCache(CACHE_IMG_NAME, 60);
+              }
+              return networkResponse;
+            })
+            .catch(() => {
+              // Fallback to standard fetch if CORS fails (but don't cache it to avoid padding)
+              return fetch(request).catch(() => {
+                return caches.match('/assets/default-avatar.png');
+              });
+            });
         });
       })
     );
@@ -116,13 +131,13 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(request).then((response) => {
-      if (response) {
-        return response;
-      }
+      if (response) return response;
       return fetch(request)
         .then((res) => {
           return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-            cache.put(request, res.clone());
+            if (res.status === 200 && res.type !== 'opaque') {
+              cache.put(request, res.clone());
+            }
             return res;
           });
         })

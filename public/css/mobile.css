@@ -111,7 +111,7 @@
         bottom: 0;
         width: 100%;
         padding: 0;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: transform;
     }
 
@@ -143,7 +143,7 @@
     */
 
     .brand-header {
-        transition: margin-top 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out;
+        transition: margin-top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: margin-top;
         opacity: 1;
         transform: translateZ(0);
@@ -151,7 +151,7 @@
     }
 
     .favorites-section {
-        transition: opacity 0.2s ease-out;
+        transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         opacity: 1;
         transform: translateZ(0);
     }

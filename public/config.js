@@ -14,11 +14,7 @@ const SOCKET_URL = API_BASE_URL || window.location.origin;
 
 // Mostrar un alert visible para debugging (se verá en la app)
 if (IS_NATIVE) {
-    console.log('🚀 Modo MÓVIL - Conectando a:', API_BASE_URL);
-    // Alert temporal para confirmar que config.js se carga
-    setTimeout(() => {
-        alert('Config cargado: Modo MÓVIL\nURL: ' + API_BASE_URL);
-    }, 500);
+
 } else {
-    console.log('🌐 Modo WEB - Rutas relativas');
+
 }

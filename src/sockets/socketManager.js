@@ -76,14 +76,13 @@ const initSocket = (server) => {
                 db.get(`SELECT owner_id FROM channels WHERE id = ?`, [toChannelId], (err, channelRow) => {
                     if (err || !channelRow) return;
                     if (channelRow.owner_id !== userId) {
-                        console.log(`Usuario ${userId} intentó escribir en canal ${toChannelId} sin permiso.`);
                         return;
                     }
 
                     db.run(`INSERT INTO messages (from_user_id, channel_id, content, type, reply_to_id, caption) VALUES (?, ?, ?, ?, ?, ?)`,
                         [userId, toChannelId, encryptedContent, type, replyToId, encryptedCaption],
                         function (err) {
-                            if (err) return console.error("Error insertando mensaje canal:", err.message);
+                            if (err) return;
 
                             const newMessageId = this.lastID;
                             const payload = {
@@ -102,7 +101,7 @@ const initSocket = (server) => {
                         });
                 });
             } else {
-                db.run(`INSERT INTO messages (from_user_id, to_user_id, content, type, reply_to_id, caption) VALUES (?, ?, ?, ?, ?, ?)`,
+                db.run(`INSERT INTO messages (from_user_id, to_user_id, content, type, reply_to_id, caption, status) VALUES (?, ?, ?, ?, ?, ?, 'sent')`,
                     [userId, toUserId, encryptedContent, type, replyToId, encryptedCaption],
                     function (err) {
                         if (err) return;
@@ -117,6 +116,7 @@ const initSocket = (server) => {
                                 timestamp: new Date().toISOString(),
                                 caption: caption,
                                 replyToId: replyToId,
+                                status: 'sent',
                                 reply_content: replyData ? replyData.content : null,
                                 reply_type: replyData ? replyData.type : null,
                                 reply_from_id: replyData ? replyData.from_user_id : null
@@ -239,6 +239,26 @@ const initSocket = (server) => {
                         socket.to(`user_${toUserId}`).emit('message updated', payload);
                     }
                 });
+            });
+        });
+
+        socket.on('mark messages delivered', ({ senderId }) => {
+            const myId = socket.data.userId;
+            // Update all messages from senderId to myId that are 'sent' to 'received'
+            db.run(`UPDATE messages SET status = 'received' WHERE from_user_id = ? AND to_user_id = ? AND status = 'sent'`, [senderId, myId], function (err) {
+                if (!err && this.changes > 0) {
+                    socket.to(`user_${senderId}`).emit('messages delivered', { toUserId: myId });
+                }
+            });
+        });
+
+        socket.on('mark messages read', ({ senderId }) => {
+            const myId = socket.data.userId;
+            // Update all messages from senderId to myId that are not 'read' to 'read'
+            db.run(`UPDATE messages SET status = 'read' WHERE from_user_id = ? AND to_user_id = ? AND status != 'read'`, [senderId, myId], function (err) {
+                if (!err && this.changes > 0) {
+                    socket.to(`user_${senderId}`).emit('messages read', { toUserId: myId });
+                }
             });
         });
 

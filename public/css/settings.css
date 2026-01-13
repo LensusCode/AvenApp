@@ -1,0 +1,284 @@
+/* Settings View Container */
+.settings-view {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Header */
+.settings-header {
+    display: flex;
+    align-items: center;
+    padding: 20px 20px 5px 20px;
+    margin-bottom: 20px;
+}
+
+.settings-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(to right, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Section Styling */
+.settings-section {
+    padding: 0 20px;
+    margin-bottom: 30px;
+}
+
+.section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: 5px;
+}
+
+/* Cards (Glassmorphism) */
+.settings-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+/* Storage Specific Card */
+.storage-card {
+    padding: 20px;
+}
+
+.storage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.storage-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.storage-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.storage-info-text {
+    font-size: 14px;
+    color: #a1a1aa;
+}
+
+/* Progress Bar */
+.storage-progress-bg {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.storage-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+    border-radius: 6px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.storage-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #a1a1aa;
+    margin-bottom: 20px;
+    padding: 0 5px;
+}
+
+.detail-point {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot.app {
+    background: #3b82f6;
+}
+
+.dot.cache {
+    background: #eab308;
+}
+
+.dot.free {
+    background: #3f3f46;
+}
+
+.manage-storage-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.manage-storage-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Settings List Items */
+.setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.setting-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.setting-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Icon Colors */
+.bg-purple {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.bg-green {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.bg-orange {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
+.bg-red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.setting-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.setting-name {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.setting-desc {
+    color: #a1a1aa;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.setting-right {
+    color: #52525b;
+}
+
+/* User Profile Mini-Card in Settings */
+.user-mini-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    cursor: pointer;
+}
+
+.mini-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.mini-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.mini-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.mini-handle {
+    font-size: 13px;
+    color: #a1a1aa;
+}
+
+.forward-icon {
+    margin-left: auto;
+    color: #52525b;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

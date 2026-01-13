@@ -36,6 +36,6 @@ const db = {
     prepare: function (sql) { return { run: (...args) => db.run(sql, args), finalize: () => { } } }
 };
 
-console.log('Conectado a Turso (LibSQL).');
+
 
 module.exports = { db, client };

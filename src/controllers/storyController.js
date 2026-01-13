@@ -13,11 +13,7 @@ exports.createStory = (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Image required' });
 
     const userId = req.user.id;
-    let mediaUrl = req.file.path; // Cloudinary URL
-    // Force WebP
-    if (mediaUrl.includes('/upload/') && !mediaUrl.includes('f_webp')) {
-        mediaUrl = mediaUrl.replace('/upload/', '/upload/f_webp/');
-    }
+    const mediaUrl = req.file.path; // Cloudinary URL
     const caption = req.body.caption ? encrypt(req.body.caption) : null;
     const expiresAt = getExpirationDate();
     const type = 'image'; // Default to image for now

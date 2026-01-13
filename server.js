@@ -41,7 +41,7 @@ const server = http.createServer(app);
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
                 imgSrc: ["'self'", "data:", "blob:", "https://*.giphy.com", "https://media.giphy.com", "https://*.turso.io", "https://res.cloudinary.com", "https://i.pravatar.cc", "https://raw.githubusercontent.com"],
                 mediaSrc: ["'self'", "blob:", "data:", "https://res.cloudinary.com"],
-                connectSrc: ["'self'", "https://*.giphy.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "ws:", "wss:", "data:", "https://*.turso.io"],
+                connectSrc: ["'self'", "https://*.giphy.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "ws:", "wss:", "data:", "https://*.turso.io", "https://res.cloudinary.com", "https://raw.githubusercontent.com", "https://i.pravatar.cc"],
                 upgradeInsecureRequests: null,
             },
         },
@@ -109,5 +109,5 @@ const server = http.createServer(app);
     initSocket(server);
 
     const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => { console.log(`Servidor seguro en http://localhost:${PORT}`); });
+    server.listen(PORT);
 })();

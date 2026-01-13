@@ -40,6 +40,7 @@ async function initDatabase() {
 
         await addColumnSafe('messages', 'is_pinned INTEGER DEFAULT 0');
         await addColumnSafe('messages', 'is_edited INTEGER DEFAULT 0');
+        await addColumnSafe('messages', "status TEXT DEFAULT 'sent'");
 
         await addColumnSafe('messages', 'channel_id INTEGER');
         await addColumnSafe('channels', 'is_public INTEGER DEFAULT 0');
@@ -61,39 +62,26 @@ async function initDatabase() {
         await client.execute(`CREATE INDEX IF NOT EXISTS idx_messages_users ON messages(from_user_id, to_user_id)`);
         await client.execute(`CREATE INDEX IF NOT EXISTS idx_messages_users_reverse ON messages(to_user_id, from_user_id)`);
 
-        console.log("✅ Base de datos verificada y actualizada.");
     } catch (error) {
-        console.error("❌ Error DB Init:", error);
     }
 }
 
 async function fixChannelTables() {
-    console.log("🔧 Intentando reparar tablas de canales...");
-
     try {
         await client.execute("ALTER TABLE channel_members ADD COLUMN role TEXT DEFAULT 'member'");
-        console.log("✅ Columna 'role' agregada.");
     } catch (e) { }
 
     try {
         await client.execute("ALTER TABLE channel_members ADD COLUMN joined_at TEXT");
-        console.log("✅ Columna 'joined_at' agregada.");
         await client.execute("UPDATE channel_members SET joined_at = CURRENT_TIMESTAMP WHERE joined_at IS NULL");
-        console.log("✅ Fechas de unión actualizadas.");
-    } catch (e) {
-        if (!e.message.includes("duplicate column")) console.log("Nota sobre joined_at:", e.message);
-    }
+    } catch (e) { }
 
     try {
         await client.execute(`CREATE TABLE IF NOT EXISTS channel_bans (channel_id INTEGER, user_id INTEGER, banned_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(channel_id, user_id))`);
-        console.log("✅ Tabla 'channel_bans' verificada.");
-    } catch (e) {
-        console.log("Error channel_bans:", e.message);
-    }
+    } catch (e) { }
 
     try {
         await client.execute("ALTER TABLE channels ADD COLUMN private_hash TEXT");
-        console.log("✅ Columna 'private_hash' agregada.");
 
         const crypto = require('crypto');
         const rows = await client.execute("SELECT id FROM channels WHERE private_hash IS NULL");
@@ -108,8 +96,6 @@ async function fixChannelTables() {
 }
 
 async function migrateExistingMessagesToContacts() {
-    console.log("🔄 Migrando usuarios con mensajes a contactos...");
-
     try {
         const result = await client.execute(`
             SELECT DISTINCT 
@@ -143,10 +129,7 @@ async function migrateExistingMessagesToContacts() {
             } catch (e) {
             }
         }
-
-        console.log(`✅ Migración completada: ${count} relaciones de contacto creadas.`);
     } catch (e) {
-        console.error("❌ Error en migración de contactos:", e.message);
     }
 }
 

@@ -38,12 +38,7 @@ exports.getMessages = (req, res) => {
 
 exports.uploadChatImage = (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No se subió imagen' });
-    let imageUrl = req.file.path;
-    // Force WebP if not present
-    if (imageUrl.includes('/upload/') && !imageUrl.includes('f_webp')) {
-        imageUrl = imageUrl.replace('/upload/', '/upload/f_webp/');
-    }
-    res.json({ imageUrl });
+    res.json({ imageUrl: req.file.path });
 };
 
 exports.uploadAudio = (req, res) => {

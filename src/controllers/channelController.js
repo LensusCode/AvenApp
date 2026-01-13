@@ -212,7 +212,6 @@ exports.getChannelMembers = (req, res) => {
         WHERE cm.channel_id = ?`;
     db.all(sql, [req.params.id], (err, rows) => {
         if (err) {
-            console.error("❌ ERROR SQL:", err.message);
             return res.status(500).json({ error: err.message });
         }
         res.json(rows);
@@ -311,13 +310,7 @@ exports.searchChannels = (req, res) => {
         const query = req.query.q || '';
 
         // Detailed Debugging
-        console.log(`[DEBUG] searchChannels called with q="${query}"`);
-        if (!req.user) {
-            console.error("[ERROR] searchChannels: req.user is MISSING!");
-            return res.status(401).json({ error: "User not authenticated" });
-        }
         const userId = req.user.id;
-        console.log(`[DEBUG] searchChannels user=${userId}`);
 
         if (!query || query.length < 2) return res.json([]);
 
@@ -340,15 +333,11 @@ exports.searchChannels = (req, res) => {
 
         db.all(sql, [userId, term, term, userId], (err, rows) => {
             if (err) {
-                console.error("SEARCH CHANNELS SQL ERROR:", err);
-                console.error("SQL Was:", sql);
-                console.error("Params:", [userId, term, term, userId]);
                 return res.status(500).json({ error: "DB Error" });
             }
             res.json(rows);
         });
     } catch (e) {
-        console.error("SEARCH CHANNELS EXCEPTION:", e);
         res.status(500).json({ error: "Server Exception" });
     }
 };

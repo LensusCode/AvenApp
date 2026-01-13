@@ -27,20 +27,9 @@ exports.uploadAvatar = async (req, res) => {
 
     try {
         let avatarUrl = req.file.path;
-
-        // Ensure WebP format
-        if (avatarUrl.includes('/upload/') && !avatarUrl.includes('/f_webp')) {
-            const splitUrl = avatarUrl.split('/upload/');
-            if (splitUrl.length === 2) {
-                // Combine transformations: w_500, h_500, face focus AND webp format
-                avatarUrl = `${splitUrl[0]}/upload/w_500,h_500,c_fill,g_face,f_webp/${splitUrl[1]}`;
-            }
-        } else if (avatarUrl.includes('/upload/')) {
-            // Just add face crop if it has format but not crop (unlikely but safe)
-            const splitUrl = avatarUrl.split('/upload/');
-            if (splitUrl.length === 2) {
-                avatarUrl = `${splitUrl[0]}/upload/w_500,h_500,c_fill,g_face/${splitUrl[1]}`;
-            }
+        const splitUrl = avatarUrl.split('/upload/');
+        if (splitUrl.length === 2) {
+            avatarUrl = `${splitUrl[0]}/upload/w_500,h_500,c_fill,g_face/${splitUrl[1]}`;
         }
 
         db.run(`UPDATE users SET avatar = ? WHERE id = ?`, [avatarUrl, req.user.id], (err) => {

@@ -11,24 +11,23 @@ const socket = io(typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : window.locati
     }
 });
 
-console.log('[SOCKET.IO] Initialized with URL:', typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : window.location.origin);
+// Socket comienza desconectado y se conectará después del login
 
 // Event listeners para debugging
 socket.on('connect', () => {
-    console.log('[SOCKET.IO] ✅ Connected! Socket ID:', socket.id);
+
 });
 
 socket.on('disconnect', (reason) => {
-    console.log('[SOCKET.IO] ❌ Disconnected. Reason:', reason);
+
 });
 
 socket.on('connect_error', (error) => {
-    console.error('[SOCKET.IO] ⚠️ Connection error:', error.message);
+
 });
 
 socket.on('users', (users) => {
-    console.log('[SOCKET.IO] 📥 Received users event. Count:', users?.length || 0);
-    console.log('[SOCKET.IO] Users data:', users);
+
 });
 
 // --- REAL-TIME SIDEBAR UPDATES ---
@@ -107,6 +106,73 @@ function resolveImageUrl(url) {
     return url;
 }
 
+// Helper to get initials from name
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) {
+        // Single word: First and Last letter
+        const word = parts[0];
+        if (word.length === 1) return word.toUpperCase();
+        return (word[0] + word[word.length - 1]).toUpperCase();
+    } else {
+        // Multi word: First letter of first two words
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+}
+
+// Helper to get consistent color from string
+function getAvatarColor(name) {
+    if (!name) return '#6b7280'; // Default gray
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = [
+        '#ef4444', '#f97316', '#f59e0b', '#84cc16',
+        '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+        '#8b5cf6', '#d946ef', '#f43f5e'
+    ];
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// Helper to render avatar content (Image or Initials)
+// Returns just the innerHTML or style string depending on usage context
+// Context: define if we want style string for bg or inner HTML structure
+// Actually, most existing code uses style="background-image:..."
+// To support text, we need to inject a div inside if it's text, or use background-image if it's image.
+// But we cannot put text in background-image.
+// So we will change the approach:
+// 1. If image: return `background-image: url(...)` and empty innerHTML
+// 2. If text: return `background: color` and innerHTML `<div class="text-avatar">...</div>`
+// Warning: Callsites expect to set style.backgroundImage.
+// We might need to refactor callsites to set style.background and innerHTML.
+
+function renderAvatarContent(user, sizeClass = '') {
+    const name = (typeof myNicknames !== 'undefined' ? myNicknames[user.userId || user.id] : null) || user.display_name || user.username || 'Usuario';
+    let avatarUrl = user.avatar;
+
+    // Check if valid URL and NOT a legacy upload path
+    // Legacy uploads returning 404 (e.g. /uploads/avatar-...) should fallback to initials
+    const isLegacyUpload = avatarUrl && avatarUrl.includes('/uploads/');
+    const hasImage = avatarUrl && isValidUrl(avatarUrl) && !avatarUrl.endsWith('profile.png') && !isLegacyUpload;
+
+    if (hasImage) {
+        return {
+            style: `background-image: url('${resolveImageUrl(avatarUrl)}'); background-color: #222;`,
+            html: ''
+        };
+    } else {
+        const initials = getInitials(name);
+        const color = getAvatarColor(name);
+        return {
+            style: `background: ${color};`,
+            html: `<div class="text-avatar ${sizeClass}">${initials}</div>`
+        };
+    }
+}
+
+
 async function apiRequest(url, method = 'GET', body = null) {
     try {
         const fullUrl = typeof getApiUrl === 'function' ? getApiUrl(url) : url;
@@ -115,7 +181,6 @@ async function apiRequest(url, method = 'GET', body = null) {
         const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
 
         if (isNative && window.Capacitor?.Plugins?.CapacitorHttp) {
-            console.log('[DEBUG] Using CapacitorHttp for:', fullUrl);
 
             const options = {
                 url: fullUrl,
@@ -166,7 +231,6 @@ async function apiRequest(url, method = 'GET', body = null) {
             return response.status >= 200 && response.status < 300 ? response.data : null;
         } else {
             // En web, usar fetch normal
-            console.log('[DEBUG] ❌ Using fetch for:', fullUrl);
             const headers = {};
             if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
@@ -191,32 +255,25 @@ async function apiRequest(url, method = 'GET', body = null) {
 
 
 async function checkSession() {
-    console.log('[DEBUG] checkSession called, pathname:', window.location.pathname);
     if (window.location.pathname === '/login' || window.location.pathname === '/login.html') return;
 
-    console.log('[DEBUG] Calling /api/me...');
     const userData = await apiRequest('/api/auth/me');
-    console.log('[DEBUG] /api/me response:', userData);
 
     if (userData) {
-        console.log('[DEBUG] User authenticated, calling loginSuccess');
         loginSuccess(userData);
     } else {
-        console.log('[DEBUG] No user data, showing login');
         // En móvil (Capacitor), mostrar login inline en lugar de redirigir
         const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
-        console.log('[DEBUG] Is native platform?', isNative);
+
 
         // Alert para confirmar visualmente
         if (isNative) {
-            alert('Detectado MÓVIL - Mostrando login');
+
         }
 
         if (isNative) {
-            console.log('[DEBUG] Showing mobile login');
             showMobileLogin();
         } else {
-            console.log('[DEBUG] Redirecting to /login');
             window.location.href = '/login';
         }
     }
@@ -224,7 +281,6 @@ async function checkSession() {
 
 // Función para mostrar login en la misma página (para móvil)
 function showMobileLogin() {
-    console.log('[DEBUG] showMobileLogin called');
 
     // Ocultar sidebar y otros elementos
     const sidebar = document.querySelector('.sidebar');
@@ -573,7 +629,6 @@ function showMobileLogin() {
         `;
 
         document.body.appendChild(loginScreen);
-        console.log('[DEBUG] Modern login screen appended to body');
 
         // Tab toggle functionality
         const tabLogin = document.getElementById('tab-login');
@@ -601,7 +656,6 @@ function showMobileLogin() {
         // Login form handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('[DEBUG] Login form submitted');
 
             const username = document.getElementById('mobile-username').value;
             const password = document.getElementById('mobile-password').value;
@@ -614,7 +668,6 @@ function showMobileLogin() {
 
             try {
                 const data = await apiRequest('/api/auth/login', 'POST', { username, password });
-                console.log('[DEBUG] Login response:', data);
 
                 if (data && data.user) {
                     if (window.lastApiResponse?.headers) {
@@ -644,7 +697,6 @@ function showMobileLogin() {
                 }
             } catch (e) {
                 errorEl.textContent = 'Error de conexión';
-                console.error('[DEBUG] Login error:', e);
             } finally {
                 btn.textContent = 'Entrar';
                 btn.disabled = false;
@@ -900,6 +952,18 @@ function loginSuccess(user) {
     profileBtn.classList.remove('hidden');
     if (myUser.is_admin) document.body.classList.add('is-admin');
     updateMyAvatarUI(myUser.avatar);
+
+    // FIX: Limpiar input si queda vacío visualmente (para que salga el placeholder CSS)
+    const checkInputEmpty = () => {
+        const text = inputMsg.innerText.trim();
+        const hasImages = inputMsg.querySelector('img');
+        if (!text && !hasImages) {
+            inputMsg.innerHTML = '';
+        }
+    };
+    inputMsg.addEventListener('input', checkInputEmpty);
+    inputMsg.addEventListener('blur', checkInputEmpty);
+
 
     console.log('[DEBUG] Calling socket.connect()');
 
@@ -1315,7 +1379,8 @@ socket.on('chat history cleared', ({ chatId }) => {
 
 socket.on('nicknames', (map) => {
     myNicknames = map;
-    if (allUsersCache.length) renderUserList(allUsersCache);
+    // Use the unified sidebar renderer instead of the legacy user list
+    renderMixedSidebar();
     if (currentTargetUserObj) updateChatHeaderInfo(currentTargetUserObj);
 });
 
@@ -1569,9 +1634,9 @@ getEl('headerAvatarBtn').addEventListener('click', () => {
         bioEl.style.color = "#666";
     }
 
-    let avatarUrl = currentTargetUserObj.avatar || '/profile.png';
-    if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
-    avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+    const { style, html } = renderAvatarContent(currentTargetUserObj, 'contact-info-avatar');
+    avatarEl.style = style;
+    avatarEl.innerHTML = html;
 
     if (myUser?.is_admin) {
         adminSec.classList.remove('hidden');
@@ -1747,19 +1812,39 @@ if (newLogoutBtn) {
 }
 
 getEl('confirmYes').addEventListener('click', async () => {
-    // Use apiRequest for consistent header/url handling
-    // Try both endpoints just in case, or stick to the one matching auth flow
-    await apiRequest('/api/auth/logout', 'POST');
-    localStorage.removeItem('chatUser');
+    // Disable button to prevent double clicks
+    const btn = getEl('confirmYes');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Saliendo...';
+    }
 
-    // Check if mobile
-    const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
+    try {
+        // Use apiRequest helper which handles full URL for mobile (Capacitor)
+        // and correct endpoint /api/auth/logout
+        await apiRequest('/api/auth/logout', 'POST');
+    } catch (e) {
+        console.error('Logout error (continuing anyway):', e);
+    } finally {
+        // Always cleanup and redirect
+        localStorage.removeItem('chatUser');
+        localStorage.removeItem('chat_token'); // Ensure token is also removed if present
 
-    if (isNative) {
-        // App is SPA-like on mobile, reload to trigger checkSession -> showMobileLogin
-        window.location.reload();
-    } else {
-        window.location.href = '/login';
+        const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
+
+        // Hide modal
+        getEl('confirmModal').classList.add('hidden');
+
+        if (isNative && typeof showMobileLogin === 'function') {
+            showMobileLogin();
+        } else {
+            window.location.href = '/login';
+        }
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Sí, salir';
+        }
     }
 });
 getEl('confirmNo').addEventListener('click', () => { getEl('confirmModal').classList.add('hidden'); profileModal.classList.remove('hidden'); });
@@ -1768,23 +1853,46 @@ avatarInput.addEventListener('change', async (e) => {
     if (!e.target.files[0]) return;
     const fd = new FormData();
     fd.append('avatar', e.target.files[0]);
-    await apiRequest('/api/users/upload-avatar', 'POST', fd);
+    await apiRequest('/api/upload-avatar', 'POST', fd);
 });
 
 function updateMyAvatarUI(url) {
-    let finalUrl = (url && isValidUrl(url)) ? url : '/assets/profile.png';
-    const css = `url('${escapeHtml(finalUrl)}')`;
+    // We ignore url arg preference if we have myUser, but to be safe we can rely on myUser.avatar
+    // If url is passed, it might be the new one before myUser update? 
+    // Usually logic updates myUser first.
 
-    // Safely update legacy variable if it exists
-    if (typeof myAvatar !== 'undefined' && myAvatar) myAvatar.style.backgroundImage = css;
+    // We need to render for different contexts. 
+    // 1. myAvatar (Legacy?)
+    // 2. headerProfileAvatar
+    // 3. profilePreviewAvatar
 
-    // Update new UI element
+    // For simplicity, we can pass a temp object if we strictly want to use 'url' 
+    // but better to use myUser if avail.
+    const userObj = myUser || { username: 'Yo', avatar: url };
+    if (url) userObj.avatar = url;
+
+    // headerProfileAvatar
     const headerAvatar = document.getElementById('headerProfileAvatar');
-    if (headerAvatar) headerAvatar.style.backgroundImage = css;
+    if (headerAvatar) {
+        const { style, html } = renderAvatarContent(userObj, 'header-avatar');
+        headerAvatar.style = style;
+        headerAvatar.innerHTML = html;
+    }
 
-    // Update profile preview in modal
+    // profilePreviewAvatar (Usually larger)
     const preview = document.getElementById('profilePreviewAvatar');
-    if (preview) preview.style.backgroundImage = css;
+    if (preview) {
+        const { style, html } = renderAvatarContent(userObj, 'profile-preview-avatar');
+        preview.style = style;
+        preview.innerHTML = html;
+    }
+
+    // Legacy myAvatar
+    if (typeof myAvatar !== 'undefined' && myAvatar) {
+        const { style, html } = renderAvatarContent(userObj, 'u-avatar');
+        myAvatar.style = style;
+        myAvatar.innerHTML = html;
+    }
 }
 
 // Add listener for new Header Profile Pill
@@ -1809,6 +1917,13 @@ if (sidebarProfileBtn) {
 
 function updateChatHeaderInfo(u) {
     chatTitle.innerHTML = escapeHtml(myNicknames[u.userId] || u.username) + getBadgeHtml(u);
+    // FIX: Target the chat header avatar (currentChatAvatar), NOT the user's profile button!
+    const headerAvatar = document.getElementById('currentChatAvatar');
+    if (headerAvatar) {
+        const { style, html } = renderAvatarContent(u, 'header-avatar');
+        headerAvatar.style = style;
+        headerAvatar.innerHTML = html;
+    }
 }
 
 
@@ -2009,22 +2124,35 @@ function renderEmojiGrid(urls) {
             const wrap = document.createElement('div');
             wrap.className = 'sticker-item-wrapper emoji-item';
 
-            const img = document.createElement('img');
-            img.className = 'sticker-thumb emoji-img';
-            img.src = url;
-            img.loading = "lazy";
-            img.style.objectFit = "contain";
-            img.style.width = "64px";
-            img.style.height = "64px";
+            // Create canvas instead of img to freeze animation
+            const canvas = document.createElement('canvas');
+            canvas.className = 'sticker-thumb emoji-img';
+            // Remove inline sizes so CSS can control it:
+            // canvas.style.width = "64px"; 
+            // canvas.style.height = "64px";
+
+            // Allow CSS to size it
+
+            const tmpImg = new Image();
+            tmpImg.crossOrigin = "anonymous"; // In case needed for cors
+            tmpImg.src = url;
+
+            tmpImg.onload = () => {
+                canvas.width = tmpImg.naturalWidth;
+                canvas.height = tmpImg.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(tmpImg, 0, 0);
+            };
 
             wrap.onclick = (e) => {
                 e.stopPropagation();
+                // We still insert the original animated URL
                 insertEmojiAtCursor(url);
                 stickerPanel.classList.add('hidden');
                 updateButtonState();
             };
 
-            wrap.appendChild(img);
+            wrap.appendChild(canvas);
             fragment.appendChild(wrap);
         }
 
@@ -2159,7 +2287,7 @@ function setReply(msgId, content, type, ownerId, forceName = null) {
     currentReplyId = msgId;
     let name = forceName;
     if (!name) {
-        if (ownerId === myUser.id) {
+        if (ownerId && myUser && String(ownerId) === String(myUser.id)) {
             name = "Tú";
         } else {
             // Try resolving from nicknames or user cache
@@ -2238,32 +2366,7 @@ socket.on('users', (users) => {
     renderMixedSidebar();
 });
 
-function renderUserList(users) {
-    usersList.innerHTML = '';
-    users.sort((a, b) => b.online - a.online).forEach(u => {
-        if (u.userId === myUser.id) return;
-        const li = document.createElement('li');
-        li.className = `user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
-        li.dataset.uid = u.userId;
-        const name = myNicknames[u.userId] || u.username;
-        const safeName = escapeHtml(name);
 
-        let avatarUrl = u.avatar || '/profile.png';
-        if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
-        const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
-
-        li.innerHTML = `
-            <div class="u-avatar" style="${safeAvatar}">
-                <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${u.online ? '#4ade80' : '#a1a1aa'};border:2px solid #18181b;"></div>
-            </div>
-            <div style="overflow:hidden;">
-                <div style="font-weight:600;color:${u.online ? '#fff' : '#bbb'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeName}${getBadgeHtml(u)}</div>
-                <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">${u.online ? 'En línea' : 'Desconectado'}</div>
-            </div>`;
-        li.onclick = () => selectUser(u, li);
-        usersList.appendChild(li);
-    });
-}
 
 socket.on('user_updated_profile', ({ userId, avatar }) => {
     const u = allUsersCache.find(x => x.userId == userId);
@@ -2280,7 +2383,9 @@ socket.on('user_updated_profile', ({ userId, avatar }) => {
     if (sbItem) sbItem.style.backgroundImage = `url('${escapeHtml(safeAvatar)}')`;
     if (currentTargetUserId == userId) {
         currentTargetUserObj.avatar = avatar;
-        currentChatAvatar.style.backgroundImage = `url('${escapeHtml(safeAvatar)}')`;
+        const { style: newStyle, html: newHtml } = renderAvatarContent(currentTargetUserObj, 'header-avatar');
+        currentChatAvatar.style = newStyle;
+        currentChatAvatar.innerHTML = newHtml;
     }
     document.querySelectorAll(`.message.${myUser.id == userId ? 'me' : 'other'} .audio-avatar-img`).forEach(img => img.src = avatar || '/profile.png');
 });
@@ -2305,9 +2410,9 @@ async function selectUser(target, elem) {
     updateChatHeaderInfo(target);
     chatContainer.classList.add('mobile-chat-active');
 
-    let avatarUrl = target.avatar || '/profile.png';
-    if (!isValidUrl(avatarUrl)) avatarUrl = '/profile.png';
-    currentChatAvatar.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+    const { style: chatAvatarStyle, html: chatAvatarHtml } = renderAvatarContent(target, 'header-avatar');
+    currentChatAvatar.style = chatAvatarStyle;
+    currentChatAvatar.innerHTML = chatAvatarHtml;
 
     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
     (elem || document.querySelector(`.user-item[data-uid="${target.userId}"]`))?.classList.add('active');
@@ -2358,10 +2463,12 @@ async function selectUser(target, elem) {
                 msg.caption,
                 msg.is_edited,
                 msg.from_user_id,
-                msg.username || (msg.user ? msg.user.username : null)
+                msg.username || (msg.user ? msg.user.username : null),
+                msg.status || 'sent'
             );
         });
         scrollToBottom(false);
+        socket.emit('mark messages read', { senderId: target.userId });
         setTimeout(() => scrollToBottom(false), 200);
 
     } else {
@@ -2495,11 +2602,25 @@ function sendMessage(content, type, replyId = null) {
         if (res?.id) {
             // FIX: Add id: replyId to replyData object so click-to-scroll works
             let rd = replyId ? { id: replyId, username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null;
-            appendMessageUI(content, 'me', new Date(), res.id, type, rd, 0, res.caption, 0, myUser.id, "Tú");
-            messagesList.scrollTop = messagesList.scrollHeight;
-            scrollToBottom(true);
+
+            // Update the temporary message with real ID and status
+            const tempRow = document.getElementById(`row-temp-${tempId}`);
+            if (tempRow) {
+                tempRow.id = `row-${res.id}`;
+                const contentWrapper = tempRow.querySelector('.message-content-wrapper');
+                contentWrapper.id = `msg-${res.id}`;
+                const icon = tempRow.querySelector('.status-icon');
+                if (icon) icon.className = 'status-icon status-sent';
+            }
         }
     });
+
+    // Optimistic UI Append
+    let rd = replyId ? { id: replyId, username: replyToName.textContent, content: replyToText.innerHTML, type: type } : null;
+    let tempId = Date.now();
+    appendMessageUI(content, 'me', new Date(), `temp-${tempId}`, type, rd, 0, null, 0, myUser.id, "Tú", 'sending');
+    messagesList.scrollTop = messagesList.scrollHeight;
+    scrollToBottom(true);
 }
 
 socket.on('private message', (msg) => {
@@ -2521,12 +2642,39 @@ socket.on('private message', (msg) => {
         }
 
 
-        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0, msg.fromUserId, msg.username);
+        appendMessageUI(msg.content, 'other', msg.timestamp, msg.id, msg.type || 'text', rd, 0, msg.caption, 0, msg.fromUserId, msg.username, msg.status);
+        socket.emit('mark messages read', { senderId: msg.fromUserId });
 
 
         if (isAtBottom) {
             scrollToBottom(true);
         }
+    }
+});
+
+socket.on('messages delivered', ({ toUserId }) => {
+    // I am the sender, my messages to toUserId are now delivered
+    // Update UI for all 'sent' messages to 'received'
+    if (currentTargetUserId == toUserId) {
+        document.querySelectorAll('.message-row.me').forEach(row => {
+            const icon = row.querySelector('.status-icon');
+            if (icon && icon.classList.contains('status-sent')) {
+                icon.className = 'status-icon status-received';
+            }
+        });
+    }
+});
+
+socket.on('messages read', ({ toUserId }) => {
+    // I am the sender, my messages to toUserId are now read
+    // Update UI for all unread messages
+    if (currentTargetUserId == toUserId) {
+        document.querySelectorAll('.message-row.me').forEach(row => {
+            const icon = row.querySelector('.status-icon');
+            if (icon && !icon.classList.contains('status-read')) {
+                icon.className = 'status-icon status-read';
+            }
+        });
     }
 });
 
@@ -2587,7 +2735,7 @@ function linkify(text) {
     return safeText;
 }
 
-function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0, senderId = null, senderName = null) {
+function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0, senderId = null, senderName = null, status = 'sent') {
     renderDateDivider(dateStr);
 
     if (currentChatType === 'channel') {
@@ -2596,6 +2744,11 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
 
     const currentUserId = ownerType === 'me' ? myUser.id : currentTargetUserId;
+
+    // FIX: Ensure senderName is "Tú" if it's me
+    if (ownerType === 'me' || (senderId && myUser && String(senderId) === String(myUser.id))) {
+        senderName = 'Tú';
+    }
     const isSequence = lastMessageUserId === currentUserId;
 
     const li = document.createElement('li');
@@ -2685,7 +2838,16 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
 
     li.dataset.timestamp = new Date(dateStr).getTime();
     const editedHtml = isEdited ? '<span class="edited-label">editado</span>' : '';
-    const meta = msgType !== 'audio' ? `<div class="meta-row">${editedHtml}<span class="meta">${new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>` : '';
+
+    let statusClass = 'status-sent';
+    if (status === 'sending') statusClass = 'status-sending';
+    else if (status === 'received') statusClass = 'status-received';
+    else if (status === 'read') statusClass = 'status-read';
+
+    const statusHtml = ownerType === 'me' ? `<span class="status-icon ${statusClass}"></span>` : '';
+    const meta = msgType !== 'audio' ?
+        `<div class="meta-row">${editedHtml}<span class="meta">${new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${statusHtml}</div>`
+        : '';
 
     const isStickerWithReply = (msgType === 'sticker' && replyData !== null);
 
@@ -4217,9 +4379,10 @@ function renderMemberSelection() {
         if (u.userId === myUser.id) return;
         const li = document.createElement('li');
         li.className = `user-select-item ${selectedMembers.has(u.userId) ? 'selected' : ''}`;
+        const { style, html } = renderAvatarContent(u, 'text-avatar');
         li.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
-                <div class="u-avatar" style="background-image:url('${resolveImageUrl(u.avatar)}')"></div>
+                <div class="u-avatar" style="${style}">${html}</div>
                 <span>${u.display_name || u.username}</span>
             </div>
             <div class="select-circle"></div>
@@ -4606,8 +4769,9 @@ async function openChannelProfile() {
         bioEl.style.color = "#666";
     }
 
-    let avatarUrl = resolveImageUrl(channel.avatar);
-    avatarEl.style.backgroundImage = `url('${escapeHtml(avatarUrl)}')`;
+    const { style, html } = renderAvatarContent(channel, 'channel-profile-avatar');
+    avatarEl.style = style;
+    avatarEl.innerHTML = html;
 
     if (channel.owner_id === myUser.id) {
         editBtn.classList.remove('hidden');
@@ -5326,10 +5490,10 @@ async function renderAvailableContacts(filterText = '') {
         }
 
         const name = escapeHtml(myNicknames[u.userId] || u.username);
-        const avatarUrl = resolveImageUrl(u.avatar);
+        const { style, html } = renderAvatarContent(u, 'text-avatar');
 
         li.innerHTML = `
-            <div class="u-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
+            <div class="u-avatar" style="${style}">${html}</div>
             <div style="flex:1;">
                 <div style="font-weight:600; color:#fff;">${name}</div>
                 <div style="font-size:12px; color:#a1a1aa;">${u.online ? 'En línea' : 'Desconectado'}</div>
@@ -5690,7 +5854,7 @@ function createUserItem(u) {
 
     const name = myNicknames[u.userId] || u.username;
 
-    const avatarUrl = resolveImageUrl(u.avatar);
+    const { style, html } = renderAvatarContent(u, 'text-avatar');
 
     // Status / Last Message Logic
     // Priority: Typing > Recording > Last Message > Status
@@ -5726,22 +5890,12 @@ function createUserItem(u) {
     const hasStory = userStories && userStories.stories.length > 0;
     const allViewed = hasStory && userStories.stories.every(s => s.isViewed);
 
-    // Reuse fav-avatar-wrapper styles for consistency, but scaled down usually via CSS
-    // Wait, createUserItem structure is different: .story-ring-wrapper
-    // I need to add .all-viewed to story-ring-wrapper if I find where story-ring-wrapper is defined.
-    // Assuming story-ring-wrapper allows background modification:
-
-    // Actually, I couldn't find story-ring-wrapper in CSS.
-    // If it's missing, I should define it or rely on inline styles.
-    // But since the user complained about existing GREEN border, it must exist.
-    // Let's assume .story-ring-wrapper works similarly or I should check if I missed it.
-    // However, I will add the class 'all-viewed' to it anyway.
-
     const ringClass = hasStory ? (allViewed ? 'story-ring-wrapper all-viewed' : 'story-ring-wrapper') : '';
 
     li.innerHTML = `
         <div class="${ringClass}" onclick="openStoryFromAvatar(event, '${u.userId}')">
-            <div class="card-avatar" style="background-image:url('${escapeHtml(avatarUrl)}')">
+            <div class="card-avatar" style="${style}">
+                ${html}
                 ${onlineDotHtml}
             </div>
         </div>
@@ -5759,6 +5913,7 @@ function createUserItem(u) {
     `;
     li.onclick = () => selectUser(u, li);
     return li;
+
 }
 
 function createGlobalUserItem(user) {
@@ -5768,8 +5923,10 @@ function createGlobalUserItem(user) {
     const avatarUrl = resolveImageUrl(user.avatar);
     const displayName = user.display_name || user.username;
 
+    const { style, html } = renderAvatarContent(user, 'text-avatar');
+
     li.innerHTML = `
-        <div class="card-avatar" style="background-image: url('${escapeHtml(avatarUrl)}')"></div>
+        <div class="card-avatar" style="${style}">${html}</div>
         <div class="card-content">
              <div class="card-top">
                 <span class="card-name">
@@ -6180,12 +6337,21 @@ function renderStoriesBar(groupedStories) {
     const myItem = document.createElement('div');
     myItem.className = 'fav-item add-new';
 
-    let myAvatarUrl = myUser.avatar || '/profile.png';
-    let ringClass = hasMyStory ? (allMyStoriesViewed ? 'fav-avatar-wrapper has-story all-viewed' : 'fav-avatar-wrapper has-story') : 'fav-avatar-wrapper';
+    const myData = renderAvatarContent(myUser, 'text-avatar');
+    // For stories bar, the container is fav-avatar, so we use style and html directly
+
+    // Note: renderAvatarContent returns style with background-image/background-color.
+    // The existing structure uses .fav-avatar with style="background-image:..."
+    // We can just swap styles and inject html
+
+    const ringClass = hasMyStory
+        ? (allMyStoriesViewed ? 'fav-avatar-wrapper has-story all-viewed' : 'fav-avatar-wrapper has-story')
+        : 'fav-avatar-wrapper';
 
     myItem.innerHTML = `
         <div class="${ringClass}">
-            <div class="fav-avatar" style="background-image: url('${escapeHtml(myAvatarUrl)}')">
+            <div class="fav-avatar" style="${myData.style}">
+                ${myData.html}
                 ${!hasMyStory ? `
                 <div class="add-story-icon-overlay">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
@@ -6222,9 +6388,13 @@ function renderStoriesBar(groupedStories) {
         const allViewed = group.stories.every(s => s.isViewed);
         const ringClass = allViewed ? 'fav-avatar-wrapper has-story all-viewed' : 'fav-avatar-wrapper has-story';
 
+        const groupData = renderAvatarContent(group, 'text-avatar');
+
         item.innerHTML = `
             <div class="${ringClass}">
-                <div class="fav-avatar" style="background-image: url('${escapeHtml(group.avatar || '/profile.png')}')"></div>
+                <div class="fav-avatar" style="${groupData.style}">
+                    ${groupData.html}
+                </div>
             </div>
             <span class="fav-name">${escapeHtml(group.display_name || group.username).split(' ')[0]}</span>
         `;
@@ -6948,3 +7118,398 @@ function renderSettingsView() {
         </div>
     `;
 }
+
+/* --- SEARCH FUNCTIONALITY --- */
+function applyUserFilter() {
+    const input = document.getElementById('searchUsers');
+    const filter = input.value.toUpperCase();
+    const list = document.getElementById('usersList');
+    const li = list.getElementsByTagName('li');
+
+    // Toggle search mode class on list for black background styling
+    if (filter.length > 0) {
+        list.classList.add('search-mode');
+    } else {
+        list.classList.remove('search-mode');
+    }
+
+    for (let i = 0; i < li.length; i++) {
+        // Skip if it's not a user item (to be safe)
+        if (!li[i].classList.contains('user-item') && !li[i].classList.contains('chat-card')) continue;
+
+        // Find the name element. It could be .card-name (channels) or just inside the text for users.
+        // Based on existing renderUserList:
+        // Users: <div ...>${safeName}...</div> (inside second div)
+        // Channels: <span class="card-name">...</span>
+
+        let nameEl = li[i].querySelector('.card-name');
+        let txtValue = "";
+
+        if (nameEl) {
+            txtValue = nameEl.textContent || nameEl.innerText;
+        } else {
+            // Fallback for simple user list items (look for text content of the second div)
+            const divs = li[i].getElementsByTagName('div');
+            if (divs.length >= 2) {
+                txtValue = divs[1].textContent || divs[1].innerText;
+            } else {
+                txtValue = li[i].textContent || li[i].innerText;
+            }
+        }
+
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+        } else {
+            li[i].style.display = "none";
+        }
+    }
+}
+
+// Ensure it's available globally if needed
+window.applyUserFilter = applyUserFilter;
+
+
+// --- SETTINGS VIEW (UI FIRST/LANDING) ---
+
+// Helper: Format Bytes
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// Calculate Storage Usage (Async)
+// Calculate Storage Usage (Async)
+async function calculateStorageUsage() {
+    console.log('[Storage] Calculating usage...');
+    /*
+      Strategy:
+      1. Get "App Usage" from navigator.storage (accurate for cache/idb).
+      2. Get "Total Device Capacity" & "Free Space" from Capacitor Device API (if native).
+      3. If native, replace the confusing browser "quota" with actual device stats.
+    */
+
+    let appUsage = 0;
+    let totalDeviceHelper = 0; // Total size of device (native) or Quota (web)
+    let freeSpaceHelper = 0;
+    let isNative = false;
+
+    // 1. Get App Usage (Web Standard)
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+            const estimate = await navigator.storage.estimate();
+            appUsage = estimate.usage || 0;
+            totalDeviceHelper = estimate.quota || 0; // Fallback for web
+            console.log(`[Storage] Browser Estimate: Usage=${appUsage}, Quota=${totalDeviceHelper}`);
+        } catch (e) {
+            console.error('[Storage] Browser estimate failed:', e);
+        }
+    }
+
+    // 2. Get Device Stats (Native Override)
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        try {
+            isNative = true;
+            // Ensure plugin is available
+            const Device = window.Capacitor.Plugins.Device;
+            if (Device) {
+                const info = await Device.getInfo();
+                console.log('[Storage] Device Info:', info);
+
+                // Use real disk stats if available
+                if (info.realDiskTotal && info.realDiskFree) {
+                    totalDeviceHelper = info.realDiskTotal;
+                    freeSpaceHelper = info.realDiskFree;
+                    console.log(`[Storage] Native: Total=${totalDeviceHelper}, Free=${freeSpaceHelper}`);
+                }
+            }
+        } catch (e) {
+            console.warn('[Storage] Native device info failed:', e);
+        }
+    }
+
+    // 3. Format & Return
+    // If native, 'quota' in the UI will represent Total Device Storage, which makes more sense to users than "Browser Quota".
+    return {
+        usage: appUsage,
+        quota: totalDeviceHelper,
+        free: freeSpaceHelper, // New field
+        usageFormatted: formatBytes(appUsage),
+        quotaFormatted: formatBytes(totalDeviceHelper),
+        freeFormatted: formatBytes(freeSpaceHelper),
+        percent: totalDeviceHelper ? Math.min(100, (appUsage / totalDeviceHelper) * 100) : 0,
+        isNative: isNative
+    };
+}
+
+// Clear App Cache
+async function clearAppCache() {
+    if (!confirm('¿Estás seguro de borrar la caché de la aplicación? Esto puede hacer que las imágenes carguen más lento la próxima vez.')) return;
+
+    try {
+        console.log('[Storage] Clearing cache...');
+        // 1. Clear Cache API
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+            console.log('[Storage] Cache API cleared.');
+        }
+
+        // 2. Clear LocalStorage (Optional: careful not to delete session)
+        // We preserve 'chatUser', 'chat_token'
+        // We can clear other keys if needed, but for now Cache API is the heavy one.
+
+        alert('Caché borrada correctamente.');
+
+        // Re-render to update numbers
+        renderSettingsUI();
+    } catch (e) {
+        console.error('[Storage] Error clearing cache:', e);
+        alert('Error al borrar la caché.');
+    }
+}
+
+// Render Settings Logic
+async function renderSettingsUI() {
+    const settingsView = document.getElementById('settingsView');
+    if (!settingsView) return;
+
+    const user = JSON.parse(localStorage.getItem('chatUser') || '{}');
+    const avatarData = renderAvatarContent(user); // returns {style, html}
+
+    // Show Loading State
+    settingsView.innerHTML = `
+        <header class="settings-header">
+            <button class="nav-icon-btn mobile-only" id="backFromSettingsBtn" style="margin-right: 15px;">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <h1 class="settings-title">Ajustes</h1>
+        </header>
+        <div style="padding: 40px; text-align: center; color: #a1a1aa;">
+            <div style="margin-bottom: 10px;">Calculando almacenamiento...</div>
+            <div class="spinner" style="border: 2px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        </div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    `;
+
+    // Temporary Back Handler for Loading State
+    const tempBackBtn = document.getElementById('backFromSettingsBtn');
+    if (tempBackBtn) {
+        tempBackBtn.onclick = () => {
+            settingsView.classList.add('hidden');
+            const usersList = document.getElementById('usersList');
+            if (usersList) usersList.classList.remove('hidden');
+        };
+    }
+
+    // Get Real Storage Data
+    const storageData = await calculateStorageUsage();
+
+    settingsView.innerHTML = `
+        <!-- Header -->
+        <header class="settings-header">
+            <button class="nav-icon-btn mobile-only" id="backFromSettingsBtn" style="margin-right: 15px;">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <h1 class="settings-title">Ajustes</h1>
+        </header>
+
+        <!-- Profile Section (Account) -->
+        <section class="settings-section">
+            <span class="section-label">Cuenta</span>
+            <div class="settings-card">
+                <div class="user-mini-card">
+                    <div class="mini-avatar" style="${avatarData.style}">
+                        ${avatarData.html || ''}
+                    </div>
+                    <div class="mini-info">
+                        <span class="mini-name">${user.display_name || 'Nombre Usuario'}</span>
+                        <span class="mini-handle">@${user.username || 'usuario'}</span>
+                    </div>
+                    <div class="forward-icon">
+                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Storage & Data Section -->
+        <main class="settings-content">
+            <div class="settings-section">
+                <h2 class="settings-section-title">ALMACENAMIENTO Y DATOS</h2>
+                
+                <div class="settings-card">
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 15px;">
+                        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        </div>
+                        <div style="flex: 1;">
+                           ${storageDetailsHtml}
+                           <div style="display: flex; gap: 10px; font-size: 11px; color: #71717a;">
+                               <span style="display: flex; align-items: center;"><span style="width: 6px; height: 6px; background: #eab308; border-radius: 50%; margin-right: 4px;"></span> App y Datos (${storageData.usageFormatted})</span>
+                               <span style="display: flex; align-items: center;"><span style="width: 6px; height: 6px; background: #4ade80; border-radius: 50%; margin-right: 4px;"></span> Libre</span>
+                           </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-secondary w-100" id="clearCacheBtn" style="border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fff;">
+                        Borrar Caché y Liberar Espacio
+                    </button>
+
+                    <!-- DEBUG ELEMENT -->
+                    <div style="margin-top: 15px; padding: 10px; background: #000; border-radius: 8px; font-family: monospace; font-size: 10px; color: #ef4444; word-break: break-all;">
+                        <strong>DEBUG INFO:</strong><br>
+                        Native: ${storageData.isNative}<br>
+                        Capacitor: ${!!window.Capacitor}<br>
+                        Plugins: ${!!(window.Capacitor && window.Capacitor.Plugins)}<br>
+                        Device Plugin: ${!!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Device)}<br>
+                        UA: ${navigator.userAgent.substring(0, 50)}...
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- General Settings -->
+        <section class="settings-section">
+            <span class="section-label">General</span>
+            <div class="settings-card">
+                
+                <!-- Appearance -->
+                <div class="setting-item">
+                    <div class="setting-left">
+                        <div class="setting-icon-box bg-purple">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                        </div>
+                        <div class="setting-text">
+                            <span class="setting-name">Apariencia</span>
+                            <span class="setting-desc">Tema, fondo de chat</span>
+                        </div>
+                    </div>
+                    <div class="setting-right">
+                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+
+                <!-- Notifications -->
+                <div class="setting-item">
+                     <div class="setting-left">
+                        <div class="setting-icon-box bg-red">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </div>
+                        <div class="setting-text">
+                            <span class="setting-name">Notificaciones</span>
+                            <span class="setting-desc">Tonos, alertas</span>
+                        </div>
+                    </div>
+                    <div class="setting-right">
+                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+
+                <!-- Security -->
+                <div class="setting-item">
+                     <div class="setting-left">
+                        <div class="setting-icon-box bg-green">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <div class="setting-text">
+                            <span class="setting-name">Privacidad</span>
+                            <span class="setting-desc">Bloqueos, seguridad</span>
+                        </div>
+                    </div>
+                    <div class="setting-right">
+                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Info / About -->
+         <section class="settings-section">
+            <div class="settings-card" style="background: transparent; border: none; text-align: center; padding-top: 10px;">
+                <span style="color: #52525b; font-size: 13px;">AvenApp v1.2.0 (Beta)</span>
+            </div>
+         </section>
+    `;
+
+    // Bind Event Listeners
+    const clearBtn = document.getElementById('clearCacheBtn');
+    if (clearBtn) clearBtn.addEventListener('click', clearAppCache);
+
+    // Back Button (Mobile)
+    const backBtn = document.getElementById('backFromSettingsBtn');
+    const restoreChatView = () => {
+        // Also found in setupSettingsNavigation, can extract to helper but inline is fine
+        settingsView.classList.add('hidden');
+        const usersList = document.getElementById('usersList');
+        const favoritesSection = document.querySelector('.favorites-section');
+        const searchTrigger = document.querySelector('.search-trigger');
+        const btn = document.getElementById('navChatBtn');
+
+        if (usersList) usersList.classList.remove('hidden');
+        if (favoritesSection) favoritesSection.style.display = '';
+        if (searchTrigger) searchTrigger.style.display = '';
+        if (btn) btn.click(); // Simulate click to activate tab
+    };
+    if (backBtn) backBtn.addEventListener('click', restoreChatView);
+}
+
+// Navigation Handler for Settings
+function setupSettingsNavigation() {
+    const navSettingsBtn = document.getElementById('navSettingsBtn');
+    const settingsView = document.getElementById('settingsView');
+    const usersList = document.getElementById('usersList');
+    const brandHeader = document.querySelector('.brand-header');
+    const favoritesSection = document.querySelector('.favorites-section');
+    const searchTrigger = document.querySelector('.search-trigger');
+    const allDockIcons = document.querySelectorAll('.dock-icon');
+
+    if (navSettingsBtn) {
+        navSettingsBtn.addEventListener('click', () => {
+            // 1. Activate Icon
+            allDockIcons.forEach(btn => btn.classList.remove('active'));
+            navSettingsBtn.classList.add('active');
+
+            // 2. Hide Main Sidebar Content
+            if (usersList) usersList.classList.add('hidden');
+            if (favoritesSection) favoritesSection.style.display = 'none'; // Use display none to collapse space
+            if (searchTrigger) searchTrigger.style.display = 'none';
+
+            // 3. Show Settings
+            if (settingsView) {
+                settingsView.classList.remove('hidden');
+                renderSettingsUI();
+            }
+        });
+    }
+
+    // Add listener to other nav buttons to hide settings (Restore default view)
+    const restoreChatView = () => {
+        if (settingsView) settingsView.classList.add('hidden');
+        if (usersList) usersList.classList.remove('hidden');
+        if (favoritesSection) favoritesSection.style.display = ''; // Restore default
+        if (searchTrigger) searchTrigger.style.display = '';
+    };
+
+    const navChatBtn = document.getElementById('navChatBtn');
+    if (navChatBtn) navChatBtn.addEventListener('click', restoreChatView);
+
+    // Also bind to other main nav items if necessary (Calls, Contacts, etc.)
+    const navCallsBtn = document.getElementById('navCallsBtn');
+    if (navCallsBtn) navCallsBtn.addEventListener('click', restoreChatView);
+
+    const navContactsBtn = document.getElementById('navContactsBtn');
+    if (navContactsBtn) navContactsBtn.addEventListener('click', restoreChatView);
+}
+
+// Initialize logic
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupSettingsNavigation);
+} else {
+    setupSettingsNavigation();
+}
+

@@ -548,3 +548,60 @@
     font-size: 13px;
     color: #a1a1aa;
 }
+
+/* Text Avatar Fallback */
+.text-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+    text-transform: uppercase;
+    user-select: none;
+    background-size: cover;
+    line-height: 1;
+}
+
+/* Specific Sizes adjustments */
+.u-avatar .text-avatar {
+    font-size: 14px;
+}
+
+.card-avatar .text-avatar {
+    font-size: 18px;
+}
+
+.fav-avatar .text-avatar {
+    font-size: 20px;
+}
+
+.header-avatar .text-avatar {
+    font-size: 16px;
+}
+
+.profile-preview-avatar .text-avatar {
+    font-size: 32px;
+}
+
+.simple-avatar .text-avatar {
+    font-size: 14px;
+}
+
+.viewer-avatar .text-avatar {
+    font-size: 14px;
+}
+/* --- SEARCH MODE OVERLAY --- */
+.users-list.search-mode {
+    background-color: #000000;
+    /* Optional: maintain layout/scroll if needed */
+}
+
+/* Ensure items hidden by JS don't take up space (JS executes display:none, but ensuring clean-up) */
+.user-item[style*="display: none"] {
+    display: none !important;
+}
+
