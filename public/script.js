@@ -61,7 +61,9 @@ socket.on('private message', (msg) => {
     // Update sender's last message
     const user = allUsersCache.find(u => u.userId === msg.fromUserId);
     if (user) {
-        user.lastMessage = msg.type === 'image' ? '📷 Foto' : (msg.type === 'sticker' ? '✨ Sticker' : msg.content);
+        // Store raw content so we can process emojis when rendering
+        user.lastMessage = msg.content;
+        user.lastMessageType = msg.type || 'text';
         user.lastMessageTime = msg.timestamp;
 
         // Move to top and re-render
@@ -73,7 +75,9 @@ socket.on('channel_message', (msg) => {
     const channel = myChannels.find(c => c.id == msg.channelId);
     if (channel) {
         channel.last_message_time = msg.timestamp;
-        channel.last_message = msg.type === 'image' ? '📷 Foto' : (msg.type === 'sticker' ? '✨ Sticker' : msg.content);
+        // Store raw content so emojis can be processed when rendering
+        channel.last_message = msg.content;
+        channel.last_message_type = msg.type || 'text';
 
         // Move to top and re-render
         renderMixedSidebar();
@@ -945,6 +949,20 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 getEl('searchUsers').addEventListener('input', applyUserFilter);
+
+// FIX: Sync reply border with input focus state
+// This must run after DOM is loaded, so inputMsg and inputStack exist
+if (inputMsg) {
+    const inputStack = getEl('inputStack');
+    if (inputStack) {
+        inputMsg.addEventListener('focus', () => {
+            inputStack.classList.add('input-focused');
+        });
+        inputMsg.addEventListener('blur', () => {
+            inputStack.classList.remove('input-focused');
+        });
+    }
+}
 
 function loginSuccess(user) {
     myUser = user;
@@ -2326,8 +2344,45 @@ function setReply(msgId, content, type, ownerId, forceName = null) {
     inputMsg.focus();
 }
 
-function clearReply() { currentReplyId = null; replyPreview.classList.add('hidden'); getEl('inputStack')?.classList.remove('active'); }
-getEl('closeReplyBtn').addEventListener('click', clearReply);
+function clearReply() {
+    const preview = document.getElementById('replyPreview');
+    if (!preview || preview.classList.contains('hidden')) return;
+
+    currentReplyId = null;
+    getEl('inputStack')?.classList.remove('active');
+
+    // Smooth exit
+    preview.style.opacity = '0';
+    preview.style.transform = 'translateY(10px) scale(0.95)';
+
+    setTimeout(() => {
+        preview.classList.add('hidden');
+        preview.style.opacity = '';
+        preview.style.transform = '';
+    }, 200);
+}
+const closeReplyBtn = getEl('closeReplyBtn');
+if (closeReplyBtn) {
+    const handleCloseReply = (e) => {
+        // Prevent default behavior to stop focus stealing/blurring on mobile
+        if (e.cancelable && e.type !== 'click') e.preventDefault();
+        e.stopPropagation();
+
+        clearReply();
+
+        // Force focus back to input
+        if (inputMsg) {
+            inputMsg.focus();
+            // Double check focus after a minimal delay just in case
+            setTimeout(() => inputMsg.focus(), 10);
+        }
+    };
+
+    closeReplyBtn.addEventListener('click', handleCloseReply);
+    // Add touchstart listener with passive: false to allow preventDefault
+    closeReplyBtn.addEventListener('touchstart', handleCloseReply, { passive: false });
+    closeReplyBtn.addEventListener('mousedown', (e) => e.preventDefault());
+}
 btnImage.addEventListener('click', () => chatImageInput.click());
 getEl('acceptVerifiedBtn').addEventListener('click', () => getEl('verificationSuccessModal').classList.add('hidden'));
 
@@ -2479,6 +2534,10 @@ async function selectUser(target, elem) {
 backBtn.addEventListener('click', () => {
     chatContainer.classList.remove('mobile-chat-active');
 
+    // Clear active chat variables to stop "read" events
+    currentTargetUserId = null;
+    currentTargetUserObj = null;
+    currentChatType = null;
 
     document.body.classList.remove('theme-love', 'theme-space');
 
@@ -2854,6 +2913,25 @@ socket.on('message deleted', ({ messageId }) => {
 });
 
 
+function formatPreviewHTML(content, type) {
+    if (type === 'image') return '📷 Foto';
+    if (type === 'sticker') return '✨ Sticker';
+    if (type === 'audio') return '🎤 Audio';
+
+    if (!content || typeof content !== 'string') return '';
+
+    // Replace emoji placeholders with img tags
+    const emojiRegex = /\[emoji:(.*?)\]/g;
+    const processedContent = content.replace(emojiRegex, (match, url) => {
+        return `<img src="${escapeHtml(url)}" crossorigin="anonymous" class="preview-emoji" style="width: 18px; height: 18px; vertical-align: middle; display: inline-block; margin: 0 1px;">`;
+    });
+
+    // Escape any remaining HTML that's not our emoji images
+    // We need to be careful here - split by our emoji images, escape the text parts, then rejoin
+    return processedContent;
+}
+
+
 function linkify(text) {
     if (!text) return "";
 
@@ -3170,28 +3248,56 @@ window.viewFullImage = (src) => {
 function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
     const icon = row.querySelector('.swipe-reply-icon');
     let startX = 0, currentX = 0, isSwiping = false;
-    wrap.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; isSwiping = true; wrap.style.transition = 'none'; }, { passive: true });
+    let rafId = null;
+
+    wrap.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+        wrap.style.transition = 'none';
+    }, { passive: true });
+
     wrap.addEventListener('touchmove', (e) => {
         if (!isSwiping) return;
         const diff = e.touches[0].clientX - startX;
-        if (diff > 0 && diff < 200) { currentX = diff; wrap.style.transform = `translateX(${diff}px)`; const p = Math.min(diff / 70, 1); icon.style.opacity = p; icon.style.transform = `translateY(-50%) scale(${0.5 + p * 0.5})`; icon.style.left = '10px'; }
+
+        // Only allow right swipe and limit distance
+        if (diff > 0 && diff < 150) {
+            currentX = diff;
+
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                wrap.style.transform = `translate3d(${diff}px, 0, 0)`;
+                const p = Math.min(diff / 70, 1);
+                icon.style.opacity = p;
+                icon.style.transform = `translate3d(0, -50%, 0) scale(${0.5 + p * 0.5})`;
+                icon.style.left = '10px';
+            });
+        }
     }, { passive: true });
+
     const end = () => {
         if (!isSwiping) return;
         isSwiping = false;
-        wrap.style.transition = 'transform 0.2s ease';
-        icon.style.transition = 'all 0.2s';
-        if (currentX >= 70) {
-            if (navigator.vibrate) navigator.vibrate(30);
-            // FIX: Get current ID
-            let currentId = msgId;
-            if (wrap.id && wrap.id.startsWith('msg-')) currentId = wrap.id.substring(4);
-            setReply(currentId, content, type, ownerId);
-        }
-        wrap.style.transform = 'translateX(0)';
-        icon.style.opacity = '0';
+        if (rafId) cancelAnimationFrame(rafId);
+
+        requestAnimationFrame(() => {
+            wrap.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            icon.style.transition = 'all 0.2s';
+
+            if (currentX >= 70) {
+                if (navigator.vibrate) navigator.vibrate(30);
+                let currentId = msgId;
+                if (wrap.id && wrap.id.startsWith('msg-')) currentId = wrap.id.substring(4);
+                setReply(currentId, content, type, ownerId);
+            }
+
+            wrap.style.transform = 'translate3d(0, 0, 0)';
+            icon.style.opacity = '0';
+        });
     };
-    wrap.addEventListener('touchend', end); wrap.addEventListener('touchcancel', end);
+
+    wrap.addEventListener('touchend', end);
+    wrap.addEventListener('touchcancel', end);
 }
 function addLongPressEvent(el, msgId) {
     let timer;
@@ -3500,6 +3606,13 @@ function performExitChat() {
 
     currentTargetUserId = null;
     currentTargetUserObj = null;
+}
+
+// FIX: Ensure back button clears currentTargetUserId to prevent premature read receipts
+if (backBtn) {
+    backBtn.addEventListener('click', (e) => {
+        performExitChat();
+    });
 }
 
 
@@ -4789,8 +4902,16 @@ function createChannelListItem(c) {
 
     // Placeholder logic for channel last message (simulated for now)
     const timeDisplay = c.last_message_time ? new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Canal';
-    // const lastMsg = c.last_message || (c.is_public ? 'Público' : 'Privado');
-    const lastMsg = c.is_public ? ' Canal Público' : 'Canal Privado';
+
+    let lastMsg = c.is_public ? ' Canal Público' : 'Canal Privado';
+    let isHtmlContent = false;
+
+    // If there's a last message, format it with emoji support
+    if (c.last_message) {
+        const msgType = c.last_message_type || 'text';
+        lastMsg = formatPreviewHTML(c.last_message, msgType);
+        isHtmlContent = true;
+    }
 
     li.innerHTML = `
         <div class="card-avatar" style="${safeAvatar}"></div>
@@ -4800,7 +4921,7 @@ function createChannelListItem(c) {
                 <span class="card-time">${escapeHtml(timeDisplay)}</span>
             </div>
             <div class="card-msg" style="color:var(--text-dim);">
-               ${lastMsg}
+               ${isHtmlContent ? lastMsg : escapeHtml(lastMsg)}
             </div>
         </div>`;
 
@@ -4831,6 +4952,14 @@ function renderMixedSidebar() {
             ul.appendChild(createUserItem(u));
         });
     }
+
+    // Freeze animations in preview
+    const previewEmojis = ul.querySelectorAll('.preview-emoji');
+    previewEmojis.forEach(img => {
+        if (img.complete) freezeImage(img, false);
+        else img.onload = () => freezeImage(img, false);
+    });
+
     console.log('[DEBUG] renderMixedSidebar finished. Items:', ul.children.length);
 }
 
@@ -6087,11 +6216,14 @@ function createUserItem(u) {
     let subText = u.online ? 'En línea' : 'Desconectado';
     let subStyle = u.online ? 'color: var(--success); font-weight:600;' : 'color: var(--text-dim);';
     let timeText = '';
+    let isHtmlContent = false;
 
     // Override with Last Message if available
     if (u.lastMessage) {
-        subText = u.lastMessage;
+        const msgType = u.lastMessageType || 'text';
+        subText = formatPreviewHTML(u.lastMessage, msgType);
         subStyle = 'color: var(--text-dim);';
+        isHtmlContent = true; // Mark that this content contains HTML (emoji images)
         if (u.lastMessageTime) {
             const d = new Date(u.lastMessageTime);
             timeText = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -6103,10 +6235,12 @@ function createUserItem(u) {
         subText = 'Escribiendo...';
         subStyle = 'color: var(--success); font-weight:600;';
         timeText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        isHtmlContent = false;
     } else if (u.recording) {
         subText = 'Grabando audio...';
         subStyle = 'color: var(--success); font-weight:600;';
         timeText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        isHtmlContent = false;
     }
 
     const onlineDotHtml = u.online ? '<div class="online-dot"></div>' : '';
@@ -6132,7 +6266,7 @@ function createUserItem(u) {
                 <span class="card-time">${timeText}</span>
             </div>
             <div class="card-msg" style="${subStyle}">
-                ${escapeHtml(subText)}
+                ${isHtmlContent ? subText : escapeHtml(subText)}
             </div>
         </div>
     `;
@@ -7825,15 +7959,14 @@ function updateSidebarPreviewAfterDeletion(deletedRow, deletedMsgId) {
     }
 }
 
+
 // --- SIDEBAR UPDATE HELPER ---
 function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
     try {
         console.log(`[SIDEBAR-UPDATE] Updating for ${targetId}: ${content} (${type})`);
 
+        // Store raw content - formatting will happen when rendering
         let preview = content;
-        if (type === 'image') preview = '📷 Foto';
-        else if (type === 'sticker') preview = '✨ Sticker';
-        else if (type === 'audio') preview = '🎤 Audio';
 
         // Handle encrypted or special messages if needed
         if (preview && typeof preview === 'string' && preview.startsWith('{"iv":')) preview = "🔒 Mensaje encriptado";
@@ -7865,6 +7998,7 @@ function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
             const ch = myChannels.find(c => c.id == cleanId);
             if (ch) {
                 ch.last_message = preview;
+                ch.last_message_type = type;
                 ch.last_message_time = new Date(timestamp).getTime();
                 // Move to top logic can be complex with channels mixed, 
                 // but usually renderMixedSidebar sorts by online/activity? 
@@ -7878,6 +8012,7 @@ function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
             const u = allUsersCache.find(x => x.userId == targetId);
             if (u) {
                 u.lastMessage = preview;
+                u.lastMessageType = type;
                 u.lastMessageTime = new Date(timestamp).getTime();
                 renderMixedSidebar();
             }
@@ -7886,4 +8021,32 @@ function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
     } catch (e) {
         console.error("[SIDEBAR-UPDATE] Error updating sidebar:", e);
     }
+}
+
+
+// --- INPUT FOCUS HANDLER ---
+function setupInputFocusHandlers() {
+    const input = document.getElementById('input');
+    const inputStack = document.getElementById('inputStack');
+    if (!input || !inputStack) return;
+
+    input.addEventListener('focus', () => {
+        inputStack.classList.add('input-focused');
+    });
+
+    input.addEventListener('blur', () => {
+        inputStack.classList.remove('input-focused');
+    });
+}
+window.setupInputFocusHandlers = setupInputFocusHandlers;
+
+// Initialize logic
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSettingsNavigation();
+        setupInputFocusHandlers();
+    });
+} else {
+    setupSettingsNavigation();
+    setupInputFocusHandlers();
 }
