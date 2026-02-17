@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0a">
     <title>AvenApp</title>
     <meta name="description"
@@ -831,35 +831,37 @@
                 <div class="composer-inner">
 
                     <div id="inputStack" class="input-stack">
-                        <!-- Preview del Reply (Sin cambios) -->
-                        <div id="replyPreview" class="reply-preview hidden">
-                            <div class="reply-content-container">
-                                <div class="reply-bar-color"></div>
-                                <div class="reply-info">
-                                    <span id="replyToName" class="reply-to-name">Nombre</span>
-                                    <span id="replyToText" class="reply-to-text">Mensaje</span>
+                        <div class="reply-mask">
+                            <!-- Preview del Reply (Sin cambios) -->
+                            <div id="replyPreview" class="reply-preview hidden">
+                                <div class="reply-content-container">
+                                    <div class="reply-bar-color"></div>
+                                    <div class="reply-info">
+                                        <span id="replyToName" class="reply-to-name">Nombre</span>
+                                        <span id="replyToText" class="reply-to-text">Mensaje</span>
+                                    </div>
+                                    <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
                                 </div>
-                                <div id="replyToImagePreview" class="reply-img-mini hidden"></div>
+                                <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
                             </div>
-                            <button type="button" id="closeReplyBtn" class="close-reply">✕</button>
-                        </div>
 
-                        <div id="editPreview" class="reply-preview hidden">
-                            <div class="reply-content-container" style="border-left: none; align-items: center;">
-                                <!-- Icono Lápiz Azul -->
-                                <div style="margin-right: 12px; color: #3b82f6;">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                        <path
-                                            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z">
-                                        </path>
-                                    </svg>
+                            <div id="editPreview" class="reply-preview hidden">
+                                <div class="reply-content-container" style="border-left: none; align-items: center;">
+                                    <!-- Icono Lápiz Azul -->
+                                    <div style="margin-right: 12px; color: #3b82f6;">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                            <path
+                                                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <div class="reply-info">
+                                        <span class="reply-to-name" style="color: #3b82f6;">Editar mensaje</span>
+                                        <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
+                                    </div>
                                 </div>
-                                <div class="reply-info">
-                                    <span class="reply-to-name" style="color: #3b82f6;">Editar mensaje</span>
-                                    <span id="editPreviewText" class="reply-to-text">Mensaje original...</span>
-                                </div>
+                                <button type="button" id="closeEditBtn" class="close-reply">✕</button>
                             </div>
-                            <button type="button" id="closeEditBtn" class="close-reply">✕</button>
                         </div>
 
                         <!-- NUEVO WRAPPER: Contiene Sticker + Input + Imagen -->
@@ -1739,7 +1741,7 @@
     <script src="android-back-handler.js"></script>
     <!-- Socket.io CDN -->
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
-    <script src="script.js" defer></script>
+    <script src="script.js?v=2.0.3" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
 </body>

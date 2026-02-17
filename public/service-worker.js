@@ -1,7 +1,7 @@
-const CACHE_STATIC_NAME = 'aven-static-v2.0.2';
-const CACHE_DYNAMIC_NAME = 'aven-dynamic-v2.0.2';
-const CACHE_IMG_NAME = 'aven-images-v2.0.2';
-const CACHE_EMOJI_NAME = 'aven-emojis-v2.0.2';
+const CACHE_STATIC_NAME = 'aven-static-v2.0.3';
+const CACHE_DYNAMIC_NAME = 'aven-dynamic-v2.0.3';
+const CACHE_IMG_NAME = 'aven-images-v2.0.3';
+const CACHE_EMOJI_NAME = 'aven-emojis-v2.0.3';
 const CACHE_LIMIT = 50;
 
 const urlsToCache = [

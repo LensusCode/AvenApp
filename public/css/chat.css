@@ -30,7 +30,7 @@
 @keyframes messageSlideIn {
     0% {
         opacity: 0;
-        transform: translateY(20px) scale(0.94);
+        transform: translateY(10px) scale(0.98);
     }
 
     100% {
@@ -40,10 +40,40 @@
 }
 
 .message-row {
-    animation: messageSlideIn 0.4s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
-    will-change: transform, opacity;
+    animation: messageSlideIn 0.2s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+    /* Removed permanent will-change to save memory */
+    /* Only apply will-change during animation if needed via class */
     contain: content;
-    /* Rendering optimization */
+}
+
+/* Disable animation during history load */
+.messages-list.loading-history .message-row,
+.message-row.no-animate {
+    animation: none !important;
+}
+
+@keyframes historyFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-row.history-message {
+    animation: historyFadeIn 0.3s ease-out forwards;
+}
+
+/* Optimized removal animation */
+.message-row.removing {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    pointer-events: none;
 }
 
 .empty-state {
@@ -61,7 +91,11 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 2px;
+}
+
+.message-row.new-sender {
+    margin-top: 8px;
 }
 
 .message {
@@ -76,6 +110,25 @@
     position: relative;
     user-select: none;
     transform: translateZ(0);
+    transition: border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes seqUpdate {
+    0% {
+        transform: scale(1);
+    }
+
+    40% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.message.seq-updated {
+    animation: seqUpdate 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .message.me {
@@ -105,13 +158,6 @@
 .message-row.same-sender-next .message {
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
-    margin-bottom: 2px;
-}
-
-.message-row.same-sender-prev .message {
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    margin-top: 2px;
 }
 
 .date-divider {
@@ -188,7 +234,7 @@
     object-fit: cover;
     cursor: pointer;
     transition: transform 0.2s;
-    will-change: transform;
+    /* will-change removed for performance */
 }
 
 .sticker-item-wrapper:hover .sticker-thumb {
@@ -477,15 +523,16 @@
     flex-direction: column;
     position: relative;
     min-width: 0;
+    isolation: isolate;
+    z-index: 0;
 }
 
 
 .reply-preview {
     background: var(--input-bg);
-    border: 1px solid var(--border);
-    border-bottom: none;
+    border: none;
     border-radius: 24px 24px 0 0;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: box-shadow 0.2s;
     padding: 8px 12px;
     display: flex;
     align-items: center;
@@ -495,24 +542,45 @@
     overflow: hidden;
     box-sizing: border-box;
     transform-origin: bottom center;
-    animation: popUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    will-change: transform, opacity;
+    animation: replySlideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 1;
 }
 
-.input-stack.input-focused .reply-preview {
-    border-color: var(--accent);
-    box-shadow: 0 -4px 20px rgba(99, 102, 241, 0.15);
+.reply-mask {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
 }
 
-@keyframes popUp {
+.reply-closing {
+    animation: replySlideDown 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    pointer-events: none;
+    z-index: 1;
+}
+
+
+@keyframes replySlideUp {
     0% {
         opacity: 0;
-        transform: translateY(20px) scale(0.9);
+        transform: translateY(100%);
     }
 
     100% {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
+    }
+}
+
+@keyframes replySlideDown {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(100%);
     }
 }
 
@@ -637,14 +705,12 @@
     position: relative;
     overflow-x: clip;
     align-items: center;
-    min-height: 40px;
 }
 
 .message-content-wrapper {
     position: relative;
     max-width: 75%;
     transition: transform .2s cubic-bezier(.2, .8, .2, 1);
-    will-change: transform;
     touch-action: pan-y;
     display: flex;
     /* Hardware acceleration hint */
@@ -661,7 +727,6 @@
     max-width: 75%;
     flex-wrap: nowrap;
     transition: transform .2s cubic-bezier(.2, .8, .2, 1);
-    will-change: transform;
     touch-action: pan-y;
 }
 
@@ -679,8 +744,26 @@
     max-width: 75%;
     position: relative;
     transition: transform .2s cubic-bezier(.2, .8, .2, 1);
-    will-change: transform;
     touch-action: pan-y;
+}
+
+.message-inner {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.message-inner.row-align {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.message-inner.row-align .meta-row {
+    margin-top: 0;
+    margin-bottom: -4px;
+    flex-shrink: 0;
 }
 
 .message .meta {
@@ -1126,22 +1209,26 @@
     display: flex;
     align-items: flex-end;
     background: var(--input-bg);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 24px;
     padding: 2px 4px;
     width: 100%;
     transition: border-radius 0.2s, border-color 0.2s;
+    position: relative;
+    z-index: 5;
+    overflow: hidden;
+    /* Ensure reply preview is clipped */
 }
 
-.chat-input-wrapper:focus-within {
-    border-color: var(--accent);
-}
+.chat-input-wrapper:focus-within {}
 
 #input {
     flex: 1;
     background: transparent;
     border: none;
     padding: 12px 5px;
+    position: relative;
+    z-index: 2;
     color: #fff;
     resize: none;
     overflow-y: hidden;
@@ -1197,7 +1284,6 @@
 .input-stack.active .chat-input-wrapper {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    border-top: 1px solid transparent;
 }
 
 .input-stack.recording .chat-input-wrapper {
@@ -1631,4 +1717,13 @@
     line-height: 1;
     padding-bottom: 3px;
     white-space: nowrap;
+}
+
+.message-row.rapid-sequence .message {
+    border-radius: 18px 18px 18px 18px !important;
+}
+
+
+.message-row.rapid-sequence .message {
+    border-radius: 18px 18px 18px 18px !important;
 }

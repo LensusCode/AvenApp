@@ -5,14 +5,35 @@ require('dotenv').config();
 
 exports.getMessages = (req, res) => {
     const { myId, otherId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+    const beforeId = req.query.beforeId ? parseInt(req.query.beforeId) : null;
+
+    console.log(`[getMessages] myId=${myId}, otherId=${otherId}, limit=${limit}, beforeId=${beforeId}`);
+
     if (parseInt(myId) !== req.user.id && !req.user.is_admin) return res.status(403).json({ error: 'No autorizado' });
 
     db.get(`SELECT is_admin FROM users WHERE id = ?`, [myId], (err, userRow) => {
         if (err) return res.status(500).json({ error: 'DB Error' });
         const isAdmin = userRow && userRow.is_admin === 1;
 
+        // Base 4 params for the conversation condition
+        let wherParams = [myId, otherId, otherId, myId];
         let sqlCondition = `((m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?))`;
+
         if (!isAdmin) sqlCondition += ` AND m.is_deleted = 0`;
+
+        if (beforeId) {
+            sqlCondition += ` AND m.id < ?`;
+            wherParams.push(beforeId);
+        }
+
+        // Correct Parameter Order:
+        // 1. myId (for hidden_messages JOIN)
+        // 2. ...wherParams (for WHERE clause)
+        // 3. limit (for LIMIT)
+        const finalParams = [myId, ...wherParams, limit];
+
+        console.log(`[getMessages] finalParams:`, finalParams);
 
         const sql = `
             SELECT m.*, r.content as reply_content, r.type as reply_type, r.from_user_id as reply_from_id 
@@ -20,17 +41,20 @@ exports.getMessages = (req, res) => {
             LEFT JOIN messages r ON m.reply_to_id = r.id 
             LEFT JOIN hidden_messages h ON h.message_id = m.id AND h.user_id = ? 
             WHERE ${sqlCondition} AND h.id IS NULL 
-            ORDER BY m.timestamp ASC
+            ORDER BY m.id DESC LIMIT ?
         `;
 
-        db.all(sql, [myId, myId, otherId, otherId, myId], (err, rows) => {
+        db.all(sql, finalParams, (err, rows) => {
             if (err) return res.status(500).json({ error: 'Error DB' });
+
+            // Decrypt and Reverse to return chronological order (Oldest -> Newest)
             const decryptedRows = rows.map(row => ({
                 ...row,
                 content: decrypt(row.content),
                 reply_content: row.reply_content ? decrypt(row.reply_content) : null,
                 caption: row.caption ? decrypt(row.caption) : null,
-            }));
+            })).reverse();
+
             res.json(decryptedRows);
         });
     });

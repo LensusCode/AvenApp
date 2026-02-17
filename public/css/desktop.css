@@ -37,6 +37,16 @@
         display: inline-flex !important;
     }
 
+    /* Hide "Tu historia" on desktop - moved to camera button */
+    .fav-item.add-new {
+        display: none !important;
+    }
+
+    /* Hide entire favorites-section if it only has the "Tu historia" element (no other stories) */
+    .favorites-section:not(:has(.fav-item:not(.add-new))) {
+        display: none !important;
+    }
+
     /* 1. LEFT RAIL (Navigation) */
     .floating-dock-container {
         position: relative !important;

@@ -42,12 +42,9 @@
 
 .main-column.theme-love .chat-input-wrapper {
     background: transparent !important;
-    border: 1px solid rgba(236, 72, 153, 0.3);
 }
 
-.main-column.theme-love .chat-input-wrapper:focus-within {
-    border-color: #ec4899;
-}
+
 
 
 .main-column.theme-love .send-btn {
@@ -89,7 +86,6 @@
 
 .main-column.theme-space .chat-input-wrapper {
     background: transparent !important;
-    border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
 

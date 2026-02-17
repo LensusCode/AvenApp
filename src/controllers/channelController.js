@@ -153,20 +153,36 @@ exports.getChannelMessages = (req, res) => {
     db.get(`SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?`, [req.params.channelId, req.user.id], (err, isMember) => {
         if (!isMember && !req.user.is_admin) return res.status(403).json({ error: "No eres miembro" });
 
-        const sql = `
+        const limit = parseInt(req.query.limit) || 50;
+        const beforeId = req.query.beforeId ? parseInt(req.query.beforeId) : null;
+
+        let sql = `
             SELECT m.*, u.username, u.display_name, u.avatar 
             FROM messages m
             LEFT JOIN users u ON m.from_user_id = u.id
             WHERE m.channel_id = ? AND m.is_deleted = 0
-            ORDER BY m.timestamp ASC
         `;
-        db.all(sql, [req.params.channelId], (err, rows) => {
+
+        const params = [req.params.channelId];
+
+        if (beforeId) {
+            sql += ` AND m.id < ?`;
+            params.push(beforeId);
+        }
+
+        sql += ` ORDER BY m.id DESC LIMIT ?`;
+        params.push(limit);
+
+        db.all(sql, params, (err, rows) => {
             if (err) return res.status(500).json({ error: "DB Error" });
+
+            // Decrypt and Reverse
             const decryptedRows = rows.map(row => ({
                 ...row,
                 content: decrypt(row.content),
                 caption: row.caption ? decrypt(row.caption) : null,
-            }));
+            })).reverse();
+
             res.json(decryptedRows);
         });
     });

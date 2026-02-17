@@ -31,6 +31,7 @@
     font-weight: 800;
     background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
 }
@@ -189,7 +190,7 @@
 .users-list {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 20px;
+    padding: 10px 4px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -594,6 +595,7 @@
 .viewer-avatar .text-avatar {
     font-size: 14px;
 }
+
 /* --- SEARCH MODE OVERLAY --- */
 .users-list.search-mode {
     background-color: #000000;
@@ -604,4 +606,3 @@
 .user-item[style*="display: none"] {
     display: none !important;
 }
-

@@ -140,6 +140,28 @@ function getAvatarColor(name) {
     return colors[Math.abs(hash) % colors.length];
 }
 
+// Performance Helpers
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
+function throttle(func, limit) {
+    let inThrottle;
+    return function (...args) {
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
+}
+
 // Helper to render avatar content (Image or Initials)
 // Returns just the innerHTML or style string depending on usage context
 // Context: define if we want style string for bg or inner HTML structure
@@ -842,6 +864,7 @@ const getBadgeHtml = (u) => {
 
 
 let currentTargetUserId = null, currentTargetUserObj = null;
+let lastDetailedTimestamp = null;
 let messageIdToDelete = null;
 let deleteActionType = 'single';
 let currentContextMessageId = null;
@@ -857,6 +880,7 @@ let currentEditingId = null;
 let emojiCache = null;
 let currentPanelMode = 'stickers';
 let currentEmojiCategory = null;
+let replyCloseTimer = null;
 
 const editPreview = document.getElementById('editPreview');
 const editPreviewText = document.getElementById('editPreviewText');
@@ -1440,7 +1464,7 @@ function setupFieldEditing(triggerElement, targetElementId, dbField, prefix = ''
 
         // Mejorar UX: Si es el placeholder, mostrar input vacío
         let textToEdit = currentText;
-        const isPlaceholder = (t) => t === "Añadir una biografía..." || t === "Sin biografía.";
+        const isPlaceholder = (t) => t === "Añadir una biografía..." || t === "Añade una biografía..." || t === "Sin biografía.";
         if (dbField === 'bio' && isPlaceholder(textToEdit)) {
             textToEdit = "";
         }
@@ -1458,7 +1482,7 @@ function setupFieldEditing(triggerElement, targetElementId, dbField, prefix = ''
             targetEl.innerHTML = '';
             // Chequear si está vacío O es uno de los placeholders antiguos
             if (dbField === 'bio' && (!val || isPlaceholder(val))) {
-                targetEl.textContent = "Añadir una biografía...";
+                targetEl.textContent = "Añade una biografía...";
                 targetEl.style.color = "#666";
             } else {
                 targetEl.textContent = prefix + val;
@@ -2298,6 +2322,17 @@ getEl('btnStickerFavAction')?.addEventListener('click', async () => {
 function openStickerOptions(url) { toggleStickerModal(true, url); }
 
 
+// Prevent blur when clicking/touching outside input (keep keyboard open)
+function preventInputBlur(e) {
+    if (inputMsg && document.activeElement === inputMsg) {
+        // Allow scrolling in the messages area and clicking interactive elements
+        if (e.target.closest('.chat-main, button, a, input, textarea, [contenteditable], .interactive, .reply-preview')) return;
+        e.preventDefault();
+    }
+}
+document.addEventListener('mousedown', preventInputBlur);
+document.addEventListener('touchstart', preventInputBlur, { passive: false });
+
 function setReply(msgId, content, type, ownerId, forceName = null) {
     if (isEditing) {
         cancelEditing();
@@ -2339,9 +2374,22 @@ function setReply(msgId, content, type, ownerId, forceName = null) {
     } else {
         replyToText.textContent = content;
     }
+    if (replyCloseTimer) clearTimeout(replyCloseTimer);
     replyPreview.classList.remove('hidden');
+    replyPreview.classList.remove('reply-closing');
     getEl('inputStack')?.classList.add('active');
-    inputMsg.focus();
+
+    // Focus immediately + force keyboard on mobile
+    // On Android, focus() on an already-focused element is a no-op,
+    // so blur first to force the keyboard to reappear
+    if (inputMsg) {
+        if (document.activeElement === inputMsg) {
+            inputMsg.blur();
+        }
+        requestAnimationFrame(() => {
+            inputMsg.focus();
+        });
+    }
 }
 
 function clearReply() {
@@ -2351,15 +2399,17 @@ function clearReply() {
     currentReplyId = null;
     getEl('inputStack')?.classList.remove('active');
 
-    // Smooth exit
-    preview.style.opacity = '0';
-    preview.style.transform = 'translateY(10px) scale(0.95)';
+    // Smooth exit using class
+    preview.classList.add('reply-closing');
 
-    setTimeout(() => {
+    if (replyCloseTimer) clearTimeout(replyCloseTimer);
+
+    // Wait for animation to finish (300ms matches CSS animation duration)
+    replyCloseTimer = setTimeout(() => {
         preview.classList.add('hidden');
-        preview.style.opacity = '';
-        preview.style.transform = '';
-    }, 200);
+        preview.classList.remove('reply-closing');
+        replyCloseTimer = null;
+    }, 300);
 }
 const closeReplyBtn = getEl('closeReplyBtn');
 if (closeReplyBtn) {
@@ -2449,7 +2499,7 @@ async function selectUser(target, elem) {
     if (fabNewChat) fabNewChat.classList.add('hidden');
     if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
 
-    lastMessageDate = null;
+    lastDetailedTimestamp = null;
     lastMessageUserId = null;
 
     typingIndicator.classList.add('hidden');
@@ -2458,6 +2508,14 @@ async function selectUser(target, elem) {
 
     currentTargetUserId = target.userId;
     currentTargetUserObj = target;
+
+    // Reset unread count
+    if (target.unread > 0) {
+        target.unread = 0;
+        localStorage.setItem('cachedUsers', JSON.stringify(allUsersCache));
+        // Force sidebar update to remove badge
+        renderMixedSidebar();
+    }
 
     currentChatType = target.chat_type || 'private';
 
@@ -2487,11 +2545,22 @@ async function selectUser(target, elem) {
     inputMsg.style.height = '45px';
 
     messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
+    messagesList.classList.add('loading-history');
 
-    const history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}`);
+    // Reset Pagination
+    oldestMessageId = null;
+    allHistoryLoaded = false;
+    isLoadingHistory = false;
+
+    // Fetch latest 50
+    const history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}?limit=50`);
     messagesList.innerHTML = '';
 
-    if (history) {
+    if (history && history.length > 0) {
+        // Set oldest ID for next pagination
+        oldestMessageId = history[0].id;
+        if (history.length < 50) allHistoryLoaded = true;
+
         history.forEach(msg => {
             let rd = null;
             if (msg.reply_to_id) {
@@ -2499,7 +2568,6 @@ async function selectUser(target, elem) {
                 let rContent = msg.reply_content;
                 if (msg.reply_type === 'image') rContent = ICONS.replyImage;
                 else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
-                // FIX: Add id: msg.reply_to_id
                 rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
             }
             let fixedDate = msg.timestamp;
@@ -2518,18 +2586,94 @@ async function selectUser(target, elem) {
                 msg.caption,
                 msg.is_edited,
                 msg.from_user_id,
-                msg.username || (msg.user ? msg.user.username : null),
-                msg.status || 'sent'
+                msg.username
             );
         });
+
+        void messagesList.offsetWidth;
+        requestAnimationFrame(() => messagesList.classList.remove('loading-history'));
+
         scrollToBottom(false);
         socket.emit('mark messages read', { senderId: target.userId });
         setTimeout(() => scrollToBottom(false), 200);
 
     } else {
-        messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
+        messagesList.classList.remove('loading-history');
+        allHistoryLoaded = true;
+        if (!history) {
+            messagesList.innerHTML = '<li style="text-align:center;color:#ef4444;margin-top:20px;">Error cargando mensajes</li>';
+        } else {
+            // No messages history
+            // messagesList.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">No hay mensajes aún</li>';
+        }
     }
     checkAndLoadPinnedMessage(target.userId);
+
+    // Attach scroll listener for lazy loading
+    setupScrollListener();
+}
+
+// Pagination Globals
+let oldestMessageId = null;
+let isLoadingHistory = false;
+let allHistoryLoaded = false;
+
+function setupScrollListener() {
+    const scrollContainer = messagesList.parentNode; // .chat-main
+    scrollContainer.onscroll = () => {
+        if (scrollContainer.scrollTop < 50 && !isLoadingHistory && !allHistoryLoaded) {
+            loadMoreMessages();
+        }
+    };
+}
+
+async function loadMoreMessages() {
+    if (isLoadingHistory || allHistoryLoaded || !currentTargetUserId) return;
+    isLoadingHistory = true;
+
+    // Save scroll position
+    const scrollContainer = messagesList.parentNode;
+    const oldScrollHeight = scrollContainer.scrollHeight;
+    const oldScrollTop = scrollContainer.scrollTop;
+
+    // Determine API URL
+    let url = '';
+    if (currentChatType === 'channel') {
+        const channelId = currentTargetUserId.startsWith('c_') ? currentTargetUserId.substring(2) : currentTargetUserId;
+        url = `/api/channels/channel-messages/${channelId}?limit=50&beforeId=${oldestMessageId}`;
+    } else {
+        url = `/api/messages/messages/${myUser.id}/${currentTargetUserId}?limit=50&beforeId=${oldestMessageId}`;
+    }
+
+    const prevLoader = document.createElement('div');
+    prevLoader.className = 'history-loader';
+    prevLoader.innerHTML = '<div class="spinner"></div>'; // You might need CSS for this
+    messagesList.prepend(prevLoader);
+
+    try {
+        const olderMessages = await apiRequest(url);
+        prevLoader.remove();
+
+        if (olderMessages && olderMessages.length > 0) {
+            oldestMessageId = olderMessages[0].id; // Update pointer
+            if (olderMessages.length < 50) allHistoryLoaded = true;
+
+            // Prepend Messages Logic
+            prependMessageBatch(olderMessages);
+
+            // Restore scroll position
+            const newScrollHeight = scrollContainer.scrollHeight;
+            scrollContainer.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+
+        } else {
+            allHistoryLoaded = true;
+        }
+    } catch (e) {
+        console.error("Error loading more messages", e);
+        prevLoader.remove();
+    } finally {
+        isLoadingHistory = false;
+    }
 }
 backBtn.addEventListener('click', () => {
     chatContainer.classList.remove('mobile-chat-active');
@@ -2761,6 +2905,112 @@ socket.on('messages read', ({ toUserId }) => {
     }
 });
 
+// Recalculate sequence classes for all visible messages
+let isRecalcPending = false;
+function recalcSequenceClasses() {
+    if (isRecalcPending) return;
+    isRecalcPending = true;
+
+    requestAnimationFrame(() => {
+        console.log("[RECALC] recalcSequenceClasses called via rAF");
+        const rows = messagesList.querySelectorAll('.message-row');
+        let prevSenderId = null;
+        let prevTimestamp = null;
+        let seqGroup = [];
+
+        function flushSeqGroup() {
+            if (seqGroup.length === 0) return;
+            if (seqGroup.length === 1) {
+                const r = seqGroup[0];
+                r.classList.remove('seq-top', 'seq-middle', 'seq-bottom');
+            } else {
+                seqGroup.forEach((row, i) => {
+                    row.classList.remove('seq-top', 'seq-middle', 'seq-bottom');
+                    if (i === 0) row.classList.add('seq-top');
+                    else if (i === seqGroup.length - 1) row.classList.add('seq-bottom');
+                    else row.classList.add('seq-middle');
+                });
+            }
+            seqGroup = [];
+        }
+
+        rows.forEach(row => {
+            if (row.classList.contains('date-divider')) {
+                flushSeqGroup();
+                prevSenderId = null;
+                prevTimestamp = null;
+                return;
+            }
+
+            // Skip deleted messages
+            const wrapper = row.querySelector('.message-content-wrapper');
+            if (wrapper && wrapper.classList.contains('deleted-msg')) {
+                flushSeqGroup();
+                prevSenderId = null;
+                prevTimestamp = null;
+                return;
+            }
+
+            const senderId = row.dataset.senderId;
+            const timestamp = parseInt(row.dataset.timestamp) || 0;
+            const isSameSender = prevSenderId !== null && String(prevSenderId) === String(senderId);
+
+            // Update new-sender class
+            if (isSameSender) {
+                row.classList.remove('new-sender');
+            } else {
+                row.classList.add('new-sender');
+            }
+
+            // Update rapid-sequence class
+            const wasRapid = row.classList.contains('rapid-sequence');
+            const isRapid = isSameSender && prevTimestamp && (timestamp - prevTimestamp) < 60000;
+
+            if (isRapid) {
+                row.classList.add('rapid-sequence');
+            } else {
+                row.classList.remove('rapid-sequence');
+            }
+
+            // Optimized animation trigger without forced reflow
+            if (wasRapid && !isRapid) {
+                const msgEl = row.querySelector('.message');
+                if (msgEl) {
+                    msgEl.classList.remove('seq-updated');
+                    // Use double rAF to trigger animation instead of void offsetWidth
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            msgEl.classList.add('seq-updated');
+                        });
+                    });
+                    msgEl.addEventListener('animationend', () => msgEl.classList.remove('seq-updated'), { once: true });
+                }
+            }
+
+            // Build sequence groups for seq-top/middle/bottom
+            if (isSameSender) {
+                if (seqGroup.length === 0 && row.previousElementSibling) {
+                    // Add the previous row as seq-top if applicable
+                    let prev = row.previousElementSibling;
+                    while (prev && prev.classList.contains('date-divider')) prev = prev.previousElementSibling;
+                    if (prev && prev.classList.contains('message-row') && String(prev.dataset.senderId) === String(senderId)) {
+                        seqGroup.push(prev);
+                    }
+                }
+                seqGroup.push(row);
+            } else {
+                flushSeqGroup();
+            }
+
+            prevSenderId = senderId;
+            prevTimestamp = timestamp;
+        });
+
+        flushSeqGroup();
+        isRecalcPending = false;
+    });
+}
+
 socket.on('message deleted', ({ messageId }) => {
     console.log(`[SOCKET] DELETE EVENT. ID: ${messageId}, Type: ${typeof messageId}`);
 
@@ -2883,6 +3133,7 @@ socket.on('message deleted', ({ messageId }) => {
                 contentWrap.style.cssText = 'border:1px dashed #ef4444; opacity:0.7';
                 contentWrap.insertAdjacentHTML('afterbegin', `<div style="color:#ef4444;font-size:10px;font-weight:bold;margin-bottom:4px;">🚫 ELIMINADO</div>`);
                 console.log("[SOCKET] Marked as deleted successfully");
+                recalcSequenceClasses();
             } else {
                 console.log("[SOCKET] Already marked as deleted");
             }
@@ -2895,6 +3146,7 @@ socket.on('message deleted', ({ messageId }) => {
             row.style.cssText = "opacity:0; transition: opacity 0.3s; transform: scale(0.9);";
             setTimeout(() => {
                 row.remove();
+                recalcSequenceClasses();
                 console.log("[SOCKET] Row removed from DOM");
             }, 300);
         } else if (contentWrap) {
@@ -2902,7 +3154,7 @@ socket.on('message deleted', ({ messageId }) => {
             const parentRow = contentWrap.closest('.message-row');
             if (parentRow) {
                 parentRow.style.cssText = "opacity:0; transition: opacity 0.3s; transform: scale(0.9);";
-                setTimeout(() => parentRow.remove(), 300);
+                setTimeout(() => { parentRow.remove(); recalcSequenceClasses(); }, 300);
             } else {
                 console.warn("[SOCKET] Could not find parent row via wrapper");
             }
@@ -2971,8 +3223,10 @@ function linkify(text) {
     return safeText;
 }
 
-function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0, senderId = null, senderName = null, status = 'sent') {
-    renderDateDivider(dateStr);
+
+
+function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', replyData = null, isDeleted = 0, caption = null, isEdited = 0, senderId = null, senderName = null, status = 'sent', container = messagesList, skipDateDivider = false, extraClass = '') {
+    if (!skipDateDivider) renderDateDivider(dateStr, container);
 
     if (currentChatType === 'channel') {
         ownerType = 'other';
@@ -2985,10 +3239,24 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     if (ownerType === 'me' || (senderId && myUser && String(senderId) === String(myUser.id))) {
         senderName = 'Tú';
     }
-    const isSequence = lastMessageUserId === currentUserId;
+    const isSequence = lastMessageUserId !== null && String(lastMessageUserId) === String(currentUserId);
+
+    // START CHANGE: Check time sequence
+    let isRapidSequence = false;
+    const currentMsgDate = new Date(dateStr);
+
+    if (isSequence && lastDetailedTimestamp) {
+        const timeDiff = currentMsgDate - lastDetailedTimestamp;
+        // If less than 60 seconds (60000ms)
+        if (timeDiff < 60000) {
+            isRapidSequence = true;
+        }
+    }
 
     const li = document.createElement('li');
-    li.className = `message-row ${ownerType}`;
+    li.className = `message-row ${ownerType} ${extraClass}`;
+    if (!isSequence) li.classList.add('new-sender'); // Add spacing for new sender
+    if (isRapidSequence) li.classList.add('rapid-sequence');
     if (msgType === 'sticker') li.classList.add('sticker-wrapper');
     li.id = `row-${msgId}`;
     li.dataset.senderId = senderId || (ownerType === 'me' ? myUser.id : currentTargetUserId);
@@ -3108,7 +3376,7 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
             </div>
         </div>`;
 
-    messagesList.appendChild(li);
+    container.appendChild(li);
 
     // Click handler for reply scrolling
     if (replyData && replyData.id) {
@@ -3150,7 +3418,9 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     }
 
 
+
     lastMessageUserId = currentUserId;
+    lastDetailedTimestamp = currentMsgDate;
 
 
     if (msgType === 'sticker' && isValidUrl(content)) {
@@ -3289,6 +3559,8 @@ function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
                 let currentId = msgId;
                 if (wrap.id && wrap.id.startsWith('msg-')) currentId = wrap.id.substring(4);
                 setReply(currentId, content, type, ownerId);
+                // Focus immediately in gesture context so keyboard opens reliably
+                if (inputMsg) inputMsg.focus();
             }
 
             wrap.style.transform = 'translate3d(0, 0, 0)';
@@ -3515,10 +3787,10 @@ function removeMessageFromUI(msgId) {
     }
 
     if (row) {
-        row.style.transition = "all 0.3s ease";
-        row.style.opacity = "0";
-        row.style.transform = "scale(0.9)";
-        setTimeout(() => row.remove(), 300);
+        row.classList.add('removing');
+        row.addEventListener('transitionend', () => row.remove(), { once: true });
+        // Backup timeout in case transitionend fails
+        setTimeout(() => { if (row.parentNode) row.remove(); }, 350);
     } else {
         console.warn("[UI] No se pudo encontrar el elemento para eliminar:", msgId);
     }
@@ -3653,13 +3925,14 @@ inputMsg.addEventListener('input', () => {
 
 
     if (currentTargetUserId) {
-        socket.emit('typing', { toUserId: currentTargetUserId });
-
-
-
+        emitTypingThrottled(currentTargetUserId);
         localStorage.setItem(`draft_${currentTargetUserId}`, inputMsg.value);
     }
 });
+
+const emitTypingThrottled = throttle((userId) => {
+    socket.emit('typing', { toUserId: userId });
+}, 2000);
 inputMsg.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (inputMsg.value.trim().length) mainActionBtn.click(); } });
 
 
@@ -3821,27 +4094,24 @@ let lastMessageUserId = null;
 
 
 function scrollToBottom(smooth = true) {
-
     const scrollContainer = messagesList.parentNode;
 
-
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         if (smooth) {
             scrollContainer.scrollTo({
                 top: scrollContainer.scrollHeight,
                 behavior: 'smooth'
             });
         } else {
-
             scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
-    }, 50);
+    });
 }
 
 
 
 
-function renderDateDivider(dateStr) {
+function renderDateDivider(dateStr, container = messagesList) {
     const date = new Date(dateStr);
     const today = new Date();
     const yesterday = new Date(today);
@@ -3858,10 +4128,12 @@ function renderDateDivider(dateStr) {
         const li = document.createElement('li');
         li.className = 'date-divider';
         li.innerHTML = `<span>${label}</span>`;
-        messagesList.appendChild(li);
+        container.appendChild(li);
 
-        lastMessageDate = label;
-        lastMessageUserId = null;
+        if (container === messagesList) {
+            lastMessageDate = label;
+            lastMessageUserId = null;
+        }
     }
 }
 
@@ -3874,17 +4146,23 @@ const chatScrollContainer = document.querySelector('.chat-main');
 if (scrollToBottomBtn && chatScrollContainer) {
 
 
+    let isScrolling = false;
     chatScrollContainer.addEventListener('scroll', () => {
+        if (!isScrolling) {
+            window.requestAnimationFrame(() => {
+                const distanceToBottom = chatScrollContainer.scrollHeight - chatScrollContainer.scrollTop - chatScrollContainer.clientHeight;
 
-        const distanceToBottom = chatScrollContainer.scrollHeight - chatScrollContainer.scrollTop - chatScrollContainer.clientHeight;
+                if (distanceToBottom > 300) {
+                    scrollToBottomBtn.classList.remove('hidden');
+                } else {
+                    scrollToBottomBtn.classList.add('hidden');
+                }
 
-
-        if (distanceToBottom > 300) {
-            scrollToBottomBtn.classList.remove('hidden');
-        } else {
-            scrollToBottomBtn.classList.add('hidden');
+                isScrolling = false;
+            });
+            isScrolling = true;
         }
-    });
+    }, { passive: true });
 
 
     scrollToBottomBtn.addEventListener('click', () => {
@@ -4930,6 +5208,10 @@ function createChannelListItem(c) {
 }
 
 function renderMixedSidebar() {
+    renderMixedSidebarDebounced();
+}
+
+const renderMixedSidebarDebounced = debounce(() => {
     console.log('[DEBUG] renderMixedSidebar called');
     const ul = document.getElementById('usersList');
     if (!ul) {
@@ -4961,7 +5243,7 @@ function renderMixedSidebar() {
     });
 
     console.log('[DEBUG] renderMixedSidebar finished. Items:', ul.children.length);
-}
+}, 100);
 
 async function selectChannel(channel, elem) {
     currentTargetUserId = 'c_' + channel.id;
@@ -5004,10 +5286,21 @@ async function selectChannel(channel, elem) {
     currentChatAvatar.style.borderRadius = "12px";
 
     messagesList.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">Cargando canal...</li>';
-    const msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}`);
+    messagesList.classList.add('loading-history');
+
+    // Reset Pagination
+    oldestMessageId = null;
+    allHistoryLoaded = false;
+    isLoadingHistory = false;
+
+    const msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}?limit=50`);
     messagesList.innerHTML = '';
 
-    if (msgs) {
+    if (msgs && msgs.length > 0) {
+        // Set oldest ID
+        oldestMessageId = msgs[0].id;
+        if (msgs.length < 50) allHistoryLoaded = true;
+
         msgs.forEach(msg => {
             let rd = null;
             if (msg.reply_to_id) {
@@ -5021,8 +5314,91 @@ async function selectChannel(channel, elem) {
             const isMe = msg.from_user_id === myUser.id;
             appendMessageUI(msg.content, isMe ? 'me' : 'other', msg.timestamp, msg.id, msg.type, rd, msg.is_deleted, msg.caption, msg.is_edited, msg.from_user_id, msg.username);
         });
+
+        void messagesList.offsetWidth;
+        requestAnimationFrame(() => messagesList.classList.remove('loading-history'));
         scrollToBottom(false);
+    } else {
+        messagesList.classList.remove('loading-history');
+        allHistoryLoaded = true;
     }
+    setupScrollListener();
+}
+
+function prependMessageBatch(messages) {
+    const fragment = document.createDocumentFragment();
+    let batchPreviousDate = null;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    messages.forEach(msg => {
+        let fixedDate = msg.timestamp;
+        if (typeof fixedDate === 'string' && fixedDate.includes(' ')) {
+            fixedDate = fixedDate.replace(' ', 'T') + 'Z';
+        }
+
+        // Date Divider Logic for Batch
+        const dateObj = new Date(fixedDate);
+        let label = dateObj.toLocaleDateString();
+        if (dateObj.toDateString() === today.toDateString()) label = "Hoy";
+        else if (dateObj.toDateString() === yesterday.toDateString()) label = "Ayer";
+
+        if (label !== batchPreviousDate) {
+            const li = document.createElement('li');
+            li.className = 'date-divider history-message';
+            li.innerHTML = `<span>${label}</span>`;
+            fragment.appendChild(li);
+            batchPreviousDate = label;
+        }
+
+        let rd = null;
+        if (msg.reply_to_id) {
+            // ... resolve reply data (simplify for brevity, logic exists) ...
+            let rName = "Usuario"; // Fallback
+            if (msg.reply_from_id === myUser.id) rName = "Tú";
+            else if (myNicknames[msg.reply_from_id]) rName = myNicknames[msg.reply_from_id];
+            else if (allUsersCache) { const u = allUsersCache.find(x => x.userId == msg.reply_from_id); if (u) rName = u.username; }
+
+            let rContent = msg.reply_content;
+            if (msg.reply_type === 'image') rContent = ICONS.replyImage;
+            else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
+            rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
+        }
+
+        const isMe = msg.from_user_id === myUser.id;
+        // Pass 'fragment' as container and skipDateDivider=true (handled above)
+        appendMessageUI(
+            msg.content,
+            isMe ? 'me' : 'other',
+            fixedDate,
+            msg.id,
+            msg.type,
+            rd,
+            msg.is_deleted,
+            msg.caption,
+            msg.is_edited,
+            msg.from_user_id,
+            msg.username,
+            'sent', // status
+            fragment, // container
+            true, // skipDateDivider
+            'history-message' // extraClass
+        );
+    });
+
+    // Check DOM connection
+    const firstChild = messagesList.firstElementChild;
+    if (firstChild && firstChild.classList.contains('date-divider')) {
+        const firstDateLabel = firstChild.innerText;
+        // The last message of the batch should match this label if it's the same day
+        // We know batchPreviousDate holds the date label of the LAST message we processed
+        if (firstDateLabel === batchPreviousDate) {
+            firstChild.remove(); // Remove duplicate divider
+        }
+    }
+
+    messagesList.prepend(fragment);
 }
 
 const originalSendMessage = sendMessage;
@@ -6262,8 +6638,9 @@ function createUserItem(u) {
             <div class="card-top">
                 <span class="card-name">
                     ${escapeHtml(name)}${getBadgeHtml(u)}
+                    ${(u.unread && u.unread >= 2) ? `<span class="unread-badge">${u.unread}</span>` : ''}
                 </span>
-                <span class="card-time">${timeText}</span>
+                <span class="card-time ${u.unread > 0 ? 'unread-time' : ''}">${timeText}</span>
             </div>
             <div class="card-msg" style="${subStyle}">
                 ${isHtmlContent ? subText : escapeHtml(subText)}
@@ -8014,6 +8391,13 @@ function updateSidebarWithNewMessage(targetId, content, type, timestamp) {
                 u.lastMessage = preview;
                 u.lastMessageType = type;
                 u.lastMessageTime = new Date(timestamp).getTime();
+
+                // Increment unread count if not current target
+                if (targetId !== currentTargetUserId) {
+                    u.unread = (u.unread || 0) + 1;
+                    localStorage.setItem('cachedUsers', JSON.stringify(allUsersCache));
+                }
+
                 renderMixedSidebar();
             }
         }
@@ -8045,8 +8429,74 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setupSettingsNavigation();
         setupInputFocusHandlers();
+        initSmoothKeyboard(); // Start smooth keyboard sync
     });
 } else {
     setupSettingsNavigation();
     setupInputFocusHandlers();
+    initSmoothKeyboard(); // Start smooth keyboard sync
 }
+
+/* --- SMOOTH KEYBOARD SYNC (VISUAL VIEWPORT) --- */
+function initSmoothKeyboard() {
+    if (!window.visualViewport) return;
+
+    const chatContainer = document.querySelector('.chat-container');
+    const mainColumn = document.querySelector('.main-column');
+
+    function handleResize() {
+        if (!chatContainer || !mainColumn) return;
+
+        // Ensure we are in mobile chat mode
+        // Note: We check this to avoid messing with desktop layout
+        const isMobileChatActive = chatContainer.classList.contains('mobile-chat-active');
+        if (!isMobileChatActive) {
+            // Clean up styles if we exit mobile chat mode
+            if (mainColumn.style.height || mainColumn.style.top) {
+                mainColumn.style.height = '';
+                mainColumn.style.top = '';
+                mainColumn.style.bottom = '';
+                mainColumn.style.position = '';
+            }
+            return;
+        }
+
+        const viewportHeight = window.visualViewport.height;
+        const viewportTop = window.visualViewport.offsetTop;
+
+        // Apply visual viewport dimensions to the main chat column
+        // This forces the fixed container to exactly match the visible area above the keyboard
+        mainColumn.style.height = `${viewportHeight}px`;
+        mainColumn.style.top = `${viewportTop}px`;
+        mainColumn.style.bottom = 'auto';
+        mainColumn.style.position = 'fixed'; // Ensure it stays fixed
+
+        // Optional: Scroll to bottom if we are near the end
+        // This helps keep the latest message visible when keyboard pops up
+        if (typeof scrollToBottom === 'function') {
+            // We might want to be careful not to force scroll if user is viewing history
+            // But generally when keyboard opens, user wants to type/see latest.
+            // Let's just rely on browser's behavior or existing scroll logic for now unless needed.
+        }
+    }
+
+    // Listeners
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+
+    // Observer to trigger resize when entering/exiting chat
+    if (chatContainer) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    handleResize();
+                }
+            });
+        });
+        observer.observe(chatContainer, { attributes: true });
+    }
+
+    // Initial check
+    handleResize();
+}
+
