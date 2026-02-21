@@ -51,7 +51,7 @@ async function build() {
                 const minifiedJS = await terserMinify(code, {
                     compress: true,
                     mangle: true,
-                    toplevel: true
+                    toplevel: false
                 });
 
                 // 2. Obfuscate the minified output

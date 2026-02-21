@@ -1631,9 +1631,8 @@ function enableNicknameEdit(elementId, targetUserId) {
 }
 
 
-profileBtn.addEventListener('click', () => {
-    if (fabNewChat) fabNewChat.classList.add('hidden');
-    if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
+function renderMyProfileInfo() {
+    if (!myUser) return;
     const nameEl = document.getElementById('profileRealName');
     const displayName = myUser.display_name || myUser.username;
     nameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(myUser);
@@ -1644,7 +1643,12 @@ profileBtn.addEventListener('click', () => {
     const bioEl = document.getElementById('profileBio');
     bioEl.textContent = myUser.bio || "Añade una biografía...";
     bioEl.style.color = !myUser.bio ? "#666" : "#e4e4e7";
+}
 
+profileBtn.addEventListener('click', () => {
+    if (fabNewChat) fabNewChat.classList.add('hidden');
+    if (loveNotesBtn) loveNotesBtn.classList.add('hidden');
+    renderMyProfileInfo();
     profileModal.classList.remove('hidden');
 
 
