@@ -280,7 +280,8 @@ async function apiRequest(url, method = 'GET', body = null) {
 }
 
 
-window.messagesCache = { private: {}, channels: {} };
+window.messagesCache = null;
+window.messagesCachePromise = null;
 
 async function checkSession() {
     if (window.location.pathname === '/login' || window.location.pathname === '/login.html') return;
@@ -289,9 +290,15 @@ async function checkSession() {
 
     if (userData) {
         try {
-            const syncData = await apiRequest('/api/messages/initial-sync');
+            console.log('[checkSession] Requesting initial-sync...');
+            if (!window.messagesCachePromise) {
+                window.messagesCachePromise = apiRequest('/api/messages/initial-sync');
+            }
+            const syncData = await window.messagesCachePromise;
+            console.log('[checkSession] initial-sync response:', syncData);
             if (syncData) {
                 window.messagesCache = syncData;
+                console.log('[checkSession] Cache populated');
             }
         } catch (e) { console.error("Error preloading messages", e); }
         loginSuccess(userData);
@@ -977,11 +984,18 @@ window.addEventListener('DOMContentLoaded', () => {
     // Pequeño delay para asegurar que config.js se cargó
     setTimeout(async () => {
         // Fetch initial sync if we have a user in cache, for fast opening of chats
-        if (myUser) {
+        const cUser = localStorage.getItem('chatUser');
+        if (cUser) {
             try {
-                const syncData = await apiRequest('/api/messages/initial-sync');
+                console.log('[DOMContentLoaded] Requesting initial-sync...');
+                if (!window.messagesCachePromise) {
+                    window.messagesCachePromise = apiRequest('/api/messages/initial-sync');
+                }
+                const syncData = await window.messagesCachePromise;
+                console.log('[DOMContentLoaded] initial-sync response:', syncData);
                 if (syncData) {
                     window.messagesCache = syncData;
+                    console.log('[DOMContentLoaded] Cache populated');
                 }
             } catch (e) { console.error("Error preloading messages on boot", e); }
         }
@@ -2570,15 +2584,27 @@ async function selectUser(target, elem) {
     allHistoryLoaded = false;
     isLoadingHistory = false;
 
+    console.log('[SELECT USER] Checking cache for target.userId:', target.userId);
+
+    // Si hay una promesa de caché en vuelo y el caché aún no está listo, esperamos.
+    if (window.messagesCachePromise && !window.messagesCache) {
+        messagesList.innerHTML = ''; // Limpiar UI mientras esperamos el sync inicial muy rápido
+        try {
+            await window.messagesCachePromise;
+        } catch (e) { }
+    }
+
+    console.log('[SELECT USER] Current cache state:', window.messagesCache);
+
     let history;
     if (window.messagesCache && window.messagesCache.private && window.messagesCache.private[target.userId]) {
         // Use cached messages
+        console.log('[SELECT USER] Cache HIT for target.userId:', target.userId);
         history = window.messagesCache.private[target.userId];
-        // After using, delete from cache so subsequent opens fetch fresh if needed, or keep it?
-        // Let's delete it so it only applies on the first open. Fast login experience.
         delete window.messagesCache.private[target.userId];
         messagesList.innerHTML = '';
     } else {
+        console.log('[SELECT USER] Cache MISS for target.userId:', target.userId);
         messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
         messagesList.classList.add('loading-history');
         // Fetch latest 50
@@ -5460,6 +5486,13 @@ async function selectChannel(channel, elem) {
     oldestMessageId = null;
     allHistoryLoaded = false;
     isLoadingHistory = false;
+
+    if (window.messagesCachePromise && !window.messagesCache) {
+        messagesList.innerHTML = '';
+        try {
+            await window.messagesCachePromise;
+        } catch (e) { }
+    }
 
     let msgs;
     if (window.messagesCache && window.messagesCache.channels && window.messagesCache.channels[channel.id]) {

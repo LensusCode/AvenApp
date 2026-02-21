@@ -4,6 +4,7 @@ const { getIo } = require('../sockets/socketManager');
 require('dotenv').config();
 
 exports.getInitialSync = (req, res) => {
+    console.log('[getInitialSync] Called by user:', req.user.id);
     const myId = req.user.id;
     const limit = 30;
 
