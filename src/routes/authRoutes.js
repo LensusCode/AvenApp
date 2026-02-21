@@ -9,6 +9,6 @@ router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
 router.get('/me', authenticateToken, authController.getMe);
 router.post('/logout', authController.logout);
-router.post('/check-username', authController.checkUsername);
+router.post('/check-username', authLimiter, authController.checkUsername);
 
 module.exports = router;

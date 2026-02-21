@@ -247,4 +247,113 @@
         transform: translateY(-50%) rotate(0deg) scale(1);
         pointer-events: auto;
     }
+
+    /* --- SELECTION MODE --- */
+    .mobile-selection-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        height: 60px;
+        background-color: #050505;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        width: 100%;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .mobile-selection-header.hidden {
+        display: none !important;
+    }
+
+    .selection-left,
+    .selection-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .selection-count {
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    /* Hide standard header elements when selection is active */
+    body.selection-active .brand-header,
+    body.selection-active .favorites-section,
+    /* Keep search trigger visible but maybe adjust if needed. 
+       User requirement: "The search input should remain visible." 
+       But if it sticks, does it conflict with selection header?
+       The selection header is position:sticky top:0.
+       The search trigger is position:sticky top:0.
+       They will overlap.
+       We should probably hide the search trigger OR put the selection header BELOW it?
+       User said: "The search input should remain visible."
+       So we should NOT hide search-trigger.
+       But if selection header is at top, maybe search trigger should be hidden?
+       Refining plan: Show both?
+       If I leave search trigger, it takes space.
+       Let's try hiding brand-header and favorites-section, but keeping search-trigger.
+       And placing selection header... where?
+       If selection header replaces brand-header, it effectively sits above search.
+    */
+    body.selection-active .brand-header,
+    body.selection-active .favorites-section {
+        display: none !important;
+    }
+
+    /* 
+       If search trigger remains visible, it is sticky at top:0.
+       If selection header is also sticky at top:0, they overlap.
+       Maybe selection header should be relative in DOM (it is) and we hide brand header?
+       If we hide brand header, selection header takes its place in flow.
+       Then search trigger follows.
+       So selection header should NOT be sticky if search trigger is sticky?
+       Or both sticky?
+       Let's make selection header position: sticky top: 0.
+    */
+
+    .user-item {
+        transition: background-color 0.2s;
+        position: relative;
+    }
+
+    .user-item.selected {
+        background-color: rgba(59, 130, 246, 0.15) !important;
+    }
+
+    .selection-check {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 20px;
+        height: 20px;
+        background: #3b82f6;
+        border: 2px solid #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .user-item.selected .selection-check {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .user-item .card-avatar,
+    .user-item .u-avatar {
+        position: relative;
+    }
 }

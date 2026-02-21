@@ -28,4 +28,5 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     min-height: 0;
+    overflow-anchor: none;
 }

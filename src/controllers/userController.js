@@ -1,5 +1,6 @@
 const { db } = require('../config/db');
 const { emitUsers } = require('../sockets/socketManager');
+const { escapeHtml } = require('../utils/sanitize');
 
 exports.getMe = (req, res) => {
     db.get(`SELECT id, username, display_name, bio, avatar, is_admin, is_verified, is_premium FROM users WHERE id = ?`, [req.user.id], (err, row) => {
@@ -12,7 +13,7 @@ exports.updateProfile = (req, res) => {
     const { field, value } = req.body;
     const allowedFields = ['username', 'display_name', 'bio'];
     if (!allowedFields.includes(field)) return res.status(400).json({ error: 'Campo inválido' });
-    let finalValue = value ? value.trim() : '';
+    let finalValue = value ? escapeHtml(value.trim()) : '';
     if (field === 'username' && (finalValue.length < 3 || finalValue.length > 20)) return res.status(400).json({ error: 'Usuario: 3-20 caracteres' });
 
     db.run(`UPDATE users SET ${field} = ? WHERE id = ?`, [finalValue, req.user.id], function (err) {

@@ -464,6 +464,19 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+#sortContactsBtn {
+    -webkit-tap-highlight-color: transparent;
+}
+
+#sortContactsBtn:hover,
+#sortContactsBtn:focus {
+    background: transparent !important;
+}
+
+#sortContactsBtn:active {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
 .profile-avatar-section {
     display: flex;
     justify-content: center;
@@ -628,7 +641,6 @@
     align-items: center;
     justify-content: center;
     color: #e4e4e7;
-    width: 24px;
 }
 
 .settings-icon svg {
@@ -1006,46 +1018,37 @@ input:checked+.slider:before {
 .new-action-row {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 18px;
+    gap: 15px;
+    padding: 12px 15px;
     cursor: pointer;
-    border-radius: 16px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-    border: 1.5px solid rgba(99, 102, 241, 0.2);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-bottom: 6px;
+    background: transparent;
+    border: none;
+    border-radius: 15px;
+    margin: 7px;
+    transition: background 0.2s ease;
 }
 
 .new-action-row:hover {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.1));
-    border-color: rgba(99, 102, 241, 0.4);
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.2);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .new-action-row:active {
-    transform: translateY(0) scale(0.99);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .icon-circle {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
-    border: 2px solid rgba(99, 102, 241, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6366f1;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #fff;
+    transition: transform 0.2s;
 }
 
 .new-action-row:hover .icon-circle {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
-    transform: scale(1.1) rotate(5deg);
+    transform: scale(1.05);
 }
 
 .section-label {
@@ -2023,4 +2026,32 @@ input:checked+.slider:before {
 
 .profile-card.creation-card.closing {
     animation: profileExit 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* --- SORT TRANSITION --- */
+.sort-label-transition {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sort-label-hidden {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+/* --- CONTACT ITEM ANIMATION --- */
+@keyframes contactItemEnter {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.contact-item-animated {
+    opacity: 0;
+    animation: contactItemEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }

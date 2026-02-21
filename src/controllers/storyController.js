@@ -87,7 +87,7 @@ exports.getStories = (req, res) => {
                 caption: decryptedCaption,
                 createdAt: row.created_at,
                 isViewed: row.is_viewed > 0,
-                viewCount: row.view_count, // Include view count
+                viewCount: row.user_id === userId ? row.view_count : undefined, // Include view count only for owner
                 isHidden: row.is_hidden // Include hidden status
             });
         });

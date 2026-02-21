@@ -2,6 +2,7 @@ const { Server } = require("socket.io");
 const jwt = require('jsonwebtoken');
 const { db } = require('../config/db');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { escapeHtml } = require('../utils/sanitize');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -37,8 +38,11 @@ const initSocket = (server) => {
             if (err) return next(new Error("Token inválido"));
             socket.data.userId = decoded.id;
             socket.data.username = decoded.username;
-            socket.data.isAdmin = decoded.is_admin;
-            next();
+
+            db.get(`SELECT is_admin FROM users WHERE id = ?`, [decoded.id], (dbErr, row) => {
+                socket.data.isAdmin = row ? row.is_admin : 0;
+                next();
+            });
         });
     });
 
@@ -58,8 +62,9 @@ const initSocket = (server) => {
 
         socket.on('set nickname', ({ targetUserId, nickname }) => {
             if (!targetUserId || (nickname && nickname.length > 50)) return;
-            if (!nickname || !nickname.trim()) db.run(`DELETE FROM nicknames WHERE user_id = ? AND target_user_id = ?`, [userId, targetUserId]);
-            else db.run(`INSERT OR REPLACE INTO nicknames (user_id, target_user_id, nickname) VALUES (?, ?, ?)`, [userId, targetUserId, nickname.trim()]);
+            const safeNickname = nickname ? escapeHtml(nickname.trim()) : null;
+            if (!safeNickname) db.run(`DELETE FROM nicknames WHERE user_id = ? AND target_user_id = ?`, [userId, targetUserId]);
+            else db.run(`INSERT OR REPLACE INTO nicknames (user_id, target_user_id, nickname) VALUES (?, ?, ?)`, [userId, targetUserId, safeNickname]);
         });
 
         socket.on('private message', ({ content, toUserId, toChannelId, type = 'text', replyToId = null, caption = null }, callback) => {

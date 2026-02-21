@@ -77,6 +77,9 @@ const server = http.createServer(app);
     app.use(cookieParser());
     app.use(express.static(path.join(__dirname, 'public')));
 
+    const { apiLimiter } = require('./src/middleware/rateLimiter');
+    app.use('/api/', apiLimiter);
+
     app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
     app.use('/api/auth', authRoutes);

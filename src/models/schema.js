@@ -35,6 +35,8 @@ async function initDatabase() {
         await addColumnSafe('users', 'is_premium INTEGER DEFAULT 0');
         await addColumnSafe('users', 'display_name TEXT');
         await addColumnSafe('users', 'bio TEXT');
+        await addColumnSafe('users', 'failed_attempts INTEGER DEFAULT 0');
+        await addColumnSafe('users', 'locked_until DATETIME');
 
         await client.execute(`CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, reporter_id INTEGER, target_id INTEGER, type TEXT, reason TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 

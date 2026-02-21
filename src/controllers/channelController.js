@@ -221,28 +221,42 @@ exports.updateChannel = (req, res) => {
 };
 
 exports.getChannelMembers = (req, res) => {
-    const sql = `
-        SELECT u.id, u.username, u.display_name, u.avatar, cm.joined_at, cm.role
-        FROM channel_members cm
-        JOIN users u ON cm.user_id = u.id
-        WHERE cm.channel_id = ?`;
-    db.all(sql, [req.params.id], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json(rows);
+    const channelId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.is_admin;
+
+    db.get(`SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?`, [channelId, userId], (err, isMember) => {
+        if (!isMember && !isAdmin) return res.status(403).json({ error: "No eres miembro de este canal" });
+
+        const sql = `
+            SELECT u.id, u.username, u.display_name, u.avatar, cm.joined_at, cm.role
+            FROM channel_members cm
+            JOIN users u ON cm.user_id = u.id
+            WHERE cm.channel_id = ?`;
+        db.all(sql, [channelId], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
     });
 };
 
 exports.getBannedUsers = (req, res) => {
-    const sql = `
-        SELECT u.id, u.username, u.display_name, u.avatar, cb.banned_at
-        FROM channel_bans cb
-        JOIN users u ON cb.user_id = u.id
-        WHERE cb.channel_id = ?`;
-    db.all(sql, [req.params.id], (err, rows) => {
-        if (err) return res.status(500).json({ error: "DB Error" });
-        res.json(rows);
+    const channelId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.is_admin;
+
+    db.get(`SELECT owner_id FROM channels WHERE id = ?`, [channelId], (err, row) => {
+        if (!row || (row.owner_id !== userId && !isAdmin)) return res.status(403).json({ error: "No autorizado" });
+
+        const sql = `
+            SELECT u.id, u.username, u.display_name, u.avatar, cb.banned_at
+            FROM channel_bans cb
+            JOIN users u ON cb.user_id = u.id
+            WHERE cb.channel_id = ?`;
+        db.all(sql, [channelId], (err, rows) => {
+            if (err) return res.status(500).json({ error: "DB Error" });
+            res.json(rows);
+        });
     });
 };
 
@@ -335,7 +349,7 @@ exports.searchChannels = (req, res) => {
         // Using standard parameter binding.
         // Ensure that explicit ordering matches the ? placeholders.
         const sql = `
-            SELECT c.id, c.name, c.avatar, c.is_public, c.handle, c.private_hash
+            SELECT c.id, c.name, c.avatar, c.is_public, c.handle
             FROM channels c
             LEFT JOIN channel_members cm ON c.id = cm.channel_id AND cm.user_id = ?
             WHERE (c.name LIKE ? OR c.handle LIKE ?)

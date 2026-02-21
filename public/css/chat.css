@@ -52,10 +52,10 @@
     animation: none !important;
 }
 
-@keyframes historyFadeIn {
+@keyframes fade-in-history {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-20px);
     }
 
     to {
@@ -64,8 +64,12 @@
     }
 }
 
+.message-row.fade-in-history {
+    animation: fade-in-history 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 .message-row.history-message {
-    animation: historyFadeIn 0.3s ease-out forwards;
+    animation: fade-in-history 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 /* Optimized removal animation */
@@ -183,7 +187,8 @@
     padding: 10px 15px 15px;
     flex-shrink: 0;
     z-index: 20;
-    padding-bottom: calc(15px + env(safe-area-inset-bottom));
+    padding-bottom: calc(15px + env(safe-area-inset-bottom) + var(--keyboard-offset, 0px));
+    transition: padding-bottom 0.15s ease-out;
 }
 
 .composer-inner {
@@ -1220,8 +1225,6 @@
     /* Ensure reply preview is clipped */
 }
 
-.chat-input-wrapper:focus-within {}
-
 #input {
     flex: 1;
     background: transparent;
@@ -1573,6 +1576,7 @@
     color: rgba(255, 255, 255, 0.6);
     font-style: italic;
     white-space: nowrap;
+    margin-right: 4px;
 }
 
 @keyframes highlightEdit {

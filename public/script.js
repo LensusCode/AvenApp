@@ -2610,7 +2610,10 @@ async function selectUser(target, elem) {
     checkAndLoadPinnedMessage(target.userId);
 
     // Attach scroll listener for lazy loading
-    setupScrollListener();
+    // DELAY to prevent immediate triggering during initial render/scroll
+    setTimeout(() => {
+        setupScrollListener();
+    }, 1000);
 }
 
 // Pagination Globals
@@ -2631,10 +2634,8 @@ async function loadMoreMessages() {
     if (isLoadingHistory || allHistoryLoaded || !currentTargetUserId) return;
     isLoadingHistory = true;
 
-    // Save scroll position
+    // Save scroll reference
     const scrollContainer = messagesList.parentNode;
-    const oldScrollHeight = scrollContainer.scrollHeight;
-    const oldScrollTop = scrollContainer.scrollTop;
 
     // Determine API URL
     let url = '';
@@ -2657,6 +2658,11 @@ async function loadMoreMessages() {
         if (olderMessages && olderMessages.length > 0) {
             oldestMessageId = olderMessages[0].id; // Update pointer
             if (olderMessages.length < 50) allHistoryLoaded = true;
+
+            // CAPTURE SCROLL HERE (Right before insertion)
+            // This ensures we account for any user movement while waiting for API
+            const oldScrollHeight = scrollContainer.scrollHeight;
+            const oldScrollTop = scrollContainer.scrollTop;
 
             // Prepend Messages Logic
             prependMessageBatch(olderMessages);
@@ -3441,10 +3447,13 @@ function appendMessageUI(content, ownerType, dateStr, msgId, msgType = 'text', r
     }
     const wrapper = li.querySelector('.message-content-wrapper');
 
-    addLongPressEvent(wrapper, msgId);
+    const isPreview = extraClass.includes('preview-msg') || (container && container.id === 'chatProfilePreviewMessages');
 
-    // Use the senderId stored in dataset (or calculated above) to ensure groups work correctly
-    addSwipeEvent(li, wrapper, msgId, content, msgType, li.dataset.senderId);
+    if (!isPreview) {
+        addLongPressEvent(wrapper, msgId);
+        // Use the senderId stored in dataset (or calculated above) to ensure groups work correctly
+        addSwipeEvent(li, wrapper, msgId, content, msgType, li.dataset.senderId);
+    }
 
 
     if (msgType === 'text') {
@@ -3522,6 +3531,7 @@ function addSwipeEvent(row, wrap, msgId, content, type, ownerId) {
 
     wrap.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
+        currentX = 0; // Reset for new gesture
         isSwiping = true;
         wrap.style.transition = 'none';
     }, { passive: true });
@@ -4892,6 +4902,35 @@ const viewStart = document.getElementById('viewStart');
 const viewSelectMembers = document.getElementById('viewSelectMembers');
 const viewChannelInfo = document.getElementById('viewChannelInfo');
 
+window.isAlphabeticalSort = false;
+const sortContactsBtn = document.getElementById('sortContactsBtn');
+const sortLabel = document.getElementById('sortLabel');
+
+if (sortContactsBtn) {
+    sortContactsBtn.addEventListener('click', () => {
+        window.isAlphabeticalSort = !window.isAlphabeticalSort;
+        sortContactsBtn.style.color = window.isAlphabeticalSort ? '#8b5cf6' : '#fff';
+
+        if (sortLabel) {
+            const nextText = window.isAlphabeticalSort ? 'Ordenado alfabéticamente' : 'Ordenado por última vez';
+            if (sortLabel.textContent !== nextText) {
+                sortLabel.classList.add('sort-label-transition', 'sort-label-hidden');
+
+                setTimeout(() => {
+                    sortLabel.textContent = nextText;
+                    requestAnimationFrame(() => {
+                        sortLabel.classList.remove('sort-label-hidden');
+                    });
+                }, 150);
+            }
+        }
+
+        setTimeout(() => {
+            renderStartContacts();
+        }, 150);
+    });
+}
+
 fabNewChat.addEventListener('click', () => {
     creationModal.classList.remove('hidden');
     resetCreationFlow();
@@ -4949,24 +4988,48 @@ document.getElementById('btnCreateChannel').addEventListener('click', () => {
 function renderStartContacts() {
     const list = document.getElementById('creationContactList');
     list.innerHTML = '';
-    allUsersCache.forEach(u => {
-        if (u.userId === myUser.id) return;
-        const li = document.createElement('li');
-        li.className = 'user-item';
 
-        const avatarUrl = resolveImageUrl(u.avatar);
-        const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
-        const displayName = myNicknames[u.userId] || u.username;
-        const safeName = escapeHtml(displayName);
+    let contacts = [...allUsersCache].filter(u => u.userId !== myUser.id);
+
+    if (window.isAlphabeticalSort) {
+        contacts.sort((a, b) => {
+            const nameA = (myNicknames[a.userId] || a.username || '').toLowerCase();
+            const nameB = (myNicknames[b.userId] || b.username || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+    }
+
+    contacts.forEach((u, index) => {
+        const li = document.createElement('li');
+        li.className = `chat-card user-item contact-item-animated ${!u.online ? 'offline' : ''}`;
+
+        // Stagger animation for up to 30 items
+        li.style.animationDelay = `${Math.min(index * 0.04, 1.2)}s`;
+
+        const name = myNicknames[u.userId] || u.username;
+        const { style, html } = renderAvatarContent(u, 'text-avatar');
+
+        let subText = u.online ? 'En línea' : 'Desconectado';
+        let subStyle = u.online ? 'color: var(--success); font-weight:600;' : 'color: var(--text-dim);';
+        const onlineDotHtml = u.online ? '<div class="online-dot"></div>' : '';
 
         li.innerHTML = `
-            <div class="u-avatar" style="${safeAvatar}">
-                <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:${u.online ? '#4ade80' : '#a1a1aa'};border:2px solid #18181b;"></div>
+            <div class="card-avatar" style="${style}">
+                ${html}
+                ${onlineDotHtml}
+                <div class="selection-check">✓</div>
             </div>
-            <div style="overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
-                <div style="font-weight:600;color:${u.online ? '#fff' : '#e4e4e7'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;">${safeName}${getBadgeHtml(u)}</div>
-                <div style="font-size:12px;color:${u.online ? '#4ade80' : '#a1a1aa'}">${u.online ? 'En línea' : 'Desconectado'}</div>
-            </div>`;
+            <div class="card-content">
+                <div class="card-top">
+                    <span class="card-name">
+                        ${escapeHtml(name)}${getBadgeHtml(u)}
+                    </span>
+                </div>
+                <div class="card-msg" style="${subStyle}">
+                    ${escapeHtml(subText)}
+                </div>
+            </div>
+        `;
 
         li.onclick = () => { selectUser(u); creationModal.classList.add('hidden'); };
         list.appendChild(li);
@@ -5173,7 +5236,8 @@ document.addEventListener('click', (e) => {
 
 function createChannelListItem(c) {
     const li = document.createElement('li');
-    li.className = `chat-card user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''}`;
+    const isSelected = selectedChats.has('c_' + c.id);
+    li.className = `chat-card user-item ${currentTargetUserId === 'c_' + c.id ? 'active' : ''} ${isSelected ? 'selected' : ''}`;
 
     const avatarUrl = resolveImageUrl(c.avatar);
     const safeAvatar = `background-image: url('${escapeHtml(avatarUrl)}')`;
@@ -5192,7 +5256,9 @@ function createChannelListItem(c) {
     }
 
     li.innerHTML = `
-        <div class="card-avatar" style="${safeAvatar}"></div>
+        <div class="card-avatar" style="${safeAvatar}">
+             <div class="selection-check">✓</div>
+        </div>
         <div class="card-content">
             <div class="card-top">
                 <span class="card-name">${escapeHtml(c.name)}</span>
@@ -5203,7 +5269,31 @@ function createChannelListItem(c) {
             </div>
         </div>`;
 
-    li.onclick = () => selectChannel(c, li);
+    li.dataset.uid = 'c_' + c.id;
+
+    // Selection & Long Press Logic
+    let pressTimer;
+    li.addEventListener('touchstart', (e) => {
+        if (isSelectionMode) return;
+        pressTimer = setTimeout(() => {
+            enterSelectionMode('c_' + c.id);
+        }, 500);
+    }, { passive: true });
+
+    const cancelPress = () => clearTimeout(pressTimer);
+    li.addEventListener('touchend', cancelPress);
+    li.addEventListener('touchmove', cancelPress);
+    li.addEventListener('touchcancel', cancelPress);
+
+    li.onclick = (e) => {
+        if (isSelectionMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSelection('c_' + c.id);
+        } else {
+            selectChannel(c, li);
+        }
+    };
     return li;
 }
 
@@ -5383,7 +5473,7 @@ function prependMessageBatch(messages) {
             'sent', // status
             fragment, // container
             true, // skipDateDivider
-            'history-message' // extraClass
+            'history-message fade-in-history' // extraClass
         );
     });
 
@@ -6577,9 +6667,14 @@ async function handleChannelClickFromSearch(ch) {
     }
 }
 
+// --- MOBILE SELECTION STATE ---
+let isSelectionMode = false;
+let selectedChats = new Set();
+
 function createUserItem(u) {
     const li = document.createElement('li');
-    li.className = `chat-card user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''}`;
+    const isSelected = selectedChats.has(u.userId);
+    li.className = `chat-card user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''} ${isSelected ? 'selected' : ''}`;
     li.dataset.uid = u.userId;
 
     const name = myNicknames[u.userId] || u.username;
@@ -6628,10 +6723,11 @@ function createUserItem(u) {
     const ringClass = hasStory ? (allViewed ? 'story-ring-wrapper all-viewed' : 'story-ring-wrapper') : '';
 
     li.innerHTML = `
-        <div class="${ringClass}" onclick="openStoryFromAvatar(event, '${u.userId}')">
+        <div class="${ringClass} chat-avatar-wrapper" data-uid="${u.userId}" style="cursor: pointer; position: relative;">
             <div class="card-avatar" style="${style}">
                 ${html}
                 ${onlineDotHtml}
+                <div class="selection-check">✓</div>
             </div>
         </div>
         <div class="card-content">
@@ -6647,10 +6743,179 @@ function createUserItem(u) {
             </div>
         </div>
     `;
-    li.onclick = () => selectUser(u, li);
-    return li;
 
+    // Long press logic specifically for the Avatar
+    const avatarWrapper = li.querySelector('.chat-avatar-wrapper');
+    let avatarPressTimer;
+    let isAvatarLongPress = false;
+    let didAvatarLongPressTrigger = false;
+
+    avatarWrapper.addEventListener('touchstart', (e) => {
+        if (isSelectionMode) return;
+        isAvatarLongPress = false;
+        didAvatarLongPressTrigger = false;
+        avatarPressTimer = setTimeout(() => {
+            isAvatarLongPress = true;
+            didAvatarLongPressTrigger = true;
+
+            // Trigger custom profile context menu
+            const touch = e.touches[0];
+            openChatProfileContextMenu(u, touch.clientX, touch.clientY);
+        }, 500);
+    }, { passive: true });
+
+    const cancelAvatarPress = () => clearTimeout(avatarPressTimer);
+    avatarWrapper.addEventListener('touchend', (e) => {
+        cancelAvatarPress();
+        if (isSelectionMode) return;
+
+        // Prevent default click if a long press already triggered
+        if (didAvatarLongPressTrigger) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+    avatarWrapper.addEventListener('touchmove', cancelAvatarPress);
+    avatarWrapper.addEventListener('touchcancel', cancelAvatarPress);
+
+    avatarWrapper.onclick = (e) => {
+        if (isSelectionMode) return; // Li's onclick handles selection mode
+
+        if (didAvatarLongPressTrigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            didAvatarLongPressTrigger = false;
+            return;
+        }
+
+        e.stopPropagation(); // Stop li click
+        openStoryFromAvatar(e, u.userId);
+    };
+
+
+    // Selection & Long Press Logic for the main row wrapper
+    let pressTimer;
+    li.addEventListener('touchstart', (e) => {
+        if (isSelectionMode) return;
+        // Do not trigger list selection if touching avatar
+        if (e.target.closest('.chat-avatar-wrapper')) return;
+
+        pressTimer = setTimeout(() => {
+            enterSelectionMode(u.userId);
+        }, 500);
+    }, { passive: true });
+
+    const cancelPress = () => clearTimeout(pressTimer);
+    li.addEventListener('touchend', cancelPress);
+    li.addEventListener('touchmove', cancelPress);
+    li.addEventListener('touchcancel', cancelPress);
+
+    li.onclick = (e) => {
+        if (isSelectionMode) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // If the user's intent is to select the row while in selection mode, toggle it
+            // This is allowed even if they clicked the avatar in selection mode
+            toggleSelection(u.userId);
+        } else {
+            selectUser(u, li);
+        }
+    };
+
+    return li;
 }
+
+// --- SELECTION HELPERS ---
+function enterSelectionMode(initialUserId) {
+    if (isSelectionMode) return;
+    isSelectionMode = true;
+    selectedChats.clear();
+    if (initialUserId) selectedChats.add(initialUserId);
+
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    document.body.classList.add('selection-active');
+    const header = document.getElementById('mobileSelectionHeader');
+    if (header) header.classList.remove('hidden');
+
+    updateSelectionUI();
+    renderMixedSidebar();
+}
+
+function exitSelectionMode() {
+    isSelectionMode = false;
+    selectedChats.clear();
+
+    document.body.classList.remove('selection-active');
+    const header = document.getElementById('mobileSelectionHeader');
+    if (header) header.classList.add('hidden');
+
+    renderMixedSidebar();
+}
+
+function toggleSelection(userId) {
+    if (selectedChats.has(userId)) {
+        selectedChats.delete(userId);
+    } else {
+        selectedChats.add(userId);
+    }
+
+    updateSelectionUI();
+
+    const li = document.querySelector(`.user-item[data-uid="${userId}"]`);
+    if (li) {
+        if (selectedChats.has(userId)) li.classList.add('selected');
+        else li.classList.remove('selected');
+    }
+}
+
+function updateSelectionUI() {
+    const countSpan = document.getElementById('selectionCount');
+    if (countSpan) countSpan.textContent = selectedChats.size;
+}
+
+function deleteSelectedChats() {
+    if (selectedChats.size === 0) return;
+
+    if (confirm(`¿Eliminar ${selectedChats.size} chats seleccionados?`)) {
+        console.log(`[Selection] Deleting ${selectedChats.size} chats...`);
+
+        selectedChats.forEach(async id => {
+            if (id.startsWith('c_')) {
+                // It's a channel - LEAVE
+                const channelId = id.substring(2);
+                try {
+                    // We use the API directly to leave
+                    // Note: If I am the owner, this might fail or need confirmation, 
+                    // but for bulk action we try best effort.
+                    await apiRequest(`/api/channels/${channelId}/leave`, 'POST');
+                    console.log(`Left channel ${channelId}`);
+                } catch (e) {
+                    console.error(`Error leaving channel ${channelId}`, e);
+                }
+            } else {
+                // It's a user - CLEAR HISTORY
+                socket.emit('clear chat history', {
+                    toUserId: id,
+                    deleteType: 'me'
+                });
+            }
+        });
+
+        showToast(`${selectedChats.size} chats eliminados`);
+        exitSelectionMode();
+    }
+}
+
+// Listeners
+setTimeout(() => {
+    const closeSelectionBtn = document.getElementById('closeSelectionBtn');
+    if (closeSelectionBtn) closeSelectionBtn.addEventListener('click', exitSelectionMode);
+
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', deleteSelectedChats);
+}, 100);
 
 function createGlobalUserItem(user) {
     const li = document.createElement('li');
@@ -7536,6 +7801,328 @@ function closeStoryViewer() {
     if (modal) modal.classList.add('hidden');
     clearTimeout(storyTimer);
     loadStories(); // Refresh list
+    loadStories(); // Refresh list
+}
+
+// Custom Context Menu for Chat Profile Picture
+let profileCtxTargetUid = null;
+const chatProfileContextMenu = getEl('chatProfileContextMenu');
+const chatProfileCtxBackdrop = getEl('chatProfileCtxBackdrop');
+const ctxProfilePinBtn = getEl('ctxProfilePinBtn');
+const ctxProfileMuteBtn = getEl('ctxProfileMuteBtn');
+
+const chatProfileModalWrapper = getEl('chatProfileModalWrapper');
+const chatProfilePreview = getEl('chatProfilePreview');
+const previewChatAvatar = getEl('previewChatAvatar');
+const previewChatName = getEl('previewChatName');
+const chatProfilePreviewMessages = getEl('chatProfilePreviewMessages');
+
+// Pagination state for preview
+let previewOldestMessageId = null;
+let previewIsLoadingHistory = false;
+let previewAllHistoryLoaded = false;
+
+async function openChatProfileContextMenu(u, x, y) {
+    if (!chatProfileContextMenu) return;
+    const uid = u.userId;
+    profileCtxTargetUid = uid;
+
+    chatProfileContextMenu.classList.remove('hidden');
+
+    // Check if it's a channel or custom chat type - only show preview for normal users
+    const isNormalChat = !u.chat_type || u.chat_type === 'private';
+
+    if (isNormalChat && chatProfilePreview) {
+        chatProfilePreview.classList.remove('hidden');
+
+        // Header info
+        const name = myNicknames[uid] || u.display_name || u.username || 'Usuario';
+        previewChatName.textContent = name;
+
+        let safeAvatar = '/profile.png';
+        if (u.avatar && typeof u.avatar === 'string' && u.avatar.trim() !== '' && u.avatar !== 'null') {
+            safeAvatar = u.avatar;
+            if (!safeAvatar.startsWith('http') && !safeAvatar.startsWith('/')) {
+                safeAvatar = '/' + safeAvatar;
+            }
+        }
+        previewChatAvatar.style.backgroundImage = `url('${escapeHtml(safeAvatar)}')`;
+
+        // Reset Pagination state
+        previewOldestMessageId = null;
+        previewIsLoadingHistory = false;
+        previewAllHistoryLoaded = false;
+
+        // Show loading state BEFORE the await
+        chatProfilePreviewMessages.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin:20px;">Cargando mensajes...</li>';
+    } else if (chatProfilePreview) {
+        // If channel, hide preview completely
+        chatProfilePreview.classList.add('hidden');
+    }
+
+    // --- INSTANT UI DISPLAY LOGIC ---
+    if (chatProfileModalWrapper) {
+        // Reset layout for measurements
+        chatProfileModalWrapper.style.left = '0px';
+        chatProfileModalWrapper.style.top = '0px';
+        chatProfileModalWrapper.style.right = 'auto';
+        chatProfileModalWrapper.style.bottom = 'auto';
+        chatProfileModalWrapper.style.transform = 'scale(0.95)';
+
+        // Quick layout pass to get dimensions
+        const rect = chatProfileModalWrapper.getBoundingClientRect();
+        const menuW = rect.width || 420;
+        const menuH = rect.height || 500;
+
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+
+        // Center Horizontally
+        let finalX = Math.max(10, (winW - menuW) / 2);
+
+        // Center Vertically, slightly offset
+        let finalY = Math.max(10, (winH - menuH) / 2);
+
+        chatProfileModalWrapper.style.left = finalX + 'px';
+        chatProfileModalWrapper.style.top = finalY + 'px';
+
+        // Add pop animation
+        chatProfileModalWrapper.style.opacity = '0';
+
+        requestAnimationFrame(() => {
+            chatProfileModalWrapper.style.transform = 'scale(1)';
+            chatProfileModalWrapper.style.opacity = '1';
+        });
+    }
+
+    // --- AWAIT DATA LOAD LOGIC ---
+    if (isNormalChat && chatProfilePreview) {
+        try {
+            // Fetch messages specifically for preview
+            const history = await apiRequest(`/api/messages/messages/${myUser.id}/${uid}?limit=30`);
+            chatProfilePreviewMessages.innerHTML = '';
+
+            if (history && history.length > 0) {
+                previewOldestMessageId = history[0].id;
+                if (history.length < 30) previewAllHistoryLoaded = true;
+
+                // Reverse to show oldest first at top, newest at bottom, just like the real chat
+                let lastDateStr = null;
+
+                history.forEach(msg => {
+                    let rd = null;
+                    if (msg.reply_to_id) {
+                        let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
+                        let rContent = msg.reply_content;
+                        if (msg.reply_type === 'image') rContent = ICONS.replyImage;
+                        else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
+                        rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
+                    }
+                    let fixedDate = msg.timestamp;
+                    if (typeof fixedDate === 'string' && fixedDate.includes(' ')) {
+                        fixedDate = fixedDate.replace(' ', 'T') + 'Z';
+                    }
+
+                    const isSystemMsg = msg.type === 'system' || msg.type === 'date_divider' || false;
+
+                    appendMessageUI(
+                        msg.content,
+                        msg.from_user_id === myUser.id ? 'me' : 'other',
+                        fixedDate,
+                        msg.id,
+                        msg.type,
+                        rd,
+                        msg.is_deleted,
+                        msg.caption,
+                        msg.is_edited,
+                        msg.from_user_id,
+                        msg.username,
+                        'sent',
+                        chatProfilePreviewMessages, // crucial: render in preview container
+                        false,
+                        'preview-msg' // extraClass to disable reply swipe and long press
+                    );
+                });
+
+                // Scroll to bottom
+                requestAnimationFrame(() => {
+                    const scrollArea = chatProfilePreviewMessages.parentElement;
+                    if (scrollArea) {
+                        // Re-evaluate scroll after appending everything
+                        scrollArea.scrollTop = scrollArea.scrollHeight;
+
+                        // Setup scroll listener for pagination
+                        scrollArea.onscroll = () => {
+                            if (scrollArea.scrollTop < 50 && !previewIsLoadingHistory && !previewAllHistoryLoaded) {
+                                loadMorePreviewMessages(uid);
+                            }
+                        };
+                    }
+                });
+
+            } else {
+                chatProfilePreviewMessages.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin:20px;">No hay mensajes</li>';
+                previewAllHistoryLoaded = true;
+            }
+        } catch (e) {
+            console.error("Error loading preview messages:", e);
+            chatProfilePreviewMessages.innerHTML = '<li style="text-align:center;color:#ef4444;font-size:12px;margin:20px;">Error al cargar</li>';
+        }
+    }
+}
+
+async function loadMorePreviewMessages(uid) {
+    if (previewIsLoadingHistory || previewAllHistoryLoaded || !uid) return;
+    previewIsLoadingHistory = true;
+
+    const scrollArea = chatProfilePreviewMessages.parentElement;
+    const oldScrollHeight = scrollArea.scrollHeight;
+
+    const prevLoader = document.createElement('div');
+    prevLoader.className = 'history-loader';
+    prevLoader.innerHTML = '<div class="spinner"></div>';
+    chatProfilePreviewMessages.prepend(prevLoader);
+
+    try {
+        const url = `/api/messages/messages/${myUser.id}/${uid}?limit=30&beforeId=${previewOldestMessageId}`;
+        const olderMessages = await apiRequest(url);
+
+        prevLoader.remove();
+
+        if (!olderMessages || olderMessages.length === 0) {
+            previewAllHistoryLoaded = true;
+        } else {
+            previewOldestMessageId = olderMessages[0].id;
+            if (olderMessages.length < 30) {
+                previewAllHistoryLoaded = true;
+            }
+            prependPreviewMessageBatch(olderMessages);
+
+            requestAnimationFrame(() => {
+                const newScrollHeight = scrollArea.scrollHeight;
+                scrollArea.scrollTop = newScrollHeight - oldScrollHeight;
+            });
+        }
+    } catch (e) {
+        console.error("Error loading more preview messages:", e);
+        prevLoader.remove();
+    } finally {
+        previewIsLoadingHistory = false;
+    }
+}
+
+function prependPreviewMessageBatch(messages) {
+    const fragment = document.createDocumentFragment();
+    let batchPreviousDate = null;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    messages.forEach(msg => {
+        let fixedDate = msg.timestamp;
+        if (typeof fixedDate === 'string' && fixedDate.includes(' ')) {
+            fixedDate = fixedDate.replace(' ', 'T') + 'Z';
+        }
+
+        // Date Divider Logic
+        const dateObj = new Date(fixedDate);
+        let label = dateObj.toLocaleDateString();
+        if (dateObj.toDateString() === today.toDateString()) label = "Hoy";
+        else if (dateObj.toDateString() === yesterday.toDateString()) label = "Ayer";
+
+        if (label !== batchPreviousDate) {
+            const li = document.createElement('li');
+            li.className = 'date-divider history-message';
+            li.innerHTML = `<span>${label}</span>`;
+            fragment.appendChild(li);
+            batchPreviousDate = label;
+        }
+
+        let rd = null;
+        if (msg.reply_to_id) {
+            let rName = msg.reply_from_id === myUser.id ? "Tú" : (myNicknames[msg.reply_from_id] || allUsersCache.find(x => x.userId == msg.reply_from_id)?.username || "Usuario");
+            let rContent = msg.reply_content;
+            if (msg.reply_type === 'image') rContent = ICONS.replyImage;
+            else if (msg.reply_type === 'audio') rContent = ICONS.replyAudio;
+            rd = { id: msg.reply_to_id, username: rName, content: rContent, type: msg.reply_type };
+        }
+
+        const isMe = msg.from_user_id === myUser.id;
+        appendMessageUI(
+            msg.content,
+            isMe ? 'me' : 'other',
+            fixedDate,
+            msg.id,
+            msg.type,
+            rd,
+            msg.is_deleted,
+            msg.caption,
+            msg.is_edited,
+            msg.from_user_id,
+            msg.username,
+            'sent',
+            fragment,
+            true,
+            'history-message fade-in-history preview-msg'
+        );
+    });
+
+    // Handle duplicate date dividers at intersection
+    const firstChild = chatProfilePreviewMessages.firstElementChild;
+    if (firstChild && firstChild.classList.contains('date-divider')) {
+        const firstDateLabel = firstChild.innerText;
+        if (firstDateLabel === batchPreviousDate) {
+            firstChild.remove();
+        }
+    }
+
+    chatProfilePreviewMessages.prepend(fragment);
+}
+
+function closeChatProfileContextMenu() {
+    if (!chatProfileContextMenu || chatProfileContextMenu.classList.contains('hidden')) return;
+
+    if (chatProfileModalWrapper) {
+        chatProfileModalWrapper.style.transform = 'scale(0.95)';
+        chatProfileModalWrapper.style.opacity = '0';
+        setTimeout(() => {
+            chatProfileContextMenu.classList.add('hidden');
+            profileCtxTargetUid = null;
+            if (chatProfilePreviewMessages) {
+                chatProfilePreviewMessages.innerHTML = '';
+                if (chatProfilePreviewMessages.parentElement) chatProfilePreviewMessages.parentElement.onscroll = null;
+            }
+        }, 150); // wait for animation
+    } else {
+        chatProfileContextMenu.classList.add('hidden');
+        profileCtxTargetUid = null;
+        if (chatProfilePreviewMessages) {
+            chatProfilePreviewMessages.innerHTML = '';
+            if (chatProfilePreviewMessages.parentElement) chatProfilePreviewMessages.parentElement.onscroll = null;
+        }
+    }
+}
+
+if (chatProfileCtxBackdrop) {
+    chatProfileCtxBackdrop.addEventListener('click', closeChatProfileContextMenu);
+    chatProfileCtxBackdrop.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        closeChatProfileContextMenu();
+    }, { passive: false });
+}
+
+if (ctxProfilePinBtn) {
+    ctxProfilePinBtn.addEventListener('click', () => {
+        // Not functional yet
+        closeChatProfileContextMenu();
+    });
+}
+
+if (ctxProfileMuteBtn) {
+    ctxProfileMuteBtn.addEventListener('click', () => {
+        // Not functional yet
+        closeChatProfileContextMenu();
+    });
 }
 
 function renderStoryModal() {
@@ -8430,73 +9017,103 @@ if (document.readyState === 'loading') {
         setupSettingsNavigation();
         setupInputFocusHandlers();
         initSmoothKeyboard(); // Start smooth keyboard sync
+        initScrollHandler(); // Start scroll handler
     });
 } else {
     setupSettingsNavigation();
     setupInputFocusHandlers();
     initSmoothKeyboard(); // Start smooth keyboard sync
+    initScrollHandler(); // Start scroll handler
 }
 
-/* --- SMOOTH KEYBOARD SYNC (VISUAL VIEWPORT) --- */
+/* --- SMOOTH KEYBOARD SYNC --- */
 function initSmoothKeyboard() {
-    if (!window.visualViewport) return;
+    const isNative = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Keyboard);
 
-    const chatContainer = document.querySelector('.chat-container');
-    const mainColumn = document.querySelector('.main-column');
+    if (isNative) {
+        // Native Capacitor App - Use official Keyboard Plugin events
+        const Keyboard = window.Capacitor.Plugins.Keyboard;
 
-    function handleResize() {
-        if (!chatContainer || !mainColumn) return;
+        Keyboard.addListener('keyboardWillShow', (info) => {
+            const offset = info.keyboardHeight;
+            // Apply precise keyboard height immediately without layout delay
+            document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
 
-        // Ensure we are in mobile chat mode
-        // Note: We check this to avoid messing with desktop layout
-        const isMobileChatActive = chatContainer.classList.contains('mobile-chat-active');
-        if (!isMobileChatActive) {
-            // Clean up styles if we exit mobile chat mode
-            if (mainColumn.style.height || mainColumn.style.top) {
-                mainColumn.style.height = '';
-                mainColumn.style.top = '';
-                mainColumn.style.bottom = '';
-                mainColumn.style.position = '';
+            // Scroll to bottom to ensure last message is visible
+            const messagesList = document.querySelector('.chat-main');
+            if (messagesList) {
+                messagesList.scrollTop = messagesList.scrollHeight;
             }
-            return;
-        }
-
-        const viewportHeight = window.visualViewport.height;
-        const viewportTop = window.visualViewport.offsetTop;
-
-        // Apply visual viewport dimensions to the main chat column
-        // This forces the fixed container to exactly match the visible area above the keyboard
-        mainColumn.style.height = `${viewportHeight}px`;
-        mainColumn.style.top = `${viewportTop}px`;
-        mainColumn.style.bottom = 'auto';
-        mainColumn.style.position = 'fixed'; // Ensure it stays fixed
-
-        // Optional: Scroll to bottom if we are near the end
-        // This helps keep the latest message visible when keyboard pops up
-        if (typeof scrollToBottom === 'function') {
-            // We might want to be careful not to force scroll if user is viewing history
-            // But generally when keyboard opens, user wants to type/see latest.
-            // Let's just rely on browser's behavior or existing scroll logic for now unless needed.
-        }
-    }
-
-    // Listeners
-    window.visualViewport.addEventListener('resize', handleResize);
-    window.visualViewport.addEventListener('scroll', handleResize);
-
-    // Observer to trigger resize when entering/exiting chat
-    if (chatContainer) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    handleResize();
-                }
-            });
         });
-        observer.observe(chatContainer, { attributes: true });
-    }
 
-    // Initial check
-    handleResize();
+        Keyboard.addListener('keyboardWillHide', () => {
+            // Reset offset
+            document.documentElement.style.setProperty('--keyboard-offset', `0px`);
+        });
+
+    } else if (window.visualViewport) {
+        // Web Browser Fallback - Use visualViewport
+        function handleResize() {
+            const viewportHeight = window.visualViewport.height;
+            const windowHeight = window.innerHeight;
+            let offset = windowHeight - viewportHeight;
+
+            // Ignore small UI shifts (like address bar showing/hiding)
+            if (offset < 80) {
+                offset = 0;
+            }
+
+            document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
+
+            if (offset > 0) {
+                // Keyboard is likely open, scroll chat to bottom
+                const messagesList = document.querySelector('.chat-main');
+                if (messagesList) {
+                    messagesList.scrollTop = messagesList.scrollHeight;
+                }
+            }
+        }
+
+        // Listeners on visualViewport
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
+
+        // Initial check
+        handleResize();
+    }
 }
 
+/* --- SCROLL HANDLER FOR STORIES --- */
+function initScrollHandler() {
+    const usersList = document.getElementById('usersList');
+    const sidebarPanel = document.querySelector('.sidebar-main-panel');
+
+    if (!usersList || !sidebarPanel) return;
+
+    // Threshold in pixels for full hide (lowered to hide quickly)
+    const SCROLL_THRESHOLD = 20;
+
+    let ticking = false;
+    usersList.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                // Should we disable animation if selection mode is ON?
+                if (typeof isSelectionMode !== 'undefined' && isSelectionMode) {
+                    sidebarPanel.style.setProperty('--scroll-progress', 0);
+                    ticking = false;
+                    return;
+                }
+
+                const scrollTop = usersList.scrollTop;
+                // Calculate progress from 0 to 1
+                let progress = scrollTop / SCROLL_THRESHOLD;
+                if (progress > 1) progress = 1;
+                if (progress < 0) progress = 0;
+
+                sidebarPanel.style.setProperty('--scroll-progress', progress);
+                ticking = false;
+            });
+            ticking = true;
+        }
+    });
+}

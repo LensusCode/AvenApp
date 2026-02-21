@@ -51,7 +51,6 @@
 
     <!-- 2. PRELOAD: Prioridad máxima para CSS y JS crítico -->
     <link rel="preload" href="style.css" as="style">
-    <link rel="preload" href="script.js" as="script">
     <link rel="preload" href="/assets/profile.png" as="image">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
@@ -86,6 +85,40 @@
                         </div>
                     </div>
                 </header>
+
+                <!-- Mobile Selection Header (Hidden by default) -->
+                <div id="mobileSelectionHeader" class="mobile-selection-header hidden">
+                    <div class="selection-left">
+                        <button id="closeSelectionBtn" class="nav-icon-btn">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <span id="selectionCount" class="selection-count">0</span>
+                    </div>
+                    <div class="selection-right">
+                        <button id="deleteSelectedBtn" class="nav-icon-btn" title="Eliminar">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                        <!-- Future options: Mute, Pin, etc. -->
+                        <button id="moreSelectionOptionsBtn" class="nav-icon-btn">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="1"></circle>
+                                <circle cx="12" cy="5" r="1"></circle>
+                                <circle cx="12" cy="19" r="1"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
                 <!-- FAVORITES / STORIES SECTION -->
                 <div class="favorites-section">
@@ -676,6 +709,66 @@
                     </svg>
                     <span>Eliminar</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Menú Contextual Perfil Chat con Vista Previa -->
+        <div id="chatProfileContextMenu" class="context-menu hidden">
+            <!-- Fondo invisible para cerrar al tocar fuera -->
+            <div id="chatProfileCtxBackdrop" class="context-menu-backdrop"
+                style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);"></div>
+
+            <!-- Wrapper for preview + menu -->
+            <div id="chatProfileModalWrapper" class="chat-profile-modal-wrapper"
+                style="display: flex; flex-direction: column; gap: 10px; width: 420px; max-width: 97vw; z-index: 1001; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;">
+
+                <!-- Chat Preview Window -->
+                <div id="chatProfilePreview" class="chat-preview-window"
+                    style="background: var(--bg-card, #111); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; height: 500px; max-height: 70vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                    <header class="chat-preview-header"
+                        style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px;">
+                        <div id="previewChatAvatar" class="avatar"
+                            style="width: 32px; height: 32px; border-radius: 50%; background-size: cover; background-position: center;">
+                        </div>
+                        <div style="display: flex; flex-direction: column;">
+                            <span id="previewChatName"
+                                style="font-weight: 600; font-size: 15px; color: #fff;">Nombre</span>
+                            <span style="font-size: 11px; color: #a1a1aa;">Vista previa</span>
+                        </div>
+                    </header>
+                    <div style="flex: 1; overflow-y: auto; padding: 10px;" class="chat-preview-scroll-area">
+                        <ul id="chatProfilePreviewMessages" class="chat-messages-list"
+                            style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Context Menu Items -->
+                <div class="context-menu-content"
+                    style="position: relative; top: 0; left: 0; transform: none; width: 100%;">
+                    <!-- Botón Fijar -->
+                    <button id="ctxProfilePinBtn" class="ctx-item">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="17" x2="12" y2="22"></line>
+                            <path
+                                d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z">
+                            </path>
+                        </svg>
+                        <span>Fijar</span>
+                    </button>
+
+                    <!-- Botón Silenciar -->
+                    <button id="ctxProfileMuteBtn" class="ctx-item">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
+                        </svg>
+                        <span>Silenciar</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1612,12 +1705,25 @@
             <!-- HEADER -->
             <div class="profile-nav-header">
                 <button id="closeCreation" class="nav-icon-btn">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <span id="creationTitle" class="nav-title">Nuevo Chat</span>
+                <span id="creationTitle" class="nav-title" style="flex:1;">Nuevo mensaje</span>
+
+                <!-- Ordenar icon -->
+                <button id="sortContactsBtn" class="nav-icon-btn"
+                    style="color: #fff; outline: none; transition: background 0.2s;">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="21" y1="6" x2="3" y2="6"></line>
+                        <line x1="15" y1="12" x2="9" y2="12"></line>
+                        <line x1="12.5" y1="18" x2="11.5" y2="18"></line>
+                        <text x="17" y="16" font-size="10" stroke-width="0.5">A</text>
+                    </svg>
+                </button>
 
                 <!-- Botón Siguiente (Paso 1) -->
                 <button id="creationNextBtn" class="nav-icon-btn hidden"
@@ -1634,22 +1740,58 @@
             </div>
 
             <!-- CONTENIDO -->
-            <div id="creationContent" class="creation-body" style="overflow-y:auto;flex:1;padding-top:20px;">
+            <div id="creationContent" class="creation-body" style="overflow-y:auto;flex:1;padding-top:0px;">
 
                 <!-- VISTA 0: INICIO -->
-                <div id="viewStart" class="creation-view">
-                    <div class="new-action-row" id="btnCreateChannel">
-                        <div class="icon-circle"><svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-                                stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg></div>
-                        <span>Nuevo Canal</span>
+                <div id="viewStart" class="creation-view"
+                    style="padding: 15px 15px; background: #050505; height: 100%; min-height: 100%;">
+                    <!-- Buscador -->
+                    <div class="search-wrap" style="padding: 0 0 15px 0; margin-bottom: 0; position: relative;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="#a1a1aa" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round"
+                            style="position: absolute; left: 16px; top: 14px;">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input id="searchNewchatContacts" placeholder="Buscar contactos"
+                            style="background:#0f0f0f; padding: 15px 15px 15px 45px; border-radius: 20px; width: 100%; border: 1px solid rgba(255, 255, 255, 0.05); color: #fff; font-size: 15px; outline: none; box-sizing: border-box;" />
                     </div>
-                    <div class="section-label">Contactos</div>
-                    <ul id="creationContactList" class="users-list"></ul>
+
+                    <!-- Botones de Acción (Grupo y Canal) -->
+                    <div
+                        style="background: #0f0f0f; border-radius: 16px; overflow: hidden; margin-bottom: 15px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                        <div class="new-action-row" id="btnCreateGroup">
+                            <div class="icon-circle" style="background: #3b82f6; flex-shrink: 0;">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <span style="font-size: 16px; font-weight: 500; color: #fff;">Nuevo grupo</span>
+                        </div>
+                        <div class="new-action-row" id="btnCreateChannel">
+                            <div class="icon-circle" style="background: #22c55e; flex-shrink: 0;">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </div>
+                            <span style="font-size: 16px; font-weight: 500; color: #fff;">Nuevo canal</span>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Contactos Ordenados -->
+                    <div
+                        style="background: #0f0f0f; border-radius: 16px; overflow: hidden; padding-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                        <div class="section-label" id="sortLabel"
+                            style="color: #8b5cf6; padding: 15px 15px 0px 15px; font-size: 14px; font-weight: 500; border-bottom: none; text-transform: none; letter-spacing: normal;">
+                            Ordenado por última vez</div>
+                        <ul id="creationContactList" class="users-list" style="margin-top: 5px;"></ul>
+                    </div>
                 </div>
 
                 <!-- VISTA 1: MIEMBROS -->
