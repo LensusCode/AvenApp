@@ -72,7 +72,7 @@ const server = http.createServer(app);
         next();
     });
 
-    const publicDir = process.env.NODE_ENV === 'production'
+    const publicDir = (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true')
         ? path.join(__dirname, 'dist', 'public')
         : path.join(__dirname, 'public');
 
