@@ -280,12 +280,20 @@ async function apiRequest(url, method = 'GET', body = null) {
 }
 
 
+window.messagesCache = { private: {}, channels: {} };
+
 async function checkSession() {
     if (window.location.pathname === '/login' || window.location.pathname === '/login.html') return;
 
     const userData = await apiRequest('/api/auth/me');
 
     if (userData) {
+        try {
+            const syncData = await apiRequest('/api/messages/initial-sync');
+            if (syncData) {
+                window.messagesCache = syncData;
+            }
+        } catch (e) { console.error("Error preloading messages", e); }
         loginSuccess(userData);
     } else {
         // En móvil (Capacitor), mostrar login inline en lugar de redirigir
@@ -967,7 +975,16 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // Pequeño delay para asegurar que config.js se cargó
-    setTimeout(() => {
+    setTimeout(async () => {
+        // Fetch initial sync if we have a user in cache, for fast opening of chats
+        if (myUser) {
+            try {
+                const syncData = await apiRequest('/api/messages/initial-sync');
+                if (syncData) {
+                    window.messagesCache = syncData;
+                }
+            } catch (e) { console.error("Error preloading messages on boot", e); }
+        }
         checkSession();
     }, 100);
 });
@@ -2548,17 +2565,26 @@ async function selectUser(target, elem) {
 
     inputMsg.style.height = '45px';
 
-    messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
-    messagesList.classList.add('loading-history');
-
     // Reset Pagination
     oldestMessageId = null;
     allHistoryLoaded = false;
     isLoadingHistory = false;
 
-    // Fetch latest 50
-    const history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}?limit=50`);
-    messagesList.innerHTML = '';
+    let history;
+    if (window.messagesCache && window.messagesCache.private && window.messagesCache.private[target.userId]) {
+        // Use cached messages
+        history = window.messagesCache.private[target.userId];
+        // After using, delete from cache so subsequent opens fetch fresh if needed, or keep it?
+        // Let's delete it so it only applies on the first open. Fast login experience.
+        delete window.messagesCache.private[target.userId];
+        messagesList.innerHTML = '';
+    } else {
+        messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
+        messagesList.classList.add('loading-history');
+        // Fetch latest 50
+        history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}?limit=50`);
+        messagesList.innerHTML = '';
+    }
 
     if (history && history.length > 0) {
         // Set oldest ID for next pagination
@@ -2597,9 +2623,9 @@ async function selectUser(target, elem) {
         void messagesList.offsetWidth;
         requestAnimationFrame(() => messagesList.classList.remove('loading-history'));
 
-        scrollToBottom(false);
+        scrollToBottom(false, true);
         socket.emit('mark messages read', { senderId: target.userId });
-        setTimeout(() => scrollToBottom(false), 200);
+        setTimeout(() => scrollToBottom(false, true), 200);
 
     } else {
         messagesList.classList.remove('loading-history');
@@ -4104,20 +4130,49 @@ function initAudioPlayer(uid) {
 let lastMessageDate = null;
 let lastMessageUserId = null;
 
+const chatScrollPositions = {};
 
-
-
-function scrollToBottom(smooth = true) {
+function scrollToBottom(smooth = true, initialLoad = false) {
     const scrollContainer = messagesList.parentNode;
+    const isNative = !!(window.Capacitor || window.CapacitorPlugins?.Capacitor);
 
     requestAnimationFrame(() => {
-        if (smooth) {
-            scrollContainer.scrollTo({
-                top: scrollContainer.scrollHeight,
-                behavior: 'smooth'
-            });
+        if (initialLoad && typeof currentTargetUserId !== 'undefined' && currentTargetUserId && typeof chatScrollPositions[currentTargetUserId] !== 'undefined') {
+            const distanceToBottom = chatScrollPositions[currentTargetUserId];
+
+            if (distanceToBottom < 50) {
+                if (isNative) {
+                    const lastMessage = messagesList.lastElementChild;
+                    if (lastMessage) {
+                        lastMessage.scrollIntoView({ behavior: 'auto', block: 'end' });
+                        return;
+                    }
+                }
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            } else {
+                let newScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight - distanceToBottom;
+                if (newScrollTop < 0) newScrollTop = 0;
+                scrollContainer.scrollTop = newScrollTop;
+            }
+            return;
+        }
+
+        if (isNative) {
+            const lastMessage = messagesList.lastElementChild;
+            if (lastMessage) {
+                lastMessage.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+            } else {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }
         } else {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            if (smooth) {
+                scrollContainer.scrollTo({
+                    top: scrollContainer.scrollHeight,
+                    behavior: 'smooth'
+                });
+            } else {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }
         }
     });
 }
@@ -4165,6 +4220,10 @@ if (scrollToBottomBtn && chatScrollContainer) {
         if (!isScrolling) {
             window.requestAnimationFrame(() => {
                 const distanceToBottom = chatScrollContainer.scrollHeight - chatScrollContainer.scrollTop - chatScrollContainer.clientHeight;
+
+                if (typeof currentTargetUserId !== 'undefined' && currentTargetUserId) {
+                    chatScrollPositions[currentTargetUserId] = distanceToBottom;
+                }
 
                 if (distanceToBottom > 300) {
                     scrollToBottomBtn.classList.remove('hidden');
@@ -5314,27 +5373,45 @@ const renderMixedSidebarDebounced = debounce(() => {
     }
     ul.innerHTML = '';
 
-    // Render Channels
-    if (myChannels && myChannels.length > 0) {
-        myChannels.forEach(c => {
-            ul.appendChild(createChannelListItem(c));
-        });
-    }
+    // Render based on the current active tab
+    if (window.currentSidebarTab === 'channels') {
+        // Render Channels Only
+        if (myChannels && myChannels.length > 0) {
+            myChannels.forEach(c => {
+                ul.appendChild(createChannelListItem(c));
+            });
+        } else {
+            ul.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">No estás en ningún canal.</li>';
+        }
+    } else {
+        // Render Users Only (Chats)
+        if (allUsersCache && allUsersCache.length > 0) {
+            const pinnedChats = getPinnedChats();
 
-    // Render Users
-    if (allUsersCache && allUsersCache.length > 0) {
-        allUsersCache.sort((a, b) => b.online - a.online).forEach(u => {
-            if (myUser && u.userId === myUser.id) return;
-            ul.appendChild(createUserItem(u));
-        });
-    }
+            allUsersCache.sort((a, b) => {
+                const hasStoryA = storiesCache.some(g => g.userId === a.userId && g.stories.length > 0);
+                const hasStoryB = storiesCache.some(g => g.userId === b.userId && g.stories.length > 0);
 
-    // Freeze animations in preview
-    const previewEmojis = ul.querySelectorAll('.preview-emoji');
-    previewEmojis.forEach(img => {
-        if (img.complete) freezeImage(img, false);
-        else img.onload = () => freezeImage(img, false);
-    });
+                const isPinnedA = pinnedChats.includes(a.userId) ? 1 : 0;
+                const isPinnedB = pinnedChats.includes(b.userId) ? 1 : 0;
+
+                if (isPinnedA !== isPinnedB) return isPinnedB - isPinnedA; // Pinned first
+                if (hasStoryA && !hasStoryB) return -1;
+                if (!hasStoryA && hasStoryB) return 1;
+                return b.online - a.online;
+            }).forEach(u => {
+                if (myUser && u.userId === myUser.id) return;
+                ul.appendChild(createUserItem(u));
+            });
+        }
+
+        // Freeze animations in preview
+        const previewEmojis = ul.querySelectorAll('.preview-emoji');
+        previewEmojis.forEach(img => {
+            if (img.complete) freezeImage(img, false);
+            else img.onload = () => freezeImage(img, false);
+        });
+    } // Close the else branch for "Render Users Only (Chats)"
 
     console.log('[DEBUG] renderMixedSidebar finished. Items:', ul.children.length);
 }, 100);
@@ -5379,16 +5456,22 @@ async function selectChannel(channel, elem) {
     currentChatAvatar.style.backgroundImage = `url('${channel.avatar}')`;
     currentChatAvatar.style.borderRadius = "12px";
 
-    messagesList.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">Cargando canal...</li>';
-    messagesList.classList.add('loading-history');
-
     // Reset Pagination
     oldestMessageId = null;
     allHistoryLoaded = false;
     isLoadingHistory = false;
 
-    const msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}?limit=50`);
-    messagesList.innerHTML = '';
+    let msgs;
+    if (window.messagesCache && window.messagesCache.channels && window.messagesCache.channels[channel.id]) {
+        msgs = window.messagesCache.channels[channel.id];
+        delete window.messagesCache.channels[channel.id];
+        messagesList.innerHTML = '';
+    } else {
+        messagesList.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">Cargando canal...</li>';
+        messagesList.classList.add('loading-history');
+        msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}?limit=50`);
+        messagesList.innerHTML = '';
+    }
 
     if (msgs && msgs.length > 0) {
         // Set oldest ID
@@ -5411,7 +5494,7 @@ async function selectChannel(channel, elem) {
 
         void messagesList.offsetWidth;
         requestAnimationFrame(() => messagesList.classList.remove('loading-history'));
-        scrollToBottom(false);
+        scrollToBottom(false, true);
     } else {
         messagesList.classList.remove('loading-history');
         allHistoryLoaded = true;
@@ -6681,6 +6764,9 @@ function createUserItem(u) {
     li.className = `chat-card user-item ${!u.online ? 'offline' : ''} ${currentTargetUserId === u.userId ? 'active' : ''} ${isSelected ? 'selected' : ''}`;
     li.dataset.uid = u.userId;
 
+    const pinnedChats = getPinnedChats();
+    const isPinned = pinnedChats.includes(u.userId);
+
     const name = myNicknames[u.userId] || u.username;
 
     const { style, html } = renderAvatarContent(u, 'text-avatar');
@@ -6726,6 +6812,8 @@ function createUserItem(u) {
 
     const ringClass = hasStory ? (allViewed ? 'story-ring-wrapper all-viewed' : 'story-ring-wrapper') : '';
 
+    const pinSvg = isPinned ? `<svg style="opacity: 0.8;" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>` : '';
+
     li.innerHTML = `
         <div class="${ringClass} chat-avatar-wrapper" data-uid="${u.userId}" style="cursor: pointer; position: relative;">
             <div class="card-avatar" style="${style}">
@@ -6734,19 +6822,41 @@ function createUserItem(u) {
                 <div class="selection-check">✓</div>
             </div>
         </div>
-        <div class="card-content">
+        <div class="card-content" style="position: relative;">
+            ${isPinned ? `<div style="position: absolute; right: 0; top: 25px; display: flex; align-items: center; justify-content: center; margin-right: -4px;">${pinSvg}</div>` : ''}
             <div class="card-top">
                 <span class="card-name">
                     ${escapeHtml(name)}${getBadgeHtml(u)}
                     ${(u.unread && u.unread >= 2) ? `<span class="unread-badge">${u.unread}</span>` : ''}
                 </span>
-                <span class="card-time ${u.unread > 0 ? 'unread-time' : ''}">${timeText}</span>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0;">
+                    <span class="card-time ${u.unread > 0 ? 'unread-time' : ''}">${timeText}</span>
+                </div>
             </div>
             <div class="card-msg" style="${subStyle}">
                 ${isHtmlContent ? subText : escapeHtml(subText)}
             </div>
         </div>
     `;
+
+    if (window.justPinnedUid === u.userId) {
+        li.style.animation = 'slideInPinned 0.35s ease-out forwards';
+        if (!document.getElementById('pin-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'pin-keyframes';
+            style.innerHTML = `
+                @keyframes slideInPinned {
+                    0% { transform: translateY(-15px); opacity: 0; background: rgba(59, 130, 246, 0.2); }
+                    50% { transform: translateY(6px); opacity: 1; background: rgba(59, 130, 246, 0.1); }
+                    75% { transform: translateY(-3px); opacity: 1; background: transparent; }
+                    90% { transform: translateY(1px); opacity: 1; background: transparent; }
+                    100% { transform: translateY(0); opacity: 1; background: transparent; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        window.justPinnedUid = null;
+    }
 
     // Long press logic specifically for the Avatar
     const avatarWrapper = li.querySelector('.chat-avatar-wrapper');
@@ -7087,14 +7197,17 @@ function setActiveDockIcon(activeBtn) {
     if (activeBtn) activeBtn.classList.add('active');
 }
 
-// 1. Chat Button
 if (navChatBtn) {
     navChatBtn.addEventListener('click', () => {
         setActiveDockIcon(navChatBtn);
+        window.currentSidebarTab = 'chats'; // Set state
 
         // Restore Views
         if (settingsView) settingsView.classList.add('hidden');
-        if (usersListEl) usersListEl.classList.remove('hidden');
+        if (usersListEl) {
+            usersListEl.classList.remove('hidden');
+            renderMixedSidebar(); // Re-render for chats
+        }
         if (brandHeaderEl) brandHeaderEl.style.display = '';
         if (favoritesSectionEl) favoritesSectionEl.style.display = '';
         if (searchTriggerEl) searchTriggerEl.style.display = '';
@@ -7205,6 +7318,8 @@ if (navCallsBtn) {
 if (navContactsBtn) {
     navContactsBtn.addEventListener('click', () => {
         setActiveDockIcon(navContactsBtn);
+        window.currentSidebarTab = 'channels'; // Set state
+
         if (comingSoonModal && !comingSoonModal.classList.contains('hidden')) {
             comingSoonModal.classList.remove('slide-in');
             comingSoonModal.classList.add('slide-out');
@@ -7213,7 +7328,35 @@ if (navContactsBtn) {
                 comingSoonModal.classList.remove('slide-out');
             }, 280);
         }
-        // TODO: Show contacts view
+
+        // Hide Settings / Show Users List
+        if (settingsView) settingsView.classList.add('hidden');
+        if (usersListEl) {
+            usersListEl.classList.remove('hidden');
+            renderMixedSidebar(); // Re-render for channels
+        }
+
+        // Keep header and search, but hide stories (favorites)
+        if (brandHeaderEl) brandHeaderEl.style.display = '';
+        if (searchTriggerEl) searchTriggerEl.style.display = '';
+        if (favoritesSectionEl) favoritesSectionEl.style.display = 'none';
+
+        // --- MAIN COLUMN TOGGLE ---
+        const settingsMainPlaceholder = document.getElementById('settingsMainPlaceholder');
+        const emptyStateEl = document.getElementById('emptyState');
+        const messagesEl = document.getElementById('messages');
+        const chatHeaderEl = document.querySelector('.chat-header');
+        const composerEl = document.querySelector('.composer');
+
+        if (settingsMainPlaceholder) settingsMainPlaceholder.classList.add('hidden');
+
+        // Return to empty state if viewing settings, similar to chat button logic
+        if (!currentTargetUserId) {
+            if (emptyStateEl) emptyStateEl.classList.remove('hidden');
+            if (messagesEl) messagesEl.classList.add('hidden');
+            if (chatHeaderEl) chatHeaderEl.classList.add('hidden');
+            if (composerEl) composerEl.classList.add('hidden');
+        }
     });
 }
 
@@ -7843,6 +7986,29 @@ async function openChatProfileContextMenu(u, x, y) {
         const name = myNicknames[uid] || u.display_name || u.username || 'Usuario';
         previewChatName.textContent = name;
 
+        // Update Pin Button State
+        const pinnedChats = getPinnedChats();
+        const isPinned = pinnedChats.includes(uid);
+        if (ctxProfilePinBtn) {
+            if (isPinned) {
+                ctxProfilePinBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none">
+                        <line x1="12" y1="17" x2="12" y2="22" stroke="currentColor" stroke-width="2"></line>
+                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                    </svg>
+                    <span>Desfijar</span>
+                `;
+            } else {
+                ctxProfilePinBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="17" x2="12" y2="22"></line>
+                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                    </svg>
+                    <span>Fijar</span>
+                `;
+            }
+        }
+
         let safeAvatar = '/profile.png';
         if (u.avatar && typeof u.avatar === 'string' && u.avatar.trim() !== '' && u.avatar !== 'null') {
             safeAvatar = u.avatar;
@@ -7903,12 +8069,12 @@ async function openChatProfileContextMenu(u, x, y) {
     if (isNormalChat && chatProfilePreview) {
         try {
             // Fetch messages specifically for preview
-            const history = await apiRequest(`/api/messages/messages/${myUser.id}/${uid}?limit=30`);
+            const history = await apiRequest(`/api/messages/messages/${myUser.id}/${uid}?limit=20`);
             chatProfilePreviewMessages.innerHTML = '';
 
             if (history && history.length > 0) {
                 previewOldestMessageId = history[0].id;
-                if (history.length < 30) previewAllHistoryLoaded = true;
+                previewAllHistoryLoaded = true; // No more loading
 
                 // Reverse to show oldest first at top, newest at bottom, just like the real chat
                 let lastDateStr = null;
@@ -7954,13 +8120,8 @@ async function openChatProfileContextMenu(u, x, y) {
                     if (scrollArea) {
                         // Re-evaluate scroll after appending everything
                         scrollArea.scrollTop = scrollArea.scrollHeight;
-
-                        // Setup scroll listener for pagination
-                        scrollArea.onscroll = () => {
-                            if (scrollArea.scrollTop < 50 && !previewIsLoadingHistory && !previewAllHistoryLoaded) {
-                                loadMorePreviewMessages(uid);
-                            }
-                        };
+                        // Pagination removed as requested
+                        scrollArea.onscroll = null;
                     }
                 });
 
@@ -8115,9 +8276,63 @@ if (chatProfileCtxBackdrop) {
     }, { passive: false });
 }
 
+function getPinnedChats() {
+    if (!myUser || !myUser.id) return [];
+    try {
+        const stored = localStorage.getItem('pinnedChats_' + myUser.id);
+        return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+}
+
+function setPinnedChats(pins) {
+    if (!myUser || !myUser.id) return;
+    localStorage.setItem('pinnedChats_' + myUser.id, JSON.stringify(pins));
+}
+
+function togglePinChat(uid) {
+    let pins = getPinnedChats();
+    const isPinning = !pins.includes(uid);
+
+    if (isPinning) {
+        pins.unshift(uid); // Add to top of pinned
+        showToast("Chat fijado");
+        window.justPinnedUid = uid;
+    } else {
+        pins = pins.filter(id => id !== uid);
+        showToast("Chat desfijado");
+    }
+    setPinnedChats(pins);
+
+    const li = document.querySelector(`.user-item[data-uid="${uid}"]`);
+    if (li) {
+        li.style.transition = 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+        li.style.transform = isPinning ? 'translateY(-20px)' : 'translateY(20px)';
+        li.style.opacity = '0';
+
+        setTimeout(() => {
+            const searchInput = document.getElementById('searchUsers');
+            if (searchInput && searchInput.value.trim()) {
+                applyUserFilter();
+            } else {
+                renderMixedSidebar();
+            }
+        }, 250);
+    } else {
+        const searchInput = document.getElementById('searchUsers');
+        if (searchInput && searchInput.value.trim()) {
+            applyUserFilter();
+        } else {
+            renderMixedSidebar();
+        }
+    }
+}
+
+
 if (ctxProfilePinBtn) {
     ctxProfilePinBtn.addEventListener('click', () => {
-        // Not functional yet
+        if (profileCtxTargetUid) {
+            togglePinChat(profileCtxTargetUid);
+        }
         closeChatProfileContextMenu();
     });
 }

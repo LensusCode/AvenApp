@@ -4,6 +4,7 @@ const messageController = require('../controllers/messageController');
 const { authenticateToken } = require('../middleware/auth');
 const { uploadImage, uploadAudio } = require('../config/cloudinary');
 
+router.get('/initial-sync', authenticateToken, messageController.getInitialSync);
 router.get('/messages/:myId/:otherId', authenticateToken, messageController.getMessages);
 router.post('/upload-chat-image', authenticateToken, uploadImage.single('image'), messageController.uploadChatImage);
 router.post('/upload-audio', authenticateToken, uploadAudio.single('audio'), messageController.uploadAudio);
