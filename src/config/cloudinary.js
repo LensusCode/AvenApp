@@ -30,7 +30,14 @@ const audioStorage = new CloudinaryStorage({
     }
 });
 
-const uploadImage = multer({ storage: imageStorage });
-const uploadAudio = multer({ storage: audioStorage });
+const uploadImage = multer({
+    storage: imageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
+const uploadAudio = multer({
+    storage: audioStorage,
+    limits: { fileSize: 15 * 1024 * 1024 } // 15MB limit
+});
 
 module.exports = { cloudinary, uploadImage, uploadAudio };

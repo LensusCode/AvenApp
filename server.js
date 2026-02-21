@@ -72,10 +72,14 @@ const server = http.createServer(app);
         next();
     });
 
+    const publicDir = process.env.NODE_ENV === 'production'
+        ? path.join(__dirname, 'dist', 'public')
+        : path.join(__dirname, 'public');
+
     app.use(express.json({ limit: '10kb' }));
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser());
-    app.use(express.static(path.join(__dirname, 'public')));
+    app.use(express.static(publicDir));
 
     const { apiLimiter } = require('./src/middleware/rateLimiter');
     app.use('/api/', apiLimiter);
@@ -93,10 +97,10 @@ const server = http.createServer(app);
     app.use('/api/stickers-proxy', require('./src/routes/stickerRoutes'));
 
     app.get('/admin', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+        res.sendFile(path.join(publicDir, 'admin.html'));
     });
     app.get('/login', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'login.html'));
+        res.sendFile(path.join(publicDir, 'login.html'));
     });
 
     app.get([
@@ -106,7 +110,7 @@ const server = http.createServer(app);
         if (req.path.startsWith('/api') || req.path.startsWith('/admin') || req.path === '/login' || req.path === '/ping') {
             return res.status(404).send('Not found');
         }
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        res.sendFile(path.join(publicDir, 'index.html'));
     });
 
     initSocket(server);

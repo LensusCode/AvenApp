@@ -14,4 +14,12 @@ const apiLimiter = rateLimit({
     message: { error: "Límite de peticiones excedido." }
 });
 
-module.exports = { authLimiter, apiLimiter };
+const usernameLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 30, // 30 requests per minute
+    message: { error: "Demasiadas verificaciones de usuario. Inténtalo más tarde." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+module.exports = { authLimiter, apiLimiter, usernameLimiter };

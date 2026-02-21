@@ -196,22 +196,23 @@ const initSocket = (server) => {
                 if (err) return;
 
                 if (messageId) {
-                    db.run(`UPDATE messages SET is_pinned = 1 WHERE id = ?`, [messageId], (err2) => {
-                        if (!err2) {
-                            db.get(`SELECT content, type, caption FROM messages WHERE id = ?`, [messageId], (err3, row) => {
-                                if (row) {
-                                    const cleanContent = decrypt(row.content);
-                                    const payload = {
-                                        messageId,
-                                        content: row.type === 'text' ? cleanContent : (row.caption ? decrypt(row.caption) : 'Archivo adjunto'),
-                                        type: row.type
-                                    };
-                                    socket.emit('chat pinned update', payload);
-                                    socket.to(`user_${toUserId}`).emit('chat pinned update', payload);
-                                }
-                            });
-                        }
-                    });
+                    db.run(`UPDATE messages SET is_pinned = 1 WHERE id = ? AND ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))`,
+                        [messageId, myId, toUserId, toUserId, myId], (err2) => {
+                            if (!err2) {
+                                db.get(`SELECT content, type, caption FROM messages WHERE id = ?`, [messageId], (err3, row) => {
+                                    if (row) {
+                                        const cleanContent = decrypt(row.content);
+                                        const payload = {
+                                            messageId,
+                                            content: row.type === 'text' ? cleanContent : (row.caption ? decrypt(row.caption) : 'Archivo adjunto'),
+                                            type: row.type
+                                        };
+                                        socket.emit('chat pinned update', payload);
+                                        socket.to(`user_${toUserId}`).emit('chat pinned update', payload);
+                                    }
+                                });
+                            }
+                        });
                 } else {
                     const payload = { messageId: null };
                     socket.emit('chat pinned update', payload);
