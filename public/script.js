@@ -69,6 +69,25 @@ socket.on('private message', (msg) => {
         // Move to top and re-render
         renderMixedSidebar();
     }
+
+    if (window.messagesCache && window.messagesCache.private && window.messagesCache.private[msg.fromUserId]) {
+        const cache = window.messagesCache.private[msg.fromUserId];
+        if (!cache.find(m => m.id === msg.id)) {
+            cache.push({
+                id: msg.id,
+                content: msg.content,
+                type: msg.type || 'text',
+                from_user_id: msg.fromUserId,
+                to_user_id: myUser.id,
+                timestamp: msg.timestamp,
+                caption: msg.caption,
+                reply_to_id: msg.replyToId,
+                reply_type: msg.reply_type,
+                reply_content: msg.reply_content,
+                reply_from_id: msg.reply_from_id
+            });
+        }
+    }
 });
 
 socket.on('channel_message', (msg) => {
@@ -211,8 +230,19 @@ async function apiRequest(url, method = 'GET', body = null) {
             const options = {
                 url: fullUrl,
                 method: method,
-                headers: body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}
+                headers: {
+                    'Accept': 'application/json'
+                }
             };
+
+            if (body && !(body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+
+            const token = localStorage.getItem('chat_token');
+            if (token) {
+                options.headers['Cookie'] = `chat_token=${token}`;
+            }
 
             if (body) {
                 if (body instanceof FormData) {
@@ -254,7 +284,15 @@ async function apiRequest(url, method = 'GET', body = null) {
 
             // Guardar response completo para acceder a headers si es necesario
             window.lastApiResponse = response;
-            return response.status >= 200 && response.status < 300 ? response.data : null;
+
+            let resData = response.data;
+            if (typeof resData === 'string') {
+                try {
+                    resData = JSON.parse(resData);
+                } catch (e) { }
+            }
+
+            return response.status >= 200 && response.status < 300 ? resData : null;
         } else {
             // En web, usar fetch normal
             const headers = {};
@@ -292,14 +330,16 @@ async function checkSession() {
         try {
             console.log('[checkSession] Requesting initial-sync...');
             if (!window.messagesCachePromise) {
-                window.messagesCachePromise = apiRequest('/api/messages/initial-sync');
+                window.messagesCachePromise = apiRequest('/api/messages/initial-sync').then(syncData => {
+                    console.log('[checkSession] initial-sync response:', syncData);
+                    if (syncData) {
+                        window.messagesCache = syncData;
+                        console.log('[checkSession] Cache populated natively in promise');
+                    }
+                    return syncData;
+                }).catch(e => { console.error("Error preloading", e); return null; });
             }
-            const syncData = await window.messagesCachePromise;
-            console.log('[checkSession] initial-sync response:', syncData);
-            if (syncData) {
-                window.messagesCache = syncData;
-                console.log('[checkSession] Cache populated');
-            }
+            await window.messagesCachePromise;
         } catch (e) { console.error("Error preloading messages", e); }
         loginSuccess(userData);
     } else {
@@ -981,23 +1021,27 @@ window.addEventListener('DOMContentLoaded', () => {
         console.error('[CACHE] Error loading cached data:', err);
     }
 
-    // Pequeño delay para asegurar que config.js se cargó
+    const cUser = localStorage.getItem('chatUser');
+    if (cUser) {
+        try {
+            console.log('[DOMContentLoaded] Requesting initial-sync...');
+            if (!window.messagesCachePromise) {
+                window.messagesCachePromise = apiRequest('/api/messages/initial-sync').then(syncData => {
+                    console.log('[DOMContentLoaded] initial-sync response:', syncData);
+                    if (syncData) {
+                        window.messagesCache = syncData;
+                        console.log('[DOMContentLoaded] Cache populated natively in promise');
+                    }
+                    return syncData;
+                }).catch(e => { console.error("Error preloading", e); return null; });
+            }
+        } catch (e) { console.error("Error starting preload", e); }
+    }
+
+    // Pequeño delay para asegurar que config.js se cargó y ui esta lista
     setTimeout(async () => {
-        // Fetch initial sync if we have a user in cache, for fast opening of chats
-        const cUser = localStorage.getItem('chatUser');
-        if (cUser) {
-            try {
-                console.log('[DOMContentLoaded] Requesting initial-sync...');
-                if (!window.messagesCachePromise) {
-                    window.messagesCachePromise = apiRequest('/api/messages/initial-sync');
-                }
-                const syncData = await window.messagesCachePromise;
-                console.log('[DOMContentLoaded] initial-sync response:', syncData);
-                if (syncData) {
-                    window.messagesCache = syncData;
-                    console.log('[DOMContentLoaded] Cache populated');
-                }
-            } catch (e) { console.error("Error preloading messages on boot", e); }
+        if (cUser && window.messagesCachePromise) {
+            try { await window.messagesCachePromise; } catch (e) { }
         }
         checkSession();
     }, 100);
@@ -1664,16 +1708,38 @@ function enableNicknameEdit(elementId, targetUserId) {
 
 function renderMyProfileInfo() {
     if (!myUser) return;
-    const nameEl = document.getElementById('profileRealName');
     const displayName = myUser.display_name || myUser.username;
-    nameEl.innerHTML = escapeHtml(displayName) + getBadgeHtml(myUser);
+    const badgeHtml = getBadgeHtml(myUser);
+    const escapeName = escapeHtml(displayName);
+    const handleText = `@${myUser.username}`;
+
+    // Expanded view elements
+    const nameEl = document.getElementById('profileRealName');
+    if (nameEl) nameEl.innerHTML = escapeName + badgeHtml;
 
     const handleEl = document.getElementById('profileHandle');
-    handleEl.textContent = `@${myUser.username}`;
+    if (handleEl) handleEl.textContent = handleText;
 
+    // Collapsed view elements
+    const nameElCollapsed = document.getElementById('profileRealName_collapsed');
+    if (nameElCollapsed) nameElCollapsed.innerHTML = escapeName + badgeHtml;
+
+    // Badge logic for collapsed view (there's a separate svg next to it)
+    const collapsedVerifiedIcon = document.querySelector('.collapsed-content .verified-icon');
+    if (collapsedVerifiedIcon) {
+        collapsedVerifiedIcon.style.display = 'none';
+        // Unused color logic removed
+    }
+
+    const handleElCollapsed = document.getElementById('profileHandle_collapsed');
+    if (handleElCollapsed) handleElCollapsed.textContent = handleText;
+
+    // Bio
     const bioEl = document.getElementById('profileBio');
-    bioEl.textContent = myUser.bio || "Añade una biografía...";
-    bioEl.style.color = !myUser.bio ? "#666" : "#e4e4e7";
+    if (bioEl) {
+        bioEl.textContent = myUser.bio || "Sin biografía.";
+        bioEl.style.color = !myUser.bio ? "#666" : "#e4e4e7";
+    }
 }
 
 profileBtn.addEventListener('click', () => {
@@ -2601,21 +2667,30 @@ async function selectUser(target, elem) {
         // Use cached messages
         console.log('[SELECT USER] Cache HIT for target.userId:', target.userId);
         history = window.messagesCache.private[target.userId];
-        delete window.messagesCache.private[target.userId];
         messagesList.innerHTML = '';
     } else {
         console.log('[SELECT USER] Cache MISS for target.userId:', target.userId);
-        messagesList.innerHTML = '<li style="text-align:center;color:#666;font-size:12px;margin-top:20px;">Cargando historial...</li>';
+        messagesList.innerHTML = `
+            <div class="premium-loader-container">
+                <div class="premium-spinner"></div>
+                <div class="premium-loader-text">Cargando historial...</div>
+            </div>
+        `;
         messagesList.classList.add('loading-history');
-        // Fetch latest 50
-        history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}?limit=50`);
+        // Fetch latest 30
+        history = await apiRequest(`/api/messages/messages/${myUser.id}/${target.userId}?limit=30`);
         messagesList.innerHTML = '';
+        if (history) {
+            window.messagesCache = window.messagesCache || { private: {}, channels: {} };
+            window.messagesCache.private = window.messagesCache.private || {};
+            window.messagesCache.private[target.userId] = [...history];
+        }
     }
 
     if (history && history.length > 0) {
         // Set oldest ID for next pagination
         oldestMessageId = history[0].id;
-        if (history.length < 50) allHistoryLoaded = true;
+        if (history.length < 30) allHistoryLoaded = true;
 
         history.forEach(msg => {
             let rd = null;
@@ -2690,7 +2765,6 @@ async function loadMoreMessages() {
     if (isLoadingHistory || allHistoryLoaded || !currentTargetUserId) return;
     isLoadingHistory = true;
 
-    // Save scroll reference
     const scrollContainer = messagesList.parentNode;
 
     // Determine API URL
@@ -2702,37 +2776,58 @@ async function loadMoreMessages() {
         url = `/api/messages/messages/${myUser.id}/${currentTargetUserId}?limit=50&beforeId=${oldestMessageId}`;
     }
 
+    // Capture before adding loader
+    let oldScrollHeight = scrollContainer.scrollHeight;
+    let oldScrollTop = scrollContainer.scrollTop;
+
     const prevLoader = document.createElement('div');
     prevLoader.className = 'history-loader';
     prevLoader.innerHTML = '<div class="spinner"></div>'; // You might need CSS for this
     messagesList.prepend(prevLoader);
 
+    // Adjust scroll after adding loader so content doesn't drop
+    scrollContainer.scrollTop = oldScrollTop + (scrollContainer.scrollHeight - oldScrollHeight);
+
     try {
         const olderMessages = await apiRequest(url);
-        prevLoader.remove();
 
         if (olderMessages && olderMessages.length > 0) {
             oldestMessageId = olderMessages[0].id; // Update pointer
             if (olderMessages.length < 50) allHistoryLoaded = true;
 
-            // CAPTURE SCROLL HERE (Right before insertion)
-            // This ensures we account for any user movement while waiting for API
-            const oldScrollHeight = scrollContainer.scrollHeight;
-            const oldScrollTop = scrollContainer.scrollTop;
+            // Capture exact state right before modifying DOM
+            const beforeHeight = scrollContainer.scrollHeight;
+            const beforeTop = scrollContainer.scrollTop;
 
-            // Prepend Messages Logic
+            // Synchronous DOM modification grouping
+            prevLoader.remove();
             prependMessageBatch(olderMessages);
 
-            // Restore scroll position
-            const newScrollHeight = scrollContainer.scrollHeight;
-            scrollContainer.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+            // Restore perfectly relative to the unmodified portion
+            const afterHeight = scrollContainer.scrollHeight;
+            scrollContainer.scrollTop = beforeTop + (afterHeight - beforeHeight);
 
         } else {
             allHistoryLoaded = true;
+
+            const beforeHeight = scrollContainer.scrollHeight;
+            const beforeTop = scrollContainer.scrollTop;
+
+            prevLoader.remove();
+
+            const afterHeight = scrollContainer.scrollHeight;
+            scrollContainer.scrollTop = beforeTop + (afterHeight - beforeHeight);
         }
     } catch (e) {
         console.error("Error loading more messages", e);
+
+        const beforeHeight = scrollContainer.scrollHeight;
+        const beforeTop = scrollContainer.scrollTop;
+
         prevLoader.remove();
+
+        const afterHeight = scrollContainer.scrollHeight;
+        scrollContainer.scrollTop = beforeTop + (afterHeight - beforeHeight);
     } finally {
         isLoadingHistory = false;
     }
@@ -2876,6 +2971,21 @@ function sendMessage(content, type, replyId = null) {
                 contentWrapper.id = `msg-${res.id}`;
                 const icon = tempRow.querySelector('.status-icon');
                 if (icon) icon.className = 'status-icon status-sent';
+            }
+
+            if (window.messagesCache && window.messagesCache.private && window.messagesCache.private[currentTargetUserId]) {
+                window.messagesCache.private[currentTargetUserId].push({
+                    id: res.id,
+                    content: content,
+                    type: type,
+                    from_user_id: myUser.id,
+                    to_user_id: currentTargetUserId,
+                    timestamp: res.timestamp || new Date().toISOString(),
+                    reply_to_id: replyId,
+                    reply_type: rd ? rd.type : null,
+                    reply_content: rd ? rd.content : null,
+                    reply_from_id: rd ? (rd.username === "Tú" ? myUser.id : null) : null
+                });
             }
         }
     });
@@ -5497,19 +5607,28 @@ async function selectChannel(channel, elem) {
     let msgs;
     if (window.messagesCache && window.messagesCache.channels && window.messagesCache.channels[channel.id]) {
         msgs = window.messagesCache.channels[channel.id];
-        delete window.messagesCache.channels[channel.id];
         messagesList.innerHTML = '';
     } else {
-        messagesList.innerHTML = '<li style="text-align:center;color:#666;margin-top:20px;">Cargando canal...</li>';
+        messagesList.innerHTML = `
+            <div class="premium-loader-container">
+                <div class="premium-spinner"></div>
+                <div class="premium-loader-text">Cargando historial...</div>
+            </div>
+        `;
         messagesList.classList.add('loading-history');
-        msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}?limit=50`);
+        msgs = await apiRequest(`/api/channels/channel-messages/${channel.id}?limit=30`);
         messagesList.innerHTML = '';
+        if (msgs) {
+            window.messagesCache = window.messagesCache || { private: {}, channels: {} };
+            window.messagesCache.channels = window.messagesCache.channels || {};
+            window.messagesCache.channels[channel.id] = [...msgs];
+        }
     }
 
     if (msgs && msgs.length > 0) {
         // Set oldest ID
         oldestMessageId = msgs[0].id;
-        if (msgs.length < 50) allHistoryLoaded = true;
+        if (msgs.length < 30) allHistoryLoaded = true;
 
         msgs.forEach(msg => {
             let rd = null;
@@ -5556,7 +5675,7 @@ function prependMessageBatch(messages) {
 
         if (label !== batchPreviousDate) {
             const li = document.createElement('li');
-            li.className = 'date-divider history-message';
+            li.className = 'date-divider';
             li.innerHTML = `<span>${label}</span>`;
             fragment.appendChild(li);
             batchPreviousDate = label;
@@ -5593,7 +5712,7 @@ function prependMessageBatch(messages) {
             'sent', // status
             fragment, // container
             true, // skipDateDivider
-            'history-message fade-in-history' // extraClass
+            '' // extraClass (removed animation)
         );
     });
 
@@ -5646,6 +5765,13 @@ socket.on('channel_message', (msg) => {
 
     // Update sidebar for channel message
     updateSidebarWithNewMessage(msg.channelId, msg.content, msg.type, msg.timestamp);
+
+    if (window.messagesCache && window.messagesCache.channels && window.messagesCache.channels[msg.channelId]) {
+        const cache = window.messagesCache.channels[msg.channelId];
+        if (!cache.find(m => m.id === msg.id)) {
+            cache.push(msg);
+        }
+    }
 });
 
 socket.on('channels_update', () => {
@@ -8174,36 +8300,60 @@ async function loadMorePreviewMessages(uid) {
     previewIsLoadingHistory = true;
 
     const scrollArea = chatProfilePreviewMessages.parentElement;
-    const oldScrollHeight = scrollArea.scrollHeight;
+
+    // Capture before adding loader
+    let oldScrollHeight = scrollArea.scrollHeight;
+    let oldScrollTop = scrollArea.scrollTop;
 
     const prevLoader = document.createElement('div');
     prevLoader.className = 'history-loader';
     prevLoader.innerHTML = '<div class="spinner"></div>';
     chatProfilePreviewMessages.prepend(prevLoader);
 
+    // Adjust scroll after adding loader
+    scrollArea.scrollTop = oldScrollTop + (scrollArea.scrollHeight - oldScrollHeight);
+
     try {
         const url = `/api/messages/messages/${myUser.id}/${uid}?limit=30&beforeId=${previewOldestMessageId}`;
         const olderMessages = await apiRequest(url);
 
-        prevLoader.remove();
-
         if (!olderMessages || olderMessages.length === 0) {
             previewAllHistoryLoaded = true;
+
+            const beforeHeight = scrollArea.scrollHeight;
+            const beforeTop = scrollArea.scrollTop;
+
+            prevLoader.remove();
+
+            const afterHeight = scrollArea.scrollHeight;
+            scrollArea.scrollTop = beforeTop + (afterHeight - beforeHeight);
         } else {
             previewOldestMessageId = olderMessages[0].id;
             if (olderMessages.length < 30) {
                 previewAllHistoryLoaded = true;
             }
+
+            // Capture precise state BEFORE DOM mutations
+            const beforeHeight = scrollArea.scrollHeight;
+            const beforeTop = scrollArea.scrollTop;
+
+            prevLoader.remove();
             prependPreviewMessageBatch(olderMessages);
 
-            requestAnimationFrame(() => {
-                const newScrollHeight = scrollArea.scrollHeight;
-                scrollArea.scrollTop = newScrollHeight - oldScrollHeight;
-            });
+            // Restore precisely
+            const afterHeight = scrollArea.scrollHeight;
+            scrollArea.scrollTop = beforeTop + (afterHeight - beforeHeight);
         }
     } catch (e) {
         console.error("Error loading more preview messages:", e);
+
+        const beforeHeight = scrollArea.scrollHeight;
+        const beforeTop = scrollArea.scrollTop;
+
         prevLoader.remove();
+
+        const afterHeight = scrollArea.scrollHeight;
+        scrollArea.scrollTop = beforeTop + (afterHeight - beforeHeight);
     } finally {
         previewIsLoadingHistory = false;
     }
@@ -8230,7 +8380,7 @@ function prependPreviewMessageBatch(messages) {
 
         if (label !== batchPreviousDate) {
             const li = document.createElement('li');
-            li.className = 'date-divider history-message';
+            li.className = 'date-divider';
             li.innerHTML = `<span>${label}</span>`;
             fragment.appendChild(li);
             batchPreviousDate = label;
@@ -8261,7 +8411,7 @@ function prependPreviewMessageBatch(messages) {
             'sent',
             fragment,
             true,
-            'history-message fade-in-history preview-msg'
+            'preview-msg'
         );
     });
 
@@ -9286,15 +9436,37 @@ function initSmoothKeyboard() {
         // Native Capacitor App - Use official Keyboard Plugin events
         const Keyboard = window.Capacitor.Plugins.Keyboard;
 
+        const platform = window.Capacitor.getPlatform();
+
+        // Prevent native webview resizing to avoid double-push effect (iOS and Android)
+        if (Keyboard.setResizeMode) {
+            Keyboard.setResizeMode({ mode: 'none' }).catch(e => console.log('Resize mode none failed:', e));
+        }
+
         Keyboard.addListener('keyboardWillShow', (info) => {
-            const offset = info.keyboardHeight;
+            // Subtract 45px from the keyboard height to bring input closer
+            const offset = info.keyboardHeight > 45 ? info.keyboardHeight - 45 : info.keyboardHeight;
+
             // Apply precise keyboard height immediately without layout delay
             document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
 
-            // Scroll to bottom to ensure last message is visible
+            // Disable scroll animation temporarily for instant snap
             const messagesList = document.querySelector('.chat-main');
             if (messagesList) {
-                messagesList.scrollTop = messagesList.scrollHeight;
+                // Determine animation duration based on platform
+                const duration = platform === 'ios' ? 250 : 200;
+
+                // Continuous scroll update during the keyboard animation for buttery smoothness
+                let startTime = null;
+                const scrollStep = (timestamp) => {
+                    if (!startTime) startTime = timestamp;
+                    const progress = timestamp - startTime;
+                    messagesList.scrollTop = messagesList.scrollHeight;
+                    if (progress < duration) {
+                        window.requestAnimationFrame(scrollStep);
+                    }
+                };
+                window.requestAnimationFrame(scrollStep);
             }
         });
 
@@ -9342,30 +9514,245 @@ function initScrollHandler() {
 
     if (!usersList || !sidebarPanel) return;
 
-    // Threshold in pixels for full hide (lowered to hide quickly)
-    const SCROLL_THRESHOLD = 20;
+    // Threshold in pixels to add the hidden class
+    const SCROLL_THRESHOLD = 40;
 
     let ticking = false;
     usersList.addEventListener('scroll', () => {
         if (!ticking) {
             window.requestAnimationFrame(() => {
-                // Should we disable animation if selection mode is ON?
+                // Disable hide if selection mode is ON
                 if (typeof isSelectionMode !== 'undefined' && isSelectionMode) {
-                    sidebarPanel.style.setProperty('--scroll-progress', 0);
+                    sidebarPanel.classList.remove('scrolled-down');
                     ticking = false;
                     return;
                 }
 
                 const scrollTop = usersList.scrollTop;
-                // Calculate progress from 0 to 1
-                let progress = scrollTop / SCROLL_THRESHOLD;
-                if (progress > 1) progress = 1;
-                if (progress < 0) progress = 0;
 
-                sidebarPanel.style.setProperty('--scroll-progress', progress);
+                if (scrollTop > SCROLL_THRESHOLD) {
+                    if (!sidebarPanel.classList.contains('scrolled-down')) {
+                        sidebarPanel.classList.add('scrolled-down');
+                    }
+                } else {
+                    if (sidebarPanel.classList.contains('scrolled-down')) {
+                        sidebarPanel.classList.remove('scrolled-down');
+                    }
+                }
+
                 ticking = false;
             });
             ticking = true;
         }
+    });
+}
+
+// --- NEW PROFILE WIDGET LOGIC ---
+const profileWidget = document.getElementById('profile-widget');
+const profileAvatarWidget = document.getElementById('profilePreviewAvatar');
+
+if (profileWidget) {
+    profileWidget.addEventListener('click', function () {
+        if (!this.classList.contains('expanded')) {
+            this.classList.add('expanded');
+        }
+    });
+}
+
+if (profileAvatarWidget) {
+    profileAvatarWidget.addEventListener('click', function (e) {
+        if (profileWidget && profileWidget.classList.contains('expanded')) {
+            e.stopPropagation();
+            profileWidget.classList.remove('expanded');
+        }
+    });
+}
+
+const btnEditInfo = document.getElementById('btn-edit-info');
+const btnEditBio = document.getElementById('btn-edit-bio');
+const editInfoModal = document.getElementById('editInfoModal');
+const btnBackEditInfo = document.getElementById('btn-back-edit-info');
+const btnSaveEditInfo = document.getElementById('btn-save-edit-info');
+
+const editInputName = document.getElementById('input-name');
+const editInputUsername = document.getElementById('input-username');
+const editInputBio = document.getElementById('input-bio');
+
+const countName = document.getElementById('count-name');
+const countUsername = document.getElementById('count-username');
+const countBio = document.getElementById('count-bio');
+
+// Track original values to detect changes
+let originalEditValues = {
+    name: '',
+    username: '',
+    bio: ''
+};
+
+function updateEditInfoUI() {
+    // Update counters
+    countName.innerText = `${editInputName.value.length}/30`;
+    countUsername.innerText = `${editInputUsername.value.length}/20`;
+    countBio.innerText = `${editInputBio.value.length}/150`;
+
+    // Check if any value changed
+    const hasChanged = (
+        editInputName.value !== originalEditValues.name ||
+        editInputUsername.value !== originalEditValues.username ||
+        editInputBio.value !== originalEditValues.bio
+    );
+
+    // Basic validation
+    const isValid = editInputName.value.trim().length > 0 &&
+        editInputUsername.value.trim().length >= 4 &&
+        editInputUsername.value.indexOf(' ') === -1; // No spaces in username
+
+    btnSaveEditInfo.disabled = !(hasChanged && isValid);
+}
+
+function openEditInfoModal() {
+    if (!editInfoModal) return;
+
+    // Prefill data from local storage/current profile state
+    const user = JSON.parse(localStorage.getItem('chatUser') || '{}');
+
+    // Set initial values
+    originalEditValues = {
+        name: user.display_name || '',
+        username: user.username || '',
+        bio: user.bio || ''
+    };
+
+    editInputName.value = originalEditValues.name;
+    editInputUsername.value = originalEditValues.username;
+    editInputBio.value = originalEditValues.bio;
+
+    updateEditInfoUI();
+
+    editInfoModal.classList.remove('hidden');
+    // Animate enter
+    const modernProfile = editInfoModal.querySelector('.modern-profile');
+    if (modernProfile) {
+        modernProfile.classList.remove('closing');
+        const rect = btnEditInfo ? btnEditInfo.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2 };
+        modernProfile.style.setProperty('--origin-x', `${rect.left + rect.width / 2}px`);
+        modernProfile.style.setProperty('--origin-y', `${rect.top + rect.height / 2}px`);
+    }
+}
+
+function closeEditInfoModal() {
+    if (!editInfoModal) return;
+
+    const modernProfile = editInfoModal.querySelector('.modern-profile');
+    if (modernProfile) {
+        modernProfile.classList.add('closing');
+        setTimeout(() => {
+            editInfoModal.classList.add('hidden');
+            modernProfile.classList.remove('closing');
+        }, 250);
+    } else {
+        editInfoModal.classList.add('hidden');
+    }
+}
+
+if (btnEditInfo) {
+    btnEditInfo.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openEditInfoModal();
+    });
+}
+if (btnEditBio) {
+    btnEditBio.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openEditInfoModal();
+    });
+}
+
+if (btnBackEditInfo) {
+    btnBackEditInfo.addEventListener('click', closeEditInfoModal);
+}
+
+// Attach input listeners
+[editInputName, editInputUsername, editInputBio].forEach(input => {
+    if (input) input.addEventListener('input', updateEditInfoUI);
+});
+
+// Prevent invalid chars in username
+if (editInputUsername) {
+    editInputUsername.addEventListener('keypress', function (e) {
+        // Prevent spaces, @, and other weird characters directly via keypress
+        if (e.key === ' ' || e.key === '@') {
+            e.preventDefault();
+        }
+    });
+    // Sanitize on input/paste
+    editInputUsername.addEventListener('input', function (e) {
+        this.value = this.value.replace(/[^a-zA-Z0-9_]/g, '');
+        updateEditInfoUI();
+    });
+}
+
+if (btnSaveEditInfo) {
+    btnSaveEditInfo.addEventListener('click', async () => {
+        try {
+            btnSaveEditInfo.disabled = true;
+            btnSaveEditInfo.innerText = 'Guardando...';
+
+            const updates = [];
+            const user = JSON.parse(localStorage.getItem('chatUser') || '{}');
+
+            if (editInputName.value !== originalEditValues.name) {
+                updates.push({ field: 'display_name', value: editInputName.value.trim() });
+            }
+            if (editInputUsername.value !== originalEditValues.username) {
+                updates.push({ field: 'username', value: editInputUsername.value.trim() });
+            }
+            if (editInputBio.value !== originalEditValues.bio) {
+                // Bio may be cleared entirely, so we allow empty string
+                updates.push({ field: 'bio', value: editInputBio.value.trim() });
+            }
+
+            const token = localStorage.getItem('chat_token');
+            for (const update of updates) {
+                const response = await fetch('/api/users/profile/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(update)
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to update ' + update.field);
+                }
+
+                // Update local storage representation immediately
+                user[update.field] = update.value;
+            }
+
+            localStorage.setItem('chatUser', JSON.stringify(user));
+
+            // Re-render my profile 
+            if (typeof renderMyProfileInfo === 'function') {
+                renderMyProfileInfo();
+            }
+
+            // Close modal after saving
+            closeEditInfoModal();
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Error al guardar: ' + error.message);
+        } finally {
+            btnSaveEditInfo.innerText = 'Guardar';
+            // Validation implicitly runs when modal re-opens
+        }
+    });
+}
+
+const btnSetPhoto = document.getElementById('btn-set-photo');
+if (btnSetPhoto) {
+    btnSetPhoto.addEventListener('click', function (e) {
+        e.stopPropagation();
     });
 }

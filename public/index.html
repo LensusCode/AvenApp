@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0a">
     <title>AvenApp</title>
     <meta name="description"
@@ -31,7 +31,7 @@
         content="AvenApp - La red social moderna para conectar, chatear y compartir momentos con amigos.">
     <meta property="twitter:image" content="https://avenapp.org/icons/icon-512.svg">
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.0.4">
 
     <!-- Favicon -->
     <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
@@ -240,145 +240,155 @@
 
         <!-- MI PERFIL MODAL -->
         <div id="profileModal" class="profile-modal hidden">
-            <div class="profile-card modern-profile">
-
-                <!-- Barra superior: Flecha atrás y Título -->
-                <div class="profile-nav-header">
-                    <button id="closeProfile" class="nav-icon-btn">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
-                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <div class="app-container"
+                style="background: transparent; max-width: 100%; height: 100%; position: absolute; z-index: 10;">
+                <header class="header" style="background-color: transparent; backdrop-filter: none; padding-top: 25px;">
+                    <button class="back-button" id="closeProfile">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
                     </button>
-                    <span class="nav-title">Perfil</span>
-                    <div style="width: 40px;"></div>
-                </div>
+                    <h1>Perfil</h1>
+                </header>
 
-                <!-- Avatar Central -->
-                <div class="profile-avatar-section">
-                    <div class="profile-avatar-large" id="profilePreviewAvatar">
-                        <label for="avatarInput" class="upload-overlay">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
-                                fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <path
-                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                                </path>
-                                <circle cx="12" cy="13" r="4"></circle>
-                            </svg>
-                        </label>
-                    </div>
-                    <input type="file" id="avatarInput" accept="image/*" hidden />
-                </div>
+                <main class="content">
 
-                <!-- Lista de Datos -->
-                <div class="profile-details-list">
+                    <div class="profile-widget" id="profile-widget">
 
-                    <div class="profile-info-group">
-                        <div class="detail-item">
-                            <label class="detail-label">Nombre</label>
-                            <div class="value-row">
-                                <div class="detail-value big-text" id="profileRealName">Cargando...</div>
-                                <button class="edit-btn" id="editNameBtn" data-target="profileRealName"
-                                    data-field="display_name">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                        <div class="widget-avatar" id="profilePreviewAvatar" title="Toca para contraer">
+                            <label for="avatarInput" class="upload-overlay"
+                                style="position: absolute; inset: 0; cursor: pointer; opacity: 0;"></label>
+                        </div>
+                        <input type="file" id="avatarInput" accept="image/*" hidden />
+
+                        <div class="external-actions">
+                            <button class="action-btn" id="btn-edit-info">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                <span>Editar la info</span>
+                            </button>
+                            <button class="action-btn" id="btn-set-photo"
+                                onclick="document.getElementById('avatarInput').click()">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                </svg>
+                                <span>Establecer foto</span>
+                            </button>
+                        </div>
+
+                        <div class="widget-bg">
+
+                            <div class="collapsed-content">
+                                <div class="ph-info">
+                                    <div class="ph-name-row">
+                                        <span class="ph-name" id="profileRealName_collapsed">Cargando...</span>
+                                        <svg class="verified-icon" width="16" height="16" viewBox="0 0 24 24"
+                                            fill="currentColor" style="display: none;">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                        </svg>
+                                    </div>
+                                    <span class="ph-username" id="profileHandle_collapsed">@usuario</span>
+                                </div>
+                                <button class="ph-grid-btn">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                                     </svg>
                                 </button>
                             </div>
-                        </div>
 
-                        <div class="detail-item">
-                            <label class="detail-label">Usuario</label>
-                            <div class="value-row">
-                                <div class="detail-value link-text" id="profileHandle">@usuario</div>
-                                <button class="edit-btn" id="editUserBtn" data-target="profileHandle"
-                                    data-field="username" data-prefix="@">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                </button>
+                            <div class="expanded-content">
+                                <div class="profile-field">
+                                    <div class="field-content">
+                                        <span class="field-label">Nombre</span>
+                                        <div class="field-value-row">
+                                            <span class="field-value" id="profileRealName">Cargando...</span>
+                                            <svg class="verified-icon" width="16" height="16" viewBox="0 0 24 24"
+                                                fill="currentColor" style="display: none;">
+                                                <path
+                                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="profile-field">
+                                    <div class="field-content">
+                                        <span class="field-label">Usuario</span>
+                                        <span class="field-value username" id="profileHandle">@usuario</span>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
 
-                    <div class="profile-info-group">
-                        <div class="detail-item">
-                            <label class="detail-label">Biografía</label>
-                            <div class="value-row">
-                                <div class="detail-value bio-text" id="profileBio">
-                                    Sin biografía.
-                                </div>
-                                <button class="edit-btn" id="editBioBtn" data-target="profileBio" data-field="bio">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="bio-card">
+                        <div class="bio-content">
+                            <span class="bio-label">Biografía</span>
+                            <span class="bio-text" id="profileBio">Sin biografía.</span>
                         </div>
+                        <svg id="btn-edit-bio" class="edit-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
                     </div>
 
-                    <!-- GRUPO DE AJUSTES -->
-                    <div class="profile-info-group">
-                        <!-- Notificaciones -->
-                        <div class="settings-row">
-                            <div class="settings-left">
-                                <div class="settings-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                                    </svg>
-                                </div>
-                                <span>Notificaciones</span>
+                    <div class="settings-group">
+                        <div class="settings-item">
+                            <div class="item-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
                             </div>
-                            <div class="settings-right">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
+                            <div class="item-text">Notificaciones</div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked>
+                                <span class="slider"></span>
+                            </label>
                         </div>
 
-                        <!-- Privacidad -->
-                        <div class="settings-row clickable">
-                            <div class="settings-left">
-                                <div class="settings-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                    </svg>
-                                </div>
-                                <span>Privacidad</span>
+                        <div class="settings-item">
+                            <div class="item-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
                             </div>
-                            <div class="settings-right">
-                                <svg class="chevron-right" viewBox="0 0 24 24" fill="none" stroke="#666"
+                            <div class="item-text">Privacidad</div>
+                            <div class="chevron">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="9 18 15 12 9 6"></polyline>
                                 </svg>
                             </div>
                         </div>
 
-                        <!-- Apariencia -->
-                        <div class="settings-row clickable" id="openThemeModalBtn">
-                            <div class="settings-left">
-                                <div class="settings-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-                                    </svg>
-                                </div>
-                                <span>Apariencia</span>
+                        <div class="settings-item" id="openThemeModalBtn">
+                            <div class="item-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                                </svg>
                             </div>
-                            <div class="settings-right">
-                                <svg class="chevron-right" viewBox="0 0 24 24" fill="none" stroke="#666"
+                            <div class="item-text">Apariencia</div>
+                            <div class="chevron">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="9 18 15 12 9 6"></polyline>
                                 </svg>
@@ -386,12 +396,74 @@
                         </div>
                     </div>
 
-                    <!-- Botón Cerrar Sesión -->
-                    <button id="profileLogout" class="logout-btn-full">
+                    <button id="profileLogout" class="logout-btn-full"
+                        style="background: rgba(43, 10, 10, 0.6); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); width: 100%; padding: 16px; border-radius: 20px; font-size: 15px; font-weight: 700; margin-top: 10px; cursor: pointer; transition: all 0.2s;">
                         Cerrar Sesión
                     </button>
 
-                </div>
+                </main>
+            </div>
+
+            <!-- Modern Profile Background for styling compatibility -->
+            <div class="profile-card modern-profile" style="background: #030303; pointer-events: none; z-index: 1;">
+            </div>
+        </div>
+
+        <!-- EDIT INFO MODAL -->
+        <div id="editInfoModal" class="profile-modal hidden">
+            <div class="app-container"
+                style="background: transparent; max-width: 100%; height: 100%; position: absolute; z-index: 10;">
+                <header class="header" style="background-color: transparent; backdrop-filter: none; padding-top: 25px;">
+                    <div class="header-left">
+                        <button class="back-button" id="btn-back-edit-info">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                        </button>
+                        <h1>Editar info</h1>
+                    </div>
+                    <button class="save-button" id="btn-save-edit-info" disabled>Guardar</button>
+                </header>
+
+                <main class="content">
+                    <div class="input-group">
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <label class="input-label" for="input-name">Nombre</label>
+                                <span class="char-counter" id="count-name">0/30</span>
+                            </div>
+                            <input type="text" id="input-name" class="custom-input" value="" maxlength="30"
+                                autocomplete="off" spellcheck="false">
+                        </div>
+
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <label class="input-label" for="input-username">Usuario</label>
+                                <span class="char-counter" id="count-username">0/20</span>
+                            </div>
+                            <input type="text" id="input-username" class="custom-input" value="" maxlength="20"
+                                autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
+
+                    <p class="help-text">Puedes usar letras, números y guiones bajos. Los nombres de usuario deben tener
+                        al menos 4 caracteres.</p>
+
+                    <div class="input-group">
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <label class="input-label" for="input-bio">Biografía</label>
+                                <span class="char-counter" id="count-bio">0/150</span>
+                            </div>
+                            <textarea id="input-bio" class="custom-input" rows="3" maxlength="150"></textarea>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <div class="profile-card modern-profile" style="background: #030303; pointer-events: none; z-index: 1;">
             </div>
         </div>
 

@@ -609,39 +609,33 @@
     display: none !important;
 }
 
-/* --- SCROLLED MODE (Progressive) --- */
-.sidebar-main-panel {
-    --scroll-progress: 0;
-}
-
-.favorites-section {
-    /* Disable transition for direct control via scroll */
-    /* Disable transition for direct control via scroll */
-    transition: none;
-
-    /* Height logic: reduces from ~120px to 0 */
-    max-height: calc(120px - (120px * var(--scroll-progress)));
-
-    /* Opacity fades out faster than height shrinks (at 0.5 progress it's 0) */
-    opacity: calc(1 - (var(--scroll-progress) * 1.5));
-
-    /* Slide up slightly and scale down */
-    transform: translateY(calc(var(--scroll-progress) * -20px)) scale(calc(1 - (var(--scroll-progress) * 0.1)));
-
-    /* Reduce padding to 0 */
-    padding-top: calc(15px - (15px * var(--scroll-progress)));
-    padding-bottom: calc(15px - (15px * var(--scroll-progress)));
-
-    overflow: hidden;
+/* --- SCROLLED MODE (Fluid Class-based) --- */
+.sidebar-main-panel.scrolled-down .favorites-section {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    pointer-events: none;
     margin-bottom: 0;
 }
 
-.search-trigger {
-    transition: none;
-    /* Add padding top as it moves up to replace the lost space/padding from favorites */
-    padding-top: calc(15px * var(--scroll-progress));
+.favorites-section {
+    max-height: 120px;
+    /* Safe upper bound for the stories row */
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        padding 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform: translateY(0) scale(1);
+    margin-top: 0;
 }
 
-.sidebar-main-panel.scrolled-mode .search-trigger {
-    /* Fallback/Override if needed, but variable handles it */
+.search-trigger {
+    transition: padding-top 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sidebar-main-panel.scrolled-down .search-trigger {
+    padding-top: 15px;
 }
