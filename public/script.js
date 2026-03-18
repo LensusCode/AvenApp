@@ -273,11 +273,15 @@ async function apiRequest(url, method = 'GET', body = null) {
             const response = await window.Capacitor.Plugins.CapacitorHttp.request(options);
 
             if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('chatUser');
+                localStorage.removeItem("chatUser");
                 if (isNative) {
-                    showMobileLogin();
+                    try {
+                        showMobileLogin();
+                    } catch (err) {
+                        console.error('[showMobileLogin] error avoided recursion', err);
+                    }
                 } else {
-                    window.location.href = '/login';
+                    window.location.href = "/login";
                 }
                 return null;
             }
@@ -372,8 +376,7 @@ function showMobileLogin() {
     if (mainColumn) mainColumn.style.display = 'none';
     if (fabBtn) fabBtn.style.display = 'none';
 
-    // Mostrar una pantalla de login moderna
-    let loginScreen = document.getElementById('mobile-login-screen');
+    var loginScreen = document.getElementById('mobile-login-screen');
     if (!loginScreen) {
         console.log('[DEBUG] Creating modern login screen element');
         loginScreen = document.createElement('div');
